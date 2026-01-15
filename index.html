@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Nomutore v4 - Craft & Flow</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#f59e0b">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- IndexedDB (Dexie) -->
+    <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="./style.css">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'Noto Sans JP', 'sans-serif'],
+                    },
+                    colors: {
+                        base: {
+                            50: '#f9fafb',
+                            100: '#f3f4f6',
+                            200: '#e5e7eb',
+                            900: '#0f0f13', 
+                            800: '#18181b', 
+                            700: '#27272a',
+                        },
+                        accent: {
+                            DEFAULT: '#f59e0b', // Amber
+                            hover: '#d97706',
+                            light: '#fbbf24',
+                            glow: 'rgba(245, 158, 11, 0.5)',
+                        },
+                        recovery: {
+                            DEFAULT: '#10b981', // Emerald
+                            hover: '#059669',
+                            glow: 'rgba(16, 185, 129, 0.4)',
+                        },
+                        text: {
+                            dark: '#111827',
+                            light: '#fafafa',
+                            muted: '#9ca3af',
+                            mutedDark: '#6b7280',
+                        }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="font-sans antialiased pb-24 transition-colors duration-300">
+
+    <!-- Global Header -->
+    <header class="fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center glass-nav border-b-0 bg-opacity-0">
+        <div class="flex flex-col">
+            <span class="text-xs font-bold text-accent tracking-widest uppercase">Weekly Period</span>
+            <div class="flex items-center gap-2">
+                <span id="header-period-label" class="text-sm font-semibold text-text-mutedDark dark:text-text-muted transition-colors">Loading...</span>
+                <span id="header-day-label" class="bg-base-200 dark:bg-base-700 text-[10px] px-1.5 py-0.5 rounded text-gray-500 dark:text-gray-400 transition-colors">Day --</span>
+            </div>
+        </div>
+        <div class="flex gap-4">
+            <button id="btn-notifications" class="text-text-mutedDark dark:text-text-muted hover:text-black dark:hover:text-white transition">
+                <i class="ph ph-bell text-2xl"></i>
+            </button>
+            <button id="btn-open-settings" onclick="openSettings()" class="text-text-mutedDark dark:text-text-muted hover:text-black dark:hover:text-white transition">
+                <i class="ph ph-gear text-2xl"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main id="app-container" class="pt-24 px-4 container mx-auto max-w-md">
+        
+        <!-- Tab: Dashboard -->
+        <section id="tab-home" class="fade-in">
+            
+            <!-- Hero: Condition Orb -->
+            <div class="relative mb-10 mt-4">
+                <div class="fluid-sphere animate-float">
+                    
+                    <!-- 1. Mask Container -->
+                    <div class="absolute inset-0 rounded-full overflow-hidden z-10 isolate">
+                        <div class="fluid-bg"></div>
+                        
+                        <!-- 2. Double Wave Liquid -->
+                        <!-- Back Wave -->
+                        <div id="orb-liquid-back" class="fluid-liquid fluid-liquid-back"></div>
+                        <!-- Front Wave -->
+                        <div id="orb-liquid-front" class="fluid-liquid fluid-liquid-front"></div>
+                    </div>
+                    
+                    <!-- 3. Rings -->
+                    <div class="status-ring"></div>
+                    <div class="status-progress" style="transform: rotate(45deg);"></div>
+
+                    <!-- 4. Inner Content (Text) -->
+                    <div class="absolute inset-0 flex flex-col items-center justify-center z-30 text-center pointer-events-none drop-shadow-md">
+                        <span class="text-xs font-bold text-gray-500 dark:text-white/60 tracking-widest mb-1 transition-colors">BALANCE</span>
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-5xl font-black text-gray-800 dark:text-white tracking-tighter transition-colors" id="balance-val">---</span>
+                            <span class="text-sm font-bold text-gray-500 dark:text-white/60 transition-colors">kcal</span>
+                        </div>
+                        <div class="mt-2 px-3 py-1 rounded-full bg-white/60 dark:bg-black/40 backdrop-blur-sm border border-black/5 dark:border-white/10 flex items-center gap-1.5 transition-colors">
+                            <div class="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
+                            <span class="text-xs font-semibold text-accent" id="status-text">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Recovery Proposal (Dynamic) -->
+                <div class="absolute -bottom-4 left-1/2 transform -translate-x-1/2 w-full max-w-[80%] z-40">
+                    <button id="btn-redemption" class="w-full glass-panel rounded-xl p-3 flex items-center justify-between group hover:bg-base-100 dark:hover:bg-base-700/80 transition border-accent/30 shadow-lg shadow-accent/10">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-recovery/10 flex items-center justify-center text-recovery">
+                                <i class="ph-fill ph-sneaker-move text-xl"></i>
+                            </div>
+                            <div class="text-left">
+                                <p class="text-xs text-text-mutedDark dark:text-text-muted font-bold transition-colors">Recommended</p>
+                                <p id="redemption-text" class="text-sm font-bold text-text-dark dark:text-white transition-colors">Perfect Condition</p>
+                            </div>
+                        </div>
+                        <div class="w-8 h-8 rounded-full bg-base-100 dark:bg-base-800 flex items-center justify-center group-hover:bg-recovery group-hover:text-black transition-colors">
+                            <i class="ph-bold ph-arrow-right"></i>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-2 gap-3 mb-6 mt-12">
+                <!-- Rank Card -->
+                <div class="glass-panel rounded-2xl p-4 relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition">
+                        <i class="ph-fill ph-trophy text-4xl text-purple-400"></i>
+                    </div>
+                    <p class="text-xs font-bold text-text-mutedDark dark:text-text-muted mb-1 transition-colors">LIVER RANK</p>
+                    <div class="flex items-end gap-2 mb-2">
+                        <span id="rank-value" class="text-2xl font-black text-purple-500 dark:text-purple-400">-</span>
+                        <span id="rank-label" class="text-xs text-text-mutedDark dark:text-white/60 mb-1 transition-colors">---</span>
+                    </div>
+                    <div class="w-full h-1 bg-base-200 dark:bg-base-700 rounded-full overflow-hidden transition-colors">
+                        <div id="rank-progress-bar" class="h-full bg-purple-500 w-[0%]"></div>
+                    </div>
+                    <p id="rank-next-text" class="text-[10px] text-text-mutedDark dark:text-text-muted mt-2 text-right transition-colors">---</p>
+                </div>
+
+                <!-- Streak Card -->
+                <div class="glass-panel rounded-2xl p-4 relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition">
+                        <i class="ph-fill ph-fire text-4xl text-orange-500"></i>
+                    </div>
+                    <p class="text-xs font-bold text-text-mutedDark dark:text-text-muted mb-1 transition-colors">STREAK</p>
+                    <div class="flex items-end gap-2 mb-1">
+                        <span id="streak-value" class="text-2xl font-black text-orange-500">-</span>
+                        <span class="text-xs text-text-mutedDark dark:text-white/60 mb-1 transition-colors">Days</span>
+                    </div>
+                    <div class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-orange-500/10 dark:bg-orange-500/20 border border-orange-500/30">
+                        <i class="ph-bold ph-trend-up text-[10px] text-orange-500 dark:text-orange-400"></i>
+                        <span id="streak-bonus-text" class="text-[10px] font-bold text-orange-500 dark:text-orange-400">x1.0 Bonus</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weekly Rhythm -->
+            <div class="mb-24">
+                <div class="flex justify-between items-center mb-3 px-1">
+                    <h3 class="text-sm font-bold text-text-dark dark:text-white transition-colors">Weekly Rhythm</h3>
+                    <button class="text-xs text-text-mutedDark dark:text-text-muted hover:text-black dark:hover:text-white transition-colors">View History</button>
+                </div>
+                <div id="weekly-rhythm-container" class="glass-panel rounded-2xl p-4 flex justify-between items-center">
+                    <!-- Injected by JS -->
+                    <span class="text-xs text-gray-500">Loading...</span>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Tab: Cellar (History) -->
+        <section id="tab-cellar" class="hidden fade-in pb-24">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+                <span class="text-accent">My Cellar</span>
+                <span id="cellar-total-count" class="text-xs bg-base-200 dark:bg-base-800 text-text-mutedDark dark:text-text-muted px-2 py-1 rounded border border-base-300 dark:border-base-700 transition-colors">-- Logs</span>
+            </h2>
+            
+            <!-- Segmented Control for Subviews -->
+            <div class="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-2" id="cellar-view-selector">
+                <button data-view="logs" class="px-4 py-2 rounded-full bg-accent text-black font-bold text-xs whitespace-nowrap shadow-md shadow-accent/20">Logs</button>
+                <button data-view="beers" class="px-4 py-2 rounded-full bg-white dark:bg-base-800 border border-base-200 dark:border-base-700 text-text-mutedDark dark:text-text-muted font-bold text-xs whitespace-nowrap transition-colors">Beers</button>
+                <button data-view="archives" class="px-4 py-2 rounded-full bg-white dark:bg-base-800 border border-base-200 dark:border-base-700 text-text-mutedDark dark:text-text-muted font-bold text-xs whitespace-nowrap transition-colors">Archives</button>
+            </div>
+
+            <!-- Subview: Logs -->
+            <div id="cellar-subview-logs" class="cellar-subview">
+                <div id="log-list" class="space-y-3">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+            
+            <!-- Subview: Beers (Mock) -->
+            <div id="cellar-subview-beers" class="cellar-subview hidden">
+                <div class="grid grid-cols-2 gap-3" id="cellar-grid">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+
+            <!-- Subview: Archives (Mock) -->
+            <div id="cellar-subview-archives" class="cellar-subview hidden">
+                <div id="archive-list" class="space-y-3">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Floating Action Dock -->
+    <div class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-sm px-4">
+        <div class="glass-nav rounded-2xl p-2 flex justify-between items-center shadow-2xl border border-white/20 dark:border-white/10">
+            <button onclick="switchTab('home')" id="nav-home" class="flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition text-accent">
+                <i class="ph-fill ph-house text-2xl"></i>
+                <span class="text-[10px] font-bold">Home</span>
+            </button>
+            
+            <!-- Main Action Button -->
+            <div class="relative -top-6">
+                <button onclick="openMenu()" class="w-16 h-16 rounded-full bg-gradient-to-tr from-accent to-yellow-400 text-black shadow-[0_4px_20px_rgba(245,158,11,0.5)] flex items-center justify-center transform transition hover:scale-105 active:scale-95 border-4 border-white dark:border-base-900">
+                    <i class="ph-bold ph-plus text-3xl"></i>
+                </button>
+            </div>
+
+            <button onclick="switchTab('cellar')" id="nav-cellar" class="flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition text-text-mutedDark dark:text-text-muted hover:text-black dark:hover:text-white">
+                <i class="ph-bold ph-books text-2xl"></i>
+                <span class="text-[10px] font-bold">Cellar</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Record Menu Modal (Overlay) -->
+    <div id="record-menu" class="fixed inset-0 z-[60] bg-black/60 dark:bg-black/90 backdrop-blur-md hidden opacity-0 transition-opacity duration-300 flex items-end justify-center pb-24">
+        <button onclick="closeMenu()" class="absolute top-6 right-6 text-white/70 hover:text-white p-2">
+            <i class="ph ph-x text-3xl"></i>
+        </button>
+
+        <div class="w-full max-w-sm px-6 grid gap-4 transform translate-y-10 transition duration-300" id="menu-items">
+            <div class="text-center mb-4">
+                <span class="text-xs font-bold text-white/80 tracking-widest uppercase">Select Action</span>
+            </div>
+            
+            <button onclick="openLogModal('beer')" class="glass-panel p-4 rounded-2xl flex items-center gap-4 group hover:bg-accent/10 transition border-l-4 border-transparent hover:border-accent bg-base-900/80 dark:bg-base-800/80">
+                <div class="w-12 h-12 rounded-full bg-accent/20 text-accent flex items-center justify-center text-2xl group-hover:scale-110 transition">
+                    🍺
+                </div>
+                <div class="text-left flex-1">
+                    <h3 class="font-bold text-white text-lg group-hover:text-accent transition">Drink Beer</h3>
+                    <p class="text-xs text-text-muted">Record debt & add to cellar</p>
+                </div>
+                <i class="ph-bold ph-caret-right text-white/30"></i>
+            </button>
+
+            <button onclick="openLogModal('exercise')" class="glass-panel p-4 rounded-2xl flex items-center gap-4 group hover:bg-recovery/10 transition border-l-4 border-transparent hover:border-recovery bg-base-900/80 dark:bg-base-800/80">
+                <div class="w-12 h-12 rounded-full bg-recovery/20 text-recovery flex items-center justify-center text-2xl group-hover:scale-110 transition">
+                    🏃‍♀️
+                </div>
+                <div class="text-left flex-1">
+                    <h3 class="font-bold text-white text-lg group-hover:text-recovery transition">Exercise</h3>
+                    <p class="text-xs text-text-muted">Pay back debt & recover</p>
+                </div>
+                <i class="ph-bold ph-caret-right text-white/30"></i>
+            </button>
+
+            <button onclick="alert('Open Check Modal')" class="glass-panel p-4 rounded-2xl flex items-center gap-4 group hover:bg-purple-500/10 transition border-l-4 border-transparent hover:border-purple-500 bg-base-900/80 dark:bg-base-800/80">
+                <div class="w-12 h-12 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center text-2xl group-hover:scale-110 transition">
+                    🌿
+                </div>
+                <div class="text-left flex-1">
+                    <h3 class="font-bold text-white text-lg group-hover:text-purple-400 transition">Conditioning</h3>
+                    <p class="text-xs text-text-muted">Daily check & habits</p>
+                </div>
+                <i class="ph-bold ph-caret-right text-white/30"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 z-[70] bg-black/60 dark:bg-black/90 backdrop-blur-md hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
+        <div class="w-full max-w-sm glass-panel rounded-3xl p-6 transform scale-95 transition duration-300 bg-white dark:bg-base-800" id="settings-content">
+            <div class="flex justify-between items-center mb-6 border-b border-gray-200 dark:border-white/10 pb-4">
+                <h3 class="text-xl font-bold text-text-dark dark:text-white">Settings</h3>
+                <button onclick="closeSettings()" class="text-text-mutedDark dark:text-text-muted hover:text-black dark:hover:text-white">
+                    <i class="ph ph-x text-2xl"></i>
+                </button>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Theme Toggle -->
+                <div>
+                    <h4 class="text-sm font-bold text-text-dark dark:text-white mb-3 flex items-center gap-2">
+                        <i class="ph-fill ph-paint-brush-broad text-accent"></i> Theme
+                    </h4>
+                    <div class="bg-base-100 dark:bg-base-900 p-1.5 rounded-xl flex gap-1 border border-base-200 dark:border-white/5">
+                        <button onclick="setTheme('dark')" id="theme-btn-dark" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 bg-base-800 text-white shadow-sm">
+                            <i class="ph-fill ph-moon"></i> Night Owl
+                        </button>
+                        <button onclick="setTheme('light')" id="theme-btn-light" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 text-text-mutedDark dark:text-text-muted hover:bg-white dark:hover:bg-base-800">
+                            <i class="ph-fill ph-sun"></i> Daytime
+                        </button>
+                    </div>
+                    <p class="text-[10px] text-text-mutedDark dark:text-text-muted mt-2 text-center">
+                        <span class="text-accent">Recommended:</span> Night Owl for immersive experience
+                    </p>
+                </div>
+                
+                <!-- Account Info (Mock) -->
+                <div>
+                    <h4 class="text-sm font-bold text-text-dark dark:text-white mb-2 flex items-center gap-2">
+                        <i class="ph-fill ph-user text-recovery"></i> Profile
+                    </h4>
+                    <div class="glass-panel bg-base-50 dark:bg-base-900/50 p-3 rounded-xl border border-base-200 dark:border-white/5">
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-text-mutedDark dark:text-text-muted">Height / Weight</span>
+                            <span id="settings-profile-val" class="font-bold text-text-dark dark:text-white">-- / --</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8">
+                 <button onclick="closeSettings()" class="w-full bg-accent hover:bg-accent-hover text-black font-bold py-3 rounded-xl transition shadow-lg shadow-accent/20">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logic -->
+    <script type="module" src="./main.js"></script>
+    <script type="module" src="./test.js"></script>
+</body>
+</html>
