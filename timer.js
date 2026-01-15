@@ -1,9 +1,9 @@
-import { APP, EXERCISE, CALORIES } from '../constants.js';
-import { Calc } from '../logic.js';
-import { Store } from '../store.js';
-import { StateManager } from './state.js';
-import { UI, toggleModal } from './index.js'; // UIユーティリティ
-import { DOM, showConfetti, showMessage } from './dom.js';
+import { APP, EXERCISE, CALORIES } from './constants.js'; // 修正: ../ -> ./
+import { Calc } from './logic.js';      // 修正: ../ -> ./
+import { Store } from './store.js';     // 修正: ../ -> ./
+import { StateManager } from './ui/state.js'; // 修正: ./ -> ./ui/
+import { UI, toggleModal } from './ui/index.js'; // 修正: ./ -> ./ui/
+import { DOM, showConfetti, showMessage } from './ui/dom.js'; // 修正: ./ -> ./ui/
 
 // 保存処理を実行するためのハンドラ
 let _saveExerciseHandler = null;
