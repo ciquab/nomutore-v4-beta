@@ -30,16 +30,23 @@ window.closeMenu = () => toggleModal('record-menu', false);
 window.openSettings = UI.openSettings;
 window.closeSettings = () => toggleModal('settings-modal', false);
 window.setTheme = (mode) => {
-    // UI反映
     UI.applyTheme(mode);
-    // 保存は[Done]ボタン押下時だが、即時反映のため仮設定
-    // (本格的な保存は handleSaveSettings で行う)
 };
+
+// 【修正】健康チェック(check)の分岐を追加
 window.openLogModal = (type) => {
-    editingLogId = null; // 新規作成
+    editingLogId = null;
+    editingCheckId = null; // チェックIDもリセット
     window.closeMenu();
-    if (type === 'beer') UI.openBeerModal(null);
-    else if (type === 'exercise') UI.openManualInput();
+    
+    if (type === 'beer') {
+        UI.openBeerModal(null);
+    } else if (type === 'exercise') {
+        UI.openManualInput();
+    } else if (type === 'check') {
+        // modal.jsのopenCheckModalを呼び出し
+        UI.openCheckModal(null); 
+    }
 };
 
 /* ==========================================================================
@@ -308,7 +315,13 @@ function bindEvents() {
     document.getElementById('check-form')?.addEventListener('submit', handleCheckSubmit);
     document.getElementById('btn-submit-manual')?.addEventListener('click', handleManualExerciseSubmit);
     document.getElementById('btn-save-settings')?.addEventListener('click', handleSaveSettings);
-    
+ 
+    // 【追加】Timer起動
+    document.getElementById('btn-open-timer')?.addEventListener('click', () => {
+        toggleModal('manual-exercise-modal', false);
+        Timer.open();
+    });
+   
     document.getElementById('is-dry-day')?.addEventListener('change', function() { UI.toggleDryDay(this); });
 
     // --- Data Management ---
