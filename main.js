@@ -431,8 +431,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // 2. Data Migration & Init
-    await migrateData(); // 【追加】移行処理
-    await Service.ensureTodayCheckRecord();
+    // 【修正】DBエラーで止まらないようにtry-catch追加
+    try {
+        await migrateData();
+        await Service.ensureTodayCheckRecord();
+    } catch (e) {
+        console.error("Database initialization failed:", e);
+        UI.showMessage("データベースエラーが発生しました。リセットが必要かもしれません。", "error");
+    }
 
     // 3. Events
     bindEvents();

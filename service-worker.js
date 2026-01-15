@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nomutore-v4.0.1'; // Major Update
+const CACHE_NAME = 'nomutore-v4.0.2'; // Major Update
 
 // アプリケーションを構成する全ファイル
 // これらをキャッシュすることでオフライン起動が可能になります
