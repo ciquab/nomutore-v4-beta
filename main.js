@@ -3,7 +3,7 @@ import { Store, ExternalApp, db } from './store.js';
 import { Calc } from './logic.js';
 import { UI, StateManager, updateBeerSelectOptions, refreshUI, toggleModal } from './ui/index.js';
 import { Service } from './service.js';
-// import { Timer, setTimerSaveHandler } from './timer.js'; // TimerはPhase 3で再実装
+import { Timer, setTimerSaveHandler } from './timer.js'; // TimerはPhase 3で再実装
 import { DataManager } from './dataManager.js';
 import { initErrorHandler } from './errorHandler.js';
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
@@ -408,7 +408,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     UI.initDOM();
     UI.setFetchLogsHandler(Service.getLogsWithPagination);
     UI.setFetchAllDataHandler(Service.getAllDataForUI);
-    // TimerはPhase 3で対応
+    
+    // 【修正】Timerの初期化と保存ハンドラの設定
+    Timer.init();
+    setTimerSaveHandler(async (exKey, minutes) => {
+        // タイマー完了時は今日の日付で、ボーナスあり(デフォルト)で記録
+        const todayStr = dayjs().format('YYYY-MM-DD');
+        await Service.saveExerciseLog(exKey, minutes, todayStr, true);
+    });
 
     // 2. Data Migration & Init
     await migrateData(); // 【追加】移行処理
