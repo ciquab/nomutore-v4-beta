@@ -1,8 +1,8 @@
-import { APP, EXERCISE } from '../constants.js';
-import { Calc } from '../logic.js';
-import { Store } from '../store.js';
-import { Service } from '../service.js'; // 直接Serviceを呼ぶ
-import { toggleModal } from './dom.js';
+import { APP, EXERCISE } from './constants.js';
+import { Calc } from './logic.js';
+import { Store } from './store.js';
+import { Service } from './service.js'; // 直接Serviceを呼ぶ
+import { toggleModal } from './ui/dom.js';
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
 // タイマー状態
