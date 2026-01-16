@@ -3,7 +3,7 @@ import { Store, ExternalApp, db } from './store.js';
 import { Calc } from './logic.js';
 import { UI, StateManager, updateBeerSelectOptions, refreshUI, toggleModal } from './ui/index.js';
 import { Service } from './service.js';
-import { Timer, setTimerSaveHandler } from './timer.js';
+import { Timer, setTimerSaveHandler } from './ui/timer.js';
 import { DataManager } from './dataManager.js';
 import { initErrorHandler } from './errorHandler.js';
 import { handleSaveSettings } from './ui/modal.js'; 
