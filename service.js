@@ -1,7 +1,7 @@
 import { db, Store } from './store.js';
 import { Calc } from './logic.js';
 import { APP, EXERCISE, STYLE_SPECS } from './constants.js';
-import { UI, refreshUI, toggleModal } from './ui/index.js';
+import { UI, refreshUI } from './ui/index.js';
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
 export const Service = {

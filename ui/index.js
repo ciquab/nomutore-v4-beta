@@ -218,4 +218,15 @@ export const UI = {
     refreshUI: refreshUI 
 };
 
-export { renderBeerTank, renderLiverRank, renderCheckStatus, renderWeeklyAndHeatUp, renderChart, updateLogListView, updateModeSelector, updateBeerSelectOptions };
+export { 
+    renderBeerTank, 
+    renderLiverRank, 
+    renderCheckStatus, 
+    renderWeeklyAndHeatUp, 
+    renderChart, 
+    updateLogListView, 
+    updateModeSelector, 
+    updateBeerSelectOptions,
+    StateManager,  // 追加
+    toggleModal    // 追加
+};
