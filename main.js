@@ -9,6 +9,8 @@ import { initErrorHandler } from './errorHandler.js';
 import { handleSaveSettings } from './ui/modal.js'; 
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
+window.UI = UI;
+
 /* ==========================================================================
    Initialization & Global State
    ========================================================================== */
@@ -39,8 +41,8 @@ const setupLifecycleListeners = () => {
                 await initApp(); 
                 isResuming = false;
             } else {
-                if (Timer.restoreState()) {
-                    // Timer restored
+                if (Timer.restoreState) { // Updated to check if function exists or is needed, though logic is inside timer.js checkResume
+                     Timer.checkResume(); // Explicitly check resume state if needed
                 }
             }
         }
@@ -55,7 +57,9 @@ const initApp = async () => {
     console.log('App Initializing...');
     
     // 【追加】v4 データ移行処理 (UI初期化前に実行)
-    await Store.migrateV3ToV4();
+    if (Store.migrateV3ToV4) {
+        await Store.migrateV3ToV4();
+    }
 
     // UI初期化
     UI.init();
@@ -75,11 +79,8 @@ const initApp = async () => {
         return await Service.getLogsWithPagination(offset, limit);
     });
 
-    setTimerSaveHandler(async (type, minutes) => {
-        await Service.saveExerciseLog(type, minutes, dayjs().format('YYYY-MM-DD'), true);
-        Timer.reset();
-    });
-
+    // REMOVED: setTimerSaveHandler logic since Timer handles it internally via Service import
+    
     generateSettingsOptions();
 
     await refreshUI();
@@ -118,6 +119,11 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleModal('rollover-modal', false);
         await refreshUI();
         UI.showConfetti();
+    });
+    
+    // Listen for UI refresh request from modal settings save
+    document.addEventListener('refresh-ui', async () => {
+         await refreshUI();
     });
 
     const btnSaveSettings = document.getElementById('btn-save-settings');
