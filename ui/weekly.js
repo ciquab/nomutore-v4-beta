@@ -9,61 +9,54 @@ export function renderWeeklyAndHeatUp(logs, checks) {
     const streak = Calc.getCurrentStreak(logs, checks, profile);
     const multiplier = Calc.getStreakMultiplier(streak);
     
-    // ストリーク数とバッジの更新
-    const streakEl = DOM.elements['streak-count'];
+    const streakEl = DOM.elements['streak-count'] || document.getElementById('streak-count');
     if(streakEl) streakEl.textContent = streak;
     
-    const badge = DOM.elements['streak-badge'];
+    const badge = DOM.elements['streak-badge'] || document.getElementById('streak-badge');
     if (badge) {
         if (multiplier > 1.0) {
-            badge.textContent = `x${multiplier.toFixed(1)} Bonus`;
-            badge.className = "text-[10px] px-2 py-0.5 rounded-full bg-accent text-black font-bold animate-pulse";
+            badge.textContent = `🔥 x${multiplier.toFixed(1)} Bonus!`;
+            badge.className = "mt-1 px-2 py-0.5 bg-orange-500 rounded-full text-[10px] font-bold text-white shadow-sm animate-pulse";
         } else {
-            badge.textContent = "Streak";
-            badge.className = "text-[10px] px-2 py-0.5 rounded-full bg-slate-700 text-slate-400";
+            badge.textContent = "x1.0 (Normal)";
+            badge.className = "mt-1 px-2 py-0.5 bg-white dark:bg-gray-700 rounded-full text-[10px] font-bold text-gray-400 shadow-sm border border-orange-100 dark:border-gray-600";
         }
     }
 
-    // ID変更: weekly-stamps -> weekly-calendar
-    const container = DOM.elements['weekly-calendar'];
-    if (!container) return;
+    const container = DOM.elements['weekly-stamps'] || document.getElementById('weekly-stamps');
+    if (!container) return; // ガード節
     
     const fragment = document.createDocumentFragment();
     const today = dayjs();
-    
-    // 過去6日 + 今日
+    let dryCountInWeek = 0; 
+
     for (let i = 6; i >= 0; i--) {
         const d = today.subtract(i, 'day');
         const status = Calc.getDayStatus(d, logs, checks, profile);
         const isToday = i === 0;
 
-        // v4 Design: 丸型スタンプ (Glassmorphism friendly)
-        let elClass = "aspect-square rounded-full flex items-center justify-center text-xs shadow-sm transition-all ";
+        let elClass = "w-6 h-6 rounded-full flex items-center justify-center text-[10px] shadow-sm transition-all cursor-pointer hover:opacity-80 active:scale-95 ";
         let content = "";
-        
-        // 今日の枠線強調
-        if (isToday) {
-            elClass += "ring-2 ring-white ring-offset-2 ring-offset-slate-900 font-bold ";
-        }
 
-        if (status === 'rest' || status === 'rest_exercise') {
-            // 休肝日 (Recovery Color)
-            elClass += "bg-recovery/20 text-recovery border border-recovery/50";
+        if (isToday) {
+            elClass += "border-2 border-indigo-500 bg-white dark:bg-gray-700 text-indigo-500 dark:text-indigo-300 font-bold relative transform scale-110";
+            content = "今";
+        } 
+        else if (status === 'rest' || status === 'rest_exercise') {
+            elClass += "bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-300 border border-green-200 dark:border-green-800";
             content = "🍵";
+            dryCountInWeek++;
         } 
         else if (status === 'drink_exercise_success') {
-            // 飲んで完済 (Blue/Cyan)
-            elClass += "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50";
+            elClass += "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800";
             content = "🏃";
         }
         else if (status === 'drink' || status === 'drink_exercise') {
-            // 飲んだ (Accent/Red)
-            elClass += "bg-red-500/20 text-red-400 border border-red-500/50";
+            elClass += "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-800";
             content = "🍺";
         } 
         else {
-            // 未記録/その他 (Slate)
-            elClass += "bg-slate-700/50 text-slate-500 border border-slate-600/50";
+            elClass += "bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-500 border border-gray-200 dark:border-gray-600";
             content = "-";
         }
 
@@ -78,19 +71,25 @@ export function renderWeeklyAndHeatUp(logs, checks) {
 
     container.innerHTML = '';
     container.appendChild(fragment);
+
+    const msgEl = DOM.elements['weekly-status-text'] || document.getElementById('weekly-status-text');
+    if (msgEl) {
+        if (dryCountInWeek >= 4) msgEl.textContent = "Excellent! 🌟";
+        else if (dryCountInWeek >= 2) msgEl.textContent = "Good pace 👍";
+        else msgEl.textContent = "Let's rest... 🍵";
+    }
 }
 
-// ヒートマップ描画 (月間カレンダー)
+// ヒートマップ描画 (refreshUIから呼ばれる)
 export function renderHeatmap(checks, logs) {
-    const grid = DOM.elements['heatmap-grid'];
-    const label = DOM.elements['heatmap-period-label'];
-    const prevBtn = DOM.elements['heatmap-prev'];
-    const nextBtn = DOM.elements['heatmap-next'];
+    const grid = document.getElementById('heatmap-grid');
+    const label = document.getElementById('heatmap-period-label');
     
-    if (!grid) return;
-
-    // ページネーション制御
+    // ページネーションボタン制御
+    const prevBtn = document.getElementById('heatmap-prev');
+    const nextBtn = document.getElementById('heatmap-next');
     const offset = StateManager.heatmapOffset;
+
     if (nextBtn) {
         if (offset <= 0) {
             nextBtn.setAttribute('disabled', 'true');
@@ -101,74 +100,87 @@ export function renderHeatmap(checks, logs) {
         }
     }
 
+    if (!grid) return;
+
+    // ★追加: profile取得
     const profile = Store.getProfile();
+
     const offsetMonth = StateManager.heatmapOffset; 
-    const baseDate = dayjs().subtract(offsetMonth, 'month');
+    const baseDate = dayjs().subtract(offsetMonth, 'month'); // 過去へ遡る
     const startOfMonth = baseDate.startOf('month');
     const daysInMonth = baseDate.daysInMonth();
     
     if (label) label.textContent = baseDate.format('YYYY年 M月');
 
-    // 曜日ヘッダー
     const weeks = ['日','月','火','水','木','金','土'];
     let html = '';
     weeks.forEach(w => {
-        html += `<div class="text-center text-[10px] text-slate-500 font-bold py-1">${w}</div>`;
+        html += `<div class="text-center text-[10px] text-gray-400 font-bold py-1">${w}</div>`;
     });
 
-    // 空白セル
     const startDay = startOfMonth.day();
     for (let i = 0; i < startDay; i++) {
         html += `<div></div>`;
     }
 
-    // 日付セル
     for (let d = 1; d <= daysInMonth; d++) {
         const currentDay = baseDate.date(d);
         const dateStr = currentDay.format('YYYY-MM-DD');
         const isToday = currentDay.isSame(dayjs(), 'day');
         
+        // ステータス取得
+        // ★修正: profileを渡す
         const status = Calc.getDayStatus(currentDay, logs, checks, profile);
 
-        // v4 Dark Mode Styles
-        let bgClass = 'bg-slate-800/50';
-        let textClass = 'text-slate-500';
-        let ringClass = '';
+        // デフォルトスタイル
+        let bgClass = 'bg-gray-100 dark:bg-gray-700';
+        let textClass = 'text-gray-400 dark:text-gray-500';
+        let icon = '';
 
+        // ステータス別スタイル適用 (index.htmlの凡例に準拠)
         switch (status) {
-            case 'rest_exercise': 
-                bgClass = 'bg-emerald-500/80 shadow-[0_0_8px_rgba(16,185,129,0.4)]'; 
-                textClass = 'text-white font-bold'; 
-                break;
-            case 'rest': 
-                bgClass = 'bg-emerald-600/40 border border-emerald-500/30'; 
-                textClass = 'text-emerald-200'; 
-                break;
-            case 'drink_exercise_success':
-                bgClass = 'bg-blue-500/80 shadow-[0_0_8px_rgba(59,130,246,0.4)]';
+            case 'rest_exercise': // 休肝+運動 (Emerald)
+                bgClass = 'bg-emerald-500 border border-emerald-600 shadow-sm';
                 textClass = 'text-white font-bold';
+                icon = '🏃‍♀️'; // または 🍵+🏃‍♀️
                 break;
-            case 'drink_exercise': 
-                bgClass = 'bg-blue-600/40 border border-blue-500/30'; 
-                textClass = 'text-blue-200'; 
+            case 'rest': // 休肝日 (Green)
+                bgClass = 'bg-green-400 border border-green-500 shadow-sm';
+                textClass = 'text-white font-bold';
+                icon = '🍵';
                 break;
-            case 'drink': 
-                bgClass = 'bg-red-500/30 border border-red-500/30'; 
-                textClass = 'text-red-300'; 
+            // 【ここを追加】完済した場合も、青色（drink_exercise）と同じ見た目でOKだが、
+            // ボーダーをゴールドにするなど「偉い！」感を出すことも可能
+            case 'drink_exercise_success':
+                bgClass = 'bg-blue-500 border-2 border-yellow-400 shadow-md ring-2 ring-yellow-200 dark:ring-yellow-900'; // 完済は枠線を強調！
+                textClass = 'text-white font-bold';
+                icon = '🏅'; // アイコンも燃やす
                 break;
-            case 'exercise': 
-                bgClass = 'bg-cyan-600/40 border border-cyan-500/30'; 
-                textClass = 'text-cyan-200'; 
+            case 'drink_exercise': // 飲酒+運動 (Blue)
+                bgClass = 'bg-blue-400 border border-blue-500 shadow-sm';
+                textClass = 'text-white font-bold';
+                icon = '💦';
+                break;
+            case 'drink': // 飲酒のみ (Red)
+                bgClass = 'bg-red-400 border border-red-500 shadow-sm';
+                textClass = 'text-white font-bold';
+                icon = '🍺';
+                break;
+            case 'exercise': // 運動のみ (Cyan)
+                bgClass = 'bg-cyan-400 border border-cyan-500 shadow-sm';
+                textClass = 'text-white font-bold';
+                icon = '👟';
                 break;
         }
         
         if (isToday) {
-            ringClass = 'ring-1 ring-white ring-inset z-10';
+            bgClass += ' ring-2 ring-indigo-500 dark:ring-indigo-400 z-10';
         }
 
         html += `
-            <div class="heatmap-cell aspect-square rounded-md flex items-center justify-center cursor-pointer transition hover:bg-white/10 ${bgClass} ${ringClass}" data-date="${dateStr}">
+            <div class="heatmap-cell aspect-square rounded-lg flex flex-col items-center justify-center cursor-pointer transition hover:scale-105 active:scale-95 ${bgClass}" data-date="${dateStr}">
                 <span class="text-[10px] ${textClass}">${d}</span>
+                ${icon ? `<span class="text-[10px] leading-none mt-0.5">${icon}</span>` : ''}
             </div>
         `;
     }

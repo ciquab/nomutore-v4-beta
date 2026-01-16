@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nomutore-v4.0.3'; // バージョンを更新
+const CACHE_NAME = 'nomutore-v3.3'; // バージョンを更新
 
 // アプリケーションを構成する全ファイル
 // これらをキャッシュすることでオフライン起動が可能になります
@@ -22,7 +22,7 @@ const APP_SHELL = [
     './ui/index.js',
     './ui/dom.js',
     './ui/state.js',
-    './ui/orb.js',
+    './ui/beerTank.js',
     './ui/liverRank.js',
     './ui/checkStatus.js',
     './ui/weekly.js',

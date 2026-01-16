@@ -1,125 +1,82 @@
-@charset "UTF-8";
+html, body { height: 100%; margin: 0; padding: 0; overflow-x: hidden; }
+body { font-family: 'Inter', sans-serif; padding-bottom: 5rem; }
+.log-container::-webkit-scrollbar { width: 4px; }
+.log-container::-webkit-scrollbar-thumb { background-color: #d1d5db; border-radius: 2px; }
+.app-header-bg { background: linear-gradient(to bottom, #ffffff, #f3f4f6); }
 
-/* =========================================
-   Base Settings
-   ========================================= */
-html, body {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    overflow-x: hidden;
-    /* スクロールバウンスの制御 (iOS) */
-    overscroll-behavior-y: none; 
-}
+/* ダークモード用ヘッダー背景 */
+.dark .app-header-bg { background: linear-gradient(to bottom, #1f2937, #111827); border-bottom-color: #374151; }
+.dark .log-container::-webkit-scrollbar-thumb { background-color: #4b5563; }
 
-/* スクロールバーのカスタマイズ (Dark Mode対応) */
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-::-webkit-scrollbar-thumb {
-    background-color: rgba(156, 163, 175, 0.5); /* gray-400 */
-    border-radius: 3px;
-}
-.dark ::-webkit-scrollbar-thumb {
-    background-color: rgba(75, 85, 99, 0.5); /* gray-600 */
-}
+.tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
+.tab-content.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.accordion-content { transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, margin 0.3s ease; max-height: 500px; opacity: 1; overflow: hidden; }
+.accordion-content.hidden-area { max-height: 0; opacity: 0; margin: 0 !important; padding: 0 !important; border: none !important; }
 
-/* =========================================
-   v4 Core Design: Glassmorphism
-   ========================================= */
-.glass-panel {
-    background: rgba(30, 41, 59, 0.7); /* Slate-800 based */
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+/* レスポンシブなグラスコンテナ */
+.glass-container { 
+    width: 28vw; 
+    max-width: 140px; 
+    min-width: 100px;
+    aspect-ratio: 2 / 3;
+    position: relative; 
+    z-index: 1; 
+    flex-shrink: 0; 
 }
-
-.glass-nav {
-    background: rgba(15, 23, 42, 0.85); /* Slate-900 based */
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+.glass-body {
+    width: 100%; height: 100%; background: rgba(255, 255, 255, 0.2);
+    border: 5px solid rgba(255, 255, 255, 0.8); border-top: none; border-radius: 0 0 15% 15%;
+    position: relative; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.1), inset 0 0 20px rgba(255,255,255,0.5);
+    backdrop-filter: blur(2px);
+    transition: all 0.3s ease;
+}
+/* ダークモード時のグラス調整 (Task 1: 視認性向上) */
+.dark .glass-body {
+    /* 背景の透明度を少し上げ、白っぽさを出すことで「ガラス感」を強調 */
+    background: rgba(255, 255, 255, 0.1);
+    /* ボーダーの不透明度を上げて輪郭をはっきりさせる */
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.6), inset 0 0 20px rgba(255,255,255,0.15);
 }
 
-/* ライトモード時の調整（Tailwindの dark: 修飾子で賄えない部分） */
-html:not(.dark) .glass-panel {
-    background: rgba(255, 255, 255, 0.6);
-    border: 1px solid rgba(0, 0, 0, 0.05);
+.glass-handle {
+    position: absolute; right: -20%; top: 15%; width: 25%; height: 45%;
+    border: 5px solid rgba(255, 255, 255, 0.8); border-left: none; border-radius: 0 20px 20px 0; z-index: 0;
+    transition: border-color 0.3s ease;
 }
-html:not(.dark) .glass-nav {
-    background: rgba(255, 255, 255, 0.8);
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-/* =========================================
-   v4 Orb Animation (Liquid)
-   ========================================= */
-.fluid-sphere {
-    transform: translateZ(0); /* GPUアクセラレーション有効化 */
-    /* 円形マスク：液漏れ防止の最終防壁 */
-    mask-image: radial-gradient(circle, white 98%, transparent 100%);
-    -webkit-mask-image: radial-gradient(circle, white 98%, transparent 100%);
+.dark .glass-handle {
+    border-color: rgba(255, 255, 255, 0.4);
 }
 
-.fluid-wave {
-    position: absolute;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    border-radius: 40%; /* 楕円形にすることで回転時に波を生む */
-    animation: wave-rotate 8s linear infinite;
-    transition: top 1s cubic-bezier(0.4, 0, 0.2, 1), background 0.5s ease;
+.liquid {
+    position: absolute; bottom: 0; left: 0; width: 100%; height: 0%;
+    transition: height 1s ease-in-out, background-color 0.5s ease; z-index: 2;
 }
+.liquid.mode1 { background: linear-gradient(to top, #d97706, #fbbf24); opacity: 0.9; }
+.liquid.mode2 { background: linear-gradient(to top, #d97706, #fbbf24); filter: blur(1px) brightness(1.1); opacity: 1; }
 
-@keyframes wave-rotate {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.wave-surface {
+    position: absolute; top: -5px; left: 0; width: 200%; height: 20px;
+    background: inherit; border-radius: 40%; opacity: 0.6; animation: wave 3s infinite linear;
 }
+.bubble { position: absolute; background: rgba(255,255,255,0.6); border-radius: 50%; }
 
-/* =========================================
-   Utility / Components
-   ========================================= */
+/* Table styles for help modal */
+.help-table { width: 100%; text-align: left; border-collapse: collapse; font-size: 0.75rem; }
+.help-table th { background-color: #f9fafb; padding: 8px; border-bottom: 2px solid #e5e7eb; font-weight: bold; color: #4b5563; }
+.help-table td { padding: 8px; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: top; }
+.help-table tr:last-child td { border-bottom: none; }
 
-/* モーダルのトランジション */
-.modal {
-    transition: opacity 0.3s ease, visibility 0.3s;
-}
-.modal.hidden {
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    display: flex; /* flexレイアウトは維持しつつ隠す */
-}
-.modal:not(.hidden) {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-}
-
-/* タイマー表示用フォント設定 (等幅数値) */
-.font-mono-nums {
-    font-feature-settings: "tnum";
-    font-variant-numeric: tabular-nums;
-}
-
-/* ヘルプモーダルなどのスクロールエリア */
-.custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 2px;
-}
-
-/* ヒートマップのカレンダーセル */
+/* ヒートマップセル調整 (Task 1: タップ領域拡大) */
 .heatmap-cell {
     position: relative;
+    /* タッチデバイスでのタップ遅延対策 */
     touch-action: manipulation;
+}
+.heatmap-cell::after {
+    content: '';
+    position: absolute;
+    top: -6px; bottom: -6px; left: -6px; right: -6px;
+    z-index: 10;
 }

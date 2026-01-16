@@ -3,10 +3,8 @@ import { Store } from '../store.js';
 import { DOM, toggleModal, showConfetti, showMessage, applyTheme, toggleDryDay } from './dom.js';
 import { StateManager } from './state.js';
 
-// --- UI Modules ---
-// v4: BeerTank -> Orb に変更
-import { updateOrb } from './orb.js'; 
-
+// 各UIモジュール
+import { renderBeerTank } from './beerTank.js';
 import { renderLiverRank } from './liverRank.js';
 import { renderCheckStatus } from './checkStatus.js';
 import { renderWeeklyAndHeatUp, renderHeatmap } from './weekly.js';
@@ -22,7 +20,8 @@ import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
 // UI集約オブジェクト
 export const UI = {
-    // 外部APIハンドラ (LogListモジュールへ委譲)
+    // 外部APIハンドラ
+    // LogListモジュールへ委譲
     setFetchLogsHandler: (fn) => { setFetchLogsHandler(fn); },
 
     _fetchAllDataHandler: null,
@@ -31,12 +30,13 @@ export const UI = {
     getTodayString: () => dayjs().format('YYYY-MM-DD'),
 
     // DOM/Utility (dom.jsより)
+    // initDOM を拡張してイベントリスナー設定を含める
     initDOM: () => {
         DOM.init();
         UI.setupGlobalEventListeners();
     },
     
-    // イベント設定ロジック (既存維持)
+    // dom.js から移動したイベント設定ロジック
     setupGlobalEventListeners: () => {
         // ログリストのエンプティステート内のボタン
         const logListEl = document.getElementById('log-list');
@@ -50,13 +50,12 @@ export const UI = {
         }
 
         // 週間スタンプのクリックイベント
-        const weeklyStampsEl = document.getElementById('weekly-calendar'); // ID修正: weekly-stamps -> weekly-calendar (v4)
+        const weeklyStampsEl = document.getElementById('weekly-stamps');
         if (weeklyStampsEl) {
             weeklyStampsEl.addEventListener('click', (e) => {
                 const cell = e.target.closest('[data-date]');
                 if (cell) {
-                    // 日付クリックでその日の詳細を開くなどの拡張余地
-                    // 現状は既存動作(特になし)またはBeerModalを開く挙動があれば維持
+                    openBeerModal(null, cell.dataset.date);
                 }
             });
         }
@@ -68,16 +67,16 @@ export const UI = {
     applyTheme,
     toggleDryDay,
 
-    // StateManager
+    // StateManager (state.jsより)
     StateManager,
 
-    // LogList
+    // LogList (logList.jsより)
     updateLogListView, 
     toggleEditMode,
     toggleSelectAll,
     updateBulkCount,
 
-    // Modal/Form
+    // Modal/Form (modal.jsより)
     getBeerFormData,
     resetBeerForm,
     openBeerModal,
@@ -88,78 +87,60 @@ export const UI = {
     openHelp,
     openLogDetail,
     updateModeSelector,
+    // updateBeerSelectOptions, // 下でexport
+    // renderQuickButtons,
 
     // Action (Main Logic)
     setBeerMode: (mode) => {
         StateManager.setBeerMode(mode); 
         
         const select = DOM.elements['home-mode-select'];
+        const liq = document.getElementById('tank-liquid');
+        
         if (select && select.value !== mode) {
             select.value = mode;
         }
 
-        // v4: 古い tank-liquid へのクラス操作は削除 (orb.jsが描画時にスタイルを決定するため不要)
+        requestAnimationFrame(() => {
+            if (mode === 'mode1') {
+                if(liq) { liq.classList.remove('mode2'); liq.classList.add('mode1'); }
+            } else {
+                if(liq) { liq.classList.remove('mode1'); liq.classList.add('mode2'); }
+            }
+        });
         refreshUI();
     },
 
-    // v4対応: タブ切り替えロジック
     switchTab: (tabId) => {
-        // IDマッピング: 古いID (main.js等からの呼び出し) を新しいIDに変換
-        // tab-history -> tab-cellar
-        // tab-record -> (廃止: record-menuへ) -> tab-home にフォールバック
-        const mapping = {
-            'tab-history': 'tab-cellar',
-            'history': 'tab-cellar',
-            'cellar': 'tab-cellar',
-            'tab-record': 'tab-home', // 記録タブはないのでホームへ
-            'record': 'tab-home',
-            'tab-home': 'tab-home',
-            'home': 'tab-home'
-        };
-
-        const targetId = mapping[tabId] || tabId;
-        const targetTab = document.getElementById(targetId);
-        
-        // ナビゲーションアイコンのIDを作成 (tab-home -> nav-home)
-        const navId = targetId.replace('tab-', 'nav-');
-        const targetNav = document.getElementById(navId);
-
-        if (!targetTab) return;
+        if (!tabId) return;
+        const targetTab = document.getElementById(tabId);
+        const targetNav = document.getElementById(`nav-${tabId}`);
+        if (!targetTab || !targetNav) return;
     
-        // 1. タブコンテンツの表示切り替え
-        document.querySelectorAll('.tab-content').forEach(el => {
-            el.classList.add('hidden');
-            el.classList.remove('block'); // v4betaではblock/hiddenで制御
-        });
-        targetTab.classList.remove('hidden');
-        targetTab.classList.add('block');
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        targetTab.classList.add('active');
         
-        // 2. ナビゲーションアイコンのスタイル切り替え
-        // v4: active = text-accent, inactive = text-slate-500
-        document.querySelectorAll('nav button').forEach(btn => { 
-            // アイコン色リセット
-            btn.classList.remove('text-accent');
-            btn.classList.add('text-slate-500', 'hover:text-slate-300');
+        document.querySelectorAll('.nav-item').forEach(el => { 
+            el.classList.remove('text-indigo-600', 'dark:text-indigo-400'); 
+            el.classList.add('text-gray-400', 'dark:text-gray-500'); 
         });
-
-        if (targetNav) {
-            targetNav.classList.remove('text-slate-500', 'hover:text-slate-300');
-            targetNav.classList.add('text-accent');
-        }
+        targetNav.classList.remove('text-gray-400', 'dark:text-gray-500');
+        targetNav.classList.add('text-indigo-600', 'dark:text-indigo-400');
         
-        // 3. 履歴タブを開いた時のみリスト更新
-        if (targetId === 'tab-cellar') {
+        // 履歴タブを開いた時のみリスト更新
+        if (tabId === 'tab-history') {
             updateLogListView(false); // リセットして読み込み
             refreshUI(); 
         }
         
-        // 4. スクロール位置リセット
-        const appContent = document.getElementById('app-content');
-        if (appContent) {
-            appContent.scrollTo(0, 0);
-        } else {
+        // スクロール位置リセット
+        const resetScroll = () => {
             window.scrollTo(0, 0);
-        }
+            document.body.scrollTop = 0;
+            document.documentElement.scrollTop = 0;
+        };
+        resetScroll();
+        requestAnimationFrame(() => requestAnimationFrame(resetScroll));
     }
 };
 
@@ -178,23 +159,21 @@ export const refreshUI = async () => {
     const profile = Store.getProfile();
 
     // 2. カロリー収支計算
+    // 互換性考慮: kcalがあれば使用、なければminutes(ステッパー)から換算
     const currentKcalBalance = logs.reduce((sum, l) => {
         const val = l.kcal !== undefined ? l.kcal : (l.minutes * Calc.burnRate(6.0, profile));
         return sum + val;
     }, 0);
 
     // 3. 各コンポーネントの描画
-    updateOrb(currentKcalBalance); // v4: オーブ更新 (renderBeerTankから変更)
-    
+    renderBeerTank(currentKcalBalance);
     renderLiverRank(checks, logs);
     renderCheckStatus(checks, logs);
     renderWeeklyAndHeatUp(logs, checks);
-    renderQuickButtons(logs); // modal.js内の関数だが、DOMがあれば描画される
+    renderQuickButtons(logs);
     renderChart(logs, checks);
     
     // 4. ログリストのリセット (無限スクロールの頭出し)
-    // ※ 無限ループ防止のため、現在のアクティブタブがCellarの場合のみ更新する手もあるが、
-    // ここではデータの整合性を優先して呼び出す（内部でLogLoadingフラグ判定あり）
     await updateLogListView(false);
 
     // 5. ヒートマップ描画
@@ -204,5 +183,5 @@ export const refreshUI = async () => {
     updateInputSuggestions(logs);
 };
 
-// 個別にexportするもの
+// 個別にexportするもの（main.js等から直接importされているもの）
 export { StateManager, updateBeerSelectOptions, toggleModal };

@@ -1,186 +1,147 @@
-import { APP } from './constants.js';
+import { APP, EXERCISE } from './constants.js';
+import { StateManager } from './ui/index.js'; // ui/index.js経由でStateを参照
+import { UI } from './ui/index.js';
 
-// 外部から注入される保存処理ハンドラ
-let _saveHandler = null;
+// 保存処理を実行するためのハンドラ（外部から注入）
+let _saveExerciseHandler = null;
 
-// インターバルIDをモジュール内で管理
-let _intervalId = null;
-
+// ハンドラ設定用関数
 export const setTimerSaveHandler = (fn) => {
-    _saveHandler = fn;
+    _saveExerciseHandler = fn;
 };
 
-/**
- * 時間表示の更新 (00:00)
- */
-const updateDisplay = (ms) => {
-    const totalSeconds = Math.floor(ms / 1000);
-    const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-    const s = (totalSeconds % 60).toString().padStart(2, '0');
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+// 内部関数: タイマー表示更新
+const updateTimeDisplay = () => { 
+    const stStr = localStorage.getItem(APP.STORAGE_KEYS.TIMER_START);
+    const accStr = localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
+    let totalMs = 0;
     
-    const el = document.getElementById('timer-display');
-    if (el) el.textContent = `${m}:${s}`;
+    if (accStr) totalMs += parseInt(accStr, 10);
+    if (stStr) totalMs += (Date.now() - parseInt(stStr, 10));
+
+    const mm = Math.floor(totalMs / 60000).toString().padStart(2, '0');
+    const ss = Math.floor((totalMs % 60000) / 1000).toString().padStart(2, '0');
+    
+    const display = document.getElementById('timer-display');
+    if(display) display.textContent = `${mm}:${ss}`;
 };
 
-/**
- * ボタンの表示切り替え
- * v4のHTML構造 (start-stepper-btn / timer-controls) に対応
- */
-const updateUIState = (state) => {
+// 内部関数: ボタン表示更新
+const updateButtons = (state) => {
     const startBtn = document.getElementById('start-stepper-btn');
-    const controls = document.getElementById('timer-controls');
+    const manualBtn = document.getElementById('manual-record-btn');
     const pauseBtn = document.getElementById('pause-stepper-btn');
     const resumeBtn = document.getElementById('resume-stepper-btn');
-    // stopBtn は controls 内に常駐するため個別の表示制御は不要だが、controlsごとの表示切替に含まれる
-
-    if (!startBtn || !controls) return;
+    const stopBtn = document.getElementById('stop-stepper-btn');
+    const statusText = document.getElementById('timer-status');
+    
+    [startBtn, manualBtn, pauseBtn, resumeBtn, stopBtn].forEach(el => el?.classList.add('hidden'));
 
     if (state === 'running') {
-        startBtn.classList.add('hidden');
-        controls.classList.remove('hidden');
-        
         pauseBtn?.classList.remove('hidden');
-        resumeBtn?.classList.add('hidden');
-        
+        stopBtn?.classList.remove('hidden');
+        if(statusText) { 
+            statusText.textContent = '計測中...'; 
+            statusText.className = 'text-xs text-green-600 font-bold mb-1 animate-pulse'; 
+        }
     } else if (state === 'paused') {
-        startBtn.classList.add('hidden');
-        controls.classList.remove('hidden');
-        
-        pauseBtn?.classList.add('hidden');
         resumeBtn?.classList.remove('hidden');
-        
+        stopBtn?.classList.remove('hidden');
+        if(statusText) { 
+            statusText.textContent = '一時停止中'; 
+            statusText.className = 'text-xs text-yellow-500 font-bold mb-1'; 
+        }
     } else { 
-        // stopped (initial)
-        startBtn.classList.remove('hidden');
-        controls.classList.add('hidden');
+        startBtn?.classList.remove('hidden');
+        manualBtn?.classList.remove('hidden');
+        if(statusText) { 
+            statusText.textContent = 'READY'; 
+            statusText.className = 'text-xs text-gray-400 mt-1 font-medium'; 
+        }
     }
 };
 
 export const Timer = {
-    startTime: null,
-    accumulatedTime: 0, // 一時停止までに蓄積された時間(ms)
-    isRunning: false,
-
-    init: () => {
-        // 状態復元
-        const savedStart = localStorage.getItem(APP.STORAGE_KEYS.TIMER_START);
-        const savedAcc = localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
-
-        if (savedAcc) Timer.accumulatedTime = parseInt(savedAcc, 10);
-
-        if (savedStart) {
-            Timer.startTime = parseInt(savedStart, 10);
-            Timer.isRunning = true;
-            Timer.startInterval();
-            updateUIState('running');
-        } else if (Timer.accumulatedTime > 0) {
-            // 一時停止状態
-            updateDisplay(Timer.accumulatedTime);
-            updateUIState('paused');
-        } else {
-            updateUIState('stopped');
-        }
-    },
-
     start: () => {
-        if (Timer.isRunning) return;
-        
-        Timer.startTime = Date.now();
-        Timer.isRunning = true;
-        
-        localStorage.setItem(APP.STORAGE_KEYS.TIMER_START, Timer.startTime);
-        
-        Timer.startInterval();
-        updateUIState('running');
+        if (StateManager.timerId) return;
+        localStorage.setItem(APP.STORAGE_KEYS.TIMER_START, Date.now());
+        updateButtons('running');
+        updateTimeDisplay();
+        StateManager.setTimerId(setInterval(updateTimeDisplay, 1000));
     },
 
     pause: () => {
-        if (!Timer.isRunning) return;
-
-        // 経過時間を蓄積に加算
-        const elapsed = Date.now() - Timer.startTime;
-        Timer.accumulatedTime += elapsed;
-        
-        Timer.stopInterval();
-        Timer.isRunning = false;
-
-        localStorage.removeItem(APP.STORAGE_KEYS.TIMER_START);
-        localStorage.setItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED, Timer.accumulatedTime);
-
-        updateUIState('paused');
+        if (StateManager.timerId) {
+            clearInterval(StateManager.timerId);
+            StateManager.setTimerId(null);
+        }
+        const stStr = localStorage.getItem(APP.STORAGE_KEYS.TIMER_START);
+        if (stStr) {
+            const currentSession = Date.now() - parseInt(stStr, 10);
+            const prevAcc = parseInt(localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED) || '0', 10);
+            localStorage.setItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED, prevAcc + currentSession);
+            localStorage.removeItem(APP.STORAGE_KEYS.TIMER_START);
+        }
+        updateButtons('paused');
+        updateTimeDisplay();
     },
 
     resume: () => {
-        if (Timer.isRunning) return;
-
-        Timer.startTime = Date.now();
-        Timer.isRunning = true;
-
-        localStorage.setItem(APP.STORAGE_KEYS.TIMER_START, Timer.startTime);
-        Timer.startInterval();
-        updateUIState('running');
+        if (StateManager.timerId) return;
+        localStorage.setItem(APP.STORAGE_KEYS.TIMER_START, Date.now());
+        updateButtons('running');
+        updateTimeDisplay();
+        StateManager.setTimerId(setInterval(updateTimeDisplay, 1000));
     },
 
     stop: async () => {
-        // まず一時停止して時間を確定させる
-        Timer.stopInterval();
+        Timer.pause();
+        const totalMs = parseInt(localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED) || '0', 10);
+        const m = Math.round(totalMs / 60000);
         
-        // 最終時間の計算
-        let totalMs = Timer.accumulatedTime;
-        if (Timer.isRunning && Timer.startTime) {
-            totalMs += (Date.now() - Timer.startTime);
-        }
-
-        const minutes = Math.floor(totalMs / 60000); // 分単位（切り捨て）
-
-        // 状態クリア
-        Timer.resetState();
-        updateDisplay(0);
-        updateUIState('stopped');
-
-        // 保存処理
-        if (minutes >= 1) {
-            if (confirm(`${minutes}分の運動を記録しますか？`)) {
-                if (_saveHandler) {
-                    // 現在選択されている運動種目を取得
-                    const typeSelect = document.getElementById('exercise-select');
-                    const type = typeSelect ? typeSelect.value : 'stepper'; 
-                    await _saveHandler(type, minutes);
-                }
-            }
-        } else {
-            // 1分未満は記録しないが、UIはリセットする
-            // 必要に応じてメッセージ表示: alert('1分未満のため記録しませんでした。');
-        }
-    },
-
-    startInterval: () => {
-        if (_intervalId) clearInterval(_intervalId);
-        _intervalId = setInterval(() => {
-            const current = Date.now() - Timer.startTime + Timer.accumulatedTime;
-            updateDisplay(current);
-        }, 1000);
-    },
-
-    stopInterval: () => {
-        if (_intervalId) {
-            clearInterval(_intervalId);
-            _intervalId = null;
-        }
-    },
-
-    resetState: () => {
-        Timer.startTime = null;
-        Timer.accumulatedTime = 0;
-        Timer.isRunning = false;
         localStorage.removeItem(APP.STORAGE_KEYS.TIMER_START);
         localStorage.removeItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
+        
+        updateButtons('initial');
+        const display = document.getElementById('timer-display');
+        if (display) display.textContent = '00:00';
+        
+        if (m > 0) {
+            if (_saveExerciseHandler) {
+                const type = document.getElementById('exercise-select').value;
+                await _saveExerciseHandler(type, m);
+            } else {
+                console.warn("Save handler not set for Timer.");
+                UI.showMessage('保存処理が設定されていません', 'error');
+            }
+        } else {
+            UI.showMessage('1分未満のため記録せず', 'error');
+        }
     },
-    
-    // アプリ起動時に「計測中」または「一時停止中」であれば true を返す
-    // (main.js がこれを見てモーダルを開くかどうか決める)
+
+    // アプリ起動時の状態復元
     restoreState: () => {
-        Timer.init();
-        return (Timer.isRunning || Timer.accumulatedTime > 0);
+        const st = localStorage.getItem(APP.STORAGE_KEYS.TIMER_START);
+        const acc = localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
+        
+        if (st) {
+            const elapsed = Date.now() - parseInt(st, 10);
+            // 24時間以上経過していたらリセット
+            if (elapsed > ONE_DAY_MS) {
+                localStorage.removeItem(APP.STORAGE_KEYS.TIMER_START);
+                localStorage.removeItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
+                UI.showMessage('中断された古い計測をリセットしました', 'error');
+                return false;
+            }
+            Timer.start();
+            return true;
+        } else if (acc) {
+            updateButtons('paused');
+            updateTimeDisplay();
+            return true;
+        }
+        return false;
     }
 };
