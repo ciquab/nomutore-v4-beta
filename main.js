@@ -12,7 +12,7 @@ import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
    Initialization & Global State
    ========================================================================== */
 
-// ★重要: HTMLのonclick属性から参照できるようにグローバルに公開する
+// ★重要: HTMLのonclick属性から参照できるようにグローバルに公開
 window.UI = UI;
 
 // グローバルエラーハンドリングの初期化
@@ -36,14 +36,14 @@ let isResuming = false;
  * アプリのライフサイクルイベント（復帰、日跨ぎ）を監視・処理する
  */
 const setupLifecycleListeners = () => {
-    // 1. Visibility Change
+    // 1. Visibility Change (スマホでのアプリ復帰時など)
     document.addEventListener('visibilitychange', async () => {
         if (document.visibilityState === 'visible') {
             await handleAppResume();
         }
     });
 
-    // 2. 定期チェック (1分毎)
+    // 2. 定期チェック (1分毎 - アプリを開いたまま日を跨いだ場合)
     setInterval(() => {
         const current = dayjs().format('YYYY-MM-DD');
         if (current !== lastActiveDate) {
@@ -71,13 +71,15 @@ const handleAppResume = async () => {
             // 日付が変わったら今日のチェックインレコードを確保
             await Service.ensureTodayCheckRecord();
             
-            // Note: Timerの状態復元はここで行わない（副作用防止）。
-            // 日跨ぎ時のタイマー停止/継続判断は Timer 内部またはユーザー操作に委ねる。
+            // ヒートマップ等の表示更新のためにリロードを推奨する場合もあるが、
+            // ここではSPAとして画面リフレッシュのみを行う
         }
 
-        // 画面のみリフレッシュ
+        // 画面を最新状態に更新
         await refreshUI();
         
+    } catch (e) {
+        console.error('[Lifecycle] Resume error:', e);
     } finally {
         isResuming = false;
     }
@@ -87,6 +89,7 @@ const handleAppResume = async () => {
    Event Handlers (UI -> Service/Logic)
    ========================================================================== */
 
+// 設定保存
 const handleSaveSettings = async () => {
     const getVal = (id) => document.getElementById(id).value;
     const w = parseFloat(getVal('weight-input'));
@@ -113,6 +116,8 @@ const handleSaveSettings = async () => {
         
         UI.updateModeSelector();
         updateBeerSelectOptions();
+        
+        // 運動種目選択のデフォルト値も更新
         const recordSelect = document.getElementById('exercise-select');
         if (recordSelect) recordSelect.value = getVal('setting-default-record-exercise');
         
@@ -124,10 +129,11 @@ const handleSaveSettings = async () => {
     }
 };
 
+// ビール記録保存
 const handleBeerSubmit = async (e) => {
-    e.preventDefault();
-    const inputData = UI.getBeerFormData();
+    if(e) e.preventDefault(); // フォーム送信の場合はリロード防止
     
+    const inputData = UI.getBeerFormData();
     if (!inputData.isValid) {
         return UI.showMessage('入力値を確認してください', 'error');
     }
@@ -137,26 +143,21 @@ const handleBeerSubmit = async (e) => {
     editingLogId = null;
     toggleModal('beer-modal', false);
     UI.resetBeerForm();
-    await refreshUI();
-
-    if (inputData.useUntappd) {
-        let term = inputData.brand;
-        if (inputData.brewery) term = `${inputData.brewery} ${inputData.brand}`;
-        if (!term) term = inputData.style;
-        ExternalApp.searchUntappd(term);
-    }
+    // await refreshUI(); // Service内で呼ばれるため不要
 };
 
-const handleSaveAndNext = async () => {
+// 続けて記録 (Save & Next)
+const handleSaveAndNext = async (e) => {
+    if(e) e.preventDefault();
     const inputData = UI.getBeerFormData();
-    if (!inputData.isValid) {
-        return UI.showMessage('入力値を確認してください', 'error');
-    }
-    await Service.saveBeerLog(inputData, null);
-    UI.resetBeerForm(true); 
-    await refreshUI();
+    if (!inputData.isValid) return UI.showMessage('入力値を確認してください', 'error');
+    
+    await Service.saveBeerLog(inputData, null); // 新規登録強制
+    UI.resetBeerForm(true); // 日付は維持
+    // refreshUIはService内で呼ばれる
 };
 
+// 運動手動記録保存
 const handleManualExerciseSubmit = async () => {
     const dateVal = document.getElementById('manual-date').value;
     const m = parseFloat(document.getElementById('manual-minutes').value);
@@ -170,11 +171,12 @@ const handleManualExerciseSubmit = async () => {
     document.getElementById('manual-minutes').value = '';
     toggleModal('manual-exercise-modal', false);
     editingLogId = null;
-    await refreshUI();
+    // await refreshUI(); // Service内で呼ばれるため不要
 };
 
+// デイリーチェック保存
 const handleCheckSubmit = async (e) => {
-    e.preventDefault();
+    if(e) e.preventDefault();
     const f = document.getElementById('check-form');
     const w = document.getElementById('check-weight').value;
     
@@ -194,16 +196,27 @@ const handleCheckSubmit = async (e) => {
         weight: weightVal
     };
 
+    // editingCheckId を Service に渡す
     await Service.saveDailyCheck(formData, editingCheckId);
 
     toggleModal('check-modal', false);
+    
+    // フォームのリセット
     document.getElementById('is-dry-day').checked = false;
     document.getElementById('check-weight').value = '';
-    document.getElementById('drinking-section').classList.remove('hidden-area'); // classList操作修正
+    f.reset();
+    
+    // UI状態リセット (drinking-only-section のスタイルを戻す)
+    const drinkSec = document.getElementById('drinking-only-section');
+    if(drinkSec) {
+        drinkSec.classList.remove('opacity-40', 'pointer-events-none', 'grayscale');
+    }
+    
     editingCheckId = null;
-    await refreshUI();
+    // await refreshUI(); // Service内で呼ばれるため不要
 };
 
+// シェア機能 (SNSへ投稿)
 const handleShare = async () => {
     const { logs, checks } = await Service.getAllDataForUI();
     const profile = Store.getProfile();
@@ -214,7 +227,6 @@ const handleShare = async () => {
 
     const totalKcal = logs.reduce((sum, l) => {
         let val = l.kcal;
-        // kcal未定義時のFallback計算
         if (val === undefined) {
             const exKey = l.exerciseKey || 'stepper';
             const met = (EXERCISE[exKey] || EXERCISE['stepper']).met;
@@ -240,6 +252,7 @@ const handleShare = async () => {
     shareToSocial(text);
 };
 
+// 詳細からのシェア機能
 const handleDetailShare = async () => {
     const modal = document.getElementById('log-detail-modal');
     if (!modal || !modal.dataset.id) return;
@@ -279,10 +292,14 @@ const handleDetailShare = async () => {
     shareToSocial(text);
 };
 
+// シェア実行ヘルパー
 const shareToSocial = async (text) => {
     if (navigator.share) {
-        try { await navigator.share({ title: 'ノムトレ', text: text }); } 
-        catch (err) { console.log('Share canceled'); }
+        try { 
+            await navigator.share({ title: 'ノムトレ', text: text }); 
+        } catch (err) { 
+            console.log('Share canceled'); 
+        }
     } else {
         window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`, '_blank');
     }
@@ -294,19 +311,27 @@ const shareToSocial = async (text) => {
 async function migrateData() {
     const oldLogs = localStorage.getItem(APP.STORAGE_KEYS.LOGS);
     const oldChecks = localStorage.getItem(APP.STORAGE_KEYS.CHECKS);
+    
     try {
+        // LocalStorage -> IndexedDB 移行
         if (oldLogs) {
-            const logs = JSON.parse(oldLogs); if (logs.length > 0) await db.logs.bulkAdd(logs);
+            const logs = JSON.parse(oldLogs); 
+            if (logs.length > 0) await db.logs.bulkAdd(logs);
             localStorage.removeItem(APP.STORAGE_KEYS.LOGS);
+            console.log('[Migration] Logs migrated to DB.');
         }
         if (oldChecks) {
-            const checks = JSON.parse(oldChecks); if (checks.length > 0) await db.checks.bulkAdd(checks);
+            const checks = JSON.parse(oldChecks); 
+            if (checks.length > 0) await db.checks.bulkAdd(checks);
             localStorage.removeItem(APP.STORAGE_KEYS.CHECKS);
+            console.log('[Migration] Checks migrated to DB.');
         }
 
+        // kcal未計算の古いログがあれば補完 (互換性維持)
         const logs = await db.logs.toArray();
         const needsUpdate = logs.filter(l => l.kcal === undefined && l.minutes !== undefined);
         if (needsUpdate.length > 0) {
+            console.log(`[Migration] Updating ${needsUpdate.length} old logs with kcal data.`);
             const profile = Store.getProfile();
             for (const log of needsUpdate) {
                 // exerciseKeyを尊重して再計算
@@ -329,7 +354,7 @@ async function migrateData() {
 let touchStartX = 0;
 let touchStartY = 0;
 
-// v4では2タブ構成 (Home, Cellar)
+// v4スワイプ判定: 2タブ構成 (Home, Cellar)
 const handleTouchEnd = (e) => {
     const diffX = e.changedTouches[0].screenX - touchStartX;
     const diffY = e.changedTouches[0].screenY - touchStartY;
@@ -351,24 +376,137 @@ const handleTouchEnd = (e) => {
 };
 
 function bindEvents() {
-    // 既存のボタンへのリスナー設定
-    document.getElementById('btn-open-help')?.addEventListener('click', UI.openHelp);
-    
-    // v4ではナビゲーションはHTML内のonclickで処理されるため、ここでのbindは不要
-    // (UI.switchTab がグローバルにあるため)
-
-    // スワイプエリア（画面全体、またはコンテンツエリア）
-    const swipeArea = document.getElementById('app-content') || document.body;
-    if (swipeArea) {
-        swipeArea.addEventListener('touchstart', (e) => {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-        }, {passive: true});
-        swipeArea.addEventListener('touchend', handleTouchEnd);
-    }
-
+    // ---------------------------------------------------------
+    // 1. 一般的なUI操作 (Settings, Help, Mode Select)
+    // ---------------------------------------------------------
+    document.getElementById('btn-open-settings')?.addEventListener('click', UI.openSettings);
+    document.getElementById('btn-save-settings')?.addEventListener('click', handleSaveSettings);
     document.getElementById('home-mode-select')?.addEventListener('change', (e) => UI.setBeerMode(e.target.value));
+    document.getElementById('btn-open-help')?.addEventListener('click', UI.openHelp);
+
+    // ---------------------------------------------------------
+    // 2. 記録フォーム (Beer, Exercise, Check)
+    // ---------------------------------------------------------
+    // ビール記録 (フォーム送信 & ボタンクリック両対応)
+    document.getElementById('beer-form')?.addEventListener('submit', handleBeerSubmit);
+    document.getElementById('btn-save-beer')?.addEventListener('click', handleBeerSubmit); 
+    document.getElementById('btn-save-next')?.addEventListener('click', handleSaveAndNext);
     
+    // タブ切り替え
+    document.getElementById('tab-beer-preset')?.addEventListener('click', () => UI.switchBeerInputTab('preset'));
+    document.getElementById('tab-beer-custom')?.addEventListener('click', () => UI.switchBeerInputTab('custom'));
+
+    // 運動記録
+    document.getElementById('btn-submit-manual')?.addEventListener('click', handleManualExerciseSubmit);
+
+    // デイリーチェック
+    document.getElementById('check-form')?.addEventListener('submit', handleCheckSubmit);
+    document.getElementById('check-submit-btn')?.addEventListener('click', handleCheckSubmit); 
+    
+    // 休肝日トグル連動
+    document.getElementById('is-dry-day')?.addEventListener('change', function() { UI.toggleDryDay(this); });
+
+    // ---------------------------------------------------------
+    // 3. タイマー操作 (timer.js連携)
+    // ---------------------------------------------------------
+    document.getElementById('start-stepper-btn')?.addEventListener('click', Timer.start);
+    document.getElementById('pause-stepper-btn')?.addEventListener('click', Timer.pause);
+    document.getElementById('resume-stepper-btn')?.addEventListener('click', Timer.resume);
+    document.getElementById('stop-stepper-btn')?.addEventListener('click', Timer.stop);
+
+    // ---------------------------------------------------------
+    // 4. モーダル制御 (閉じる, 背景クリック)
+    // ---------------------------------------------------------
+    document.querySelectorAll('.modal-close').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const modal = e.target.closest('.modal');
+            toggleModal(modal.id, false);
+            editingLogId = null; editingCheckId = null;
+        });
+    });
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                toggleModal(modal.id, false);
+                editingLogId = null; editingCheckId = null;
+            }
+        });
+    });
+
+    // ---------------------------------------------------------
+    // 5. ログリスト操作 (削除, 詳細, 編集)
+    // ---------------------------------------------------------
+    const logList = document.getElementById('log-list');
+    logList?.addEventListener('click', async (e) => {
+        // チェックボックスクリックは無視（別途changeイベントで拾う）
+        if (e.target.classList.contains('log-checkbox')) return;
+        
+        // 削除ボタン (行内のゴミ箱)
+        const deleteBtn = e.target.closest('.delete-log-btn');
+        if (deleteBtn) {
+            e.stopPropagation();
+            await Service.deleteLog(deleteBtn.dataset.id);
+            return;
+        }
+        
+        // 行クリック（詳細表示）
+        const row = e.target.closest('.log-item-row');
+        if (row) {
+            const log = await db.logs.get(parseInt(row.dataset.id));
+            if(log) UI.openLogDetail(log);
+        }
+    });
+
+    // 詳細モーダル内の操作ボタン
+    document.getElementById('btn-detail-delete')?.addEventListener('click', async () => {
+        const id = document.getElementById('log-detail-modal').dataset.id;
+        if (id) {
+            await Service.deleteLog(id);
+            toggleModal('log-detail-modal', false);
+            editingLogId = null;
+        }
+    });
+    document.getElementById('btn-detail-edit')?.addEventListener('click', async () => {
+        const id = parseInt(document.getElementById('log-detail-modal').dataset.id);
+        const log = await db.logs.get(id);
+        if (log) {
+            editingLogId = id;
+            toggleModal('log-detail-modal', false);
+            const isDebt = (log.kcal !== undefined) ? log.kcal < 0 : ((log.minutes < 0) || !!log.brand);
+            isDebt ? UI.openBeerModal(log) : UI.openManualInput(log);
+        }
+    });
+    // 詳細からのシェア (v4ではボタン未実装の可能性が高いがロジックは保持)
+    // document.getElementById('btn-detail-share')?.addEventListener('click', handleDetailShare);
+
+    // 一括操作
+    document.getElementById('btn-toggle-edit-mode')?.addEventListener('click', UI.toggleEditMode);
+    document.getElementById('btn-select-all')?.addEventListener('click', UI.toggleSelectAll);
+    document.getElementById('btn-bulk-delete')?.addEventListener('click', async () => {
+        const ids = Array.from(document.querySelectorAll('.log-checkbox:checked')).map(cb => parseInt(cb.value));
+        if (ids.length > 0) {
+            await Service.bulkDeleteLogs(ids);
+        }
+    });
+
+    // ---------------------------------------------------------
+    // 6. ダッシュボード操作 (ヒートマップ, フィルタ)
+    // ---------------------------------------------------------
+    // ヒートマップ
+    document.getElementById('heatmap-prev')?.addEventListener('click', () => { StateManager.incrementHeatmapOffset(); refreshUI(); });
+    document.getElementById('heatmap-next')?.addEventListener('click', () => { if(StateManager.heatmapOffset > 0) { StateManager.decrementHeatmapOffset(); refreshUI(); }});
+
+    document.getElementById('heatmap-grid')?.addEventListener('click', async (e) => {
+        const cell = e.target.closest('.heatmap-cell');
+        if (cell && cell.dataset.date) {
+            const dateStr = cell.dataset.date;
+            const checks = await db.checks.toArray();
+            const target = checks.find(c => dayjs(c.timestamp).format('YYYY-MM-DD') === dateStr);
+            editingCheckId = target ? target.id : null;
+            UI.openCheckModal(target, dateStr);
+        }
+    });
+
     // ランクカードクリックで今日のチェックを開く
     document.getElementById('liver-rank-card')?.addEventListener('click', async () => {
         const todayStr = dayjs().format('YYYY-MM-DD');
@@ -378,6 +516,7 @@ function bindEvents() {
         UI.openCheckModal(target);
     });
 
+    // チャートフィルタ
     document.getElementById('chart-filters')?.addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
             StateManager.setChartRange(e.target.dataset.range);
@@ -385,10 +524,15 @@ function bindEvents() {
         }
     });
 
-    // モーダルタブ切り替え
-    document.getElementById('tab-beer-preset')?.addEventListener('click', () => UI.switchBeerInputTab('preset'));
-    document.getElementById('tab-beer-custom')?.addEventListener('click', () => UI.switchBeerInputTab('custom'));
-    
+    // ---------------------------------------------------------
+    // 7. 入力支援 (Select, Quick Buttons)
+    // ---------------------------------------------------------
+    document.getElementById('beer-select')?.addEventListener('change', updateBeerSelectOptions);
+    document.getElementById('exercise-select')?.addEventListener('change', function() {
+        const nameEl = document.getElementById('manual-exercise-name');
+        if(nameEl && EXERCISE[this.value]) nameEl.textContent = EXERCISE[this.value].label;
+    });
+
     // クイック量指定ボタン（もしあれば）
     document.querySelectorAll('.btn-quick-amount').forEach(btn => {
         btn.addEventListener('click', function() {
@@ -397,61 +541,28 @@ function bindEvents() {
         });
     });
 
-    // モーダル閉じるボタンの共通処理（リセットロジック含む）
-    document.querySelectorAll('.modal-close').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const modal = e.target.closest('.modal');
-            if (modal) {
-                toggleModal(modal.id, false);
-                // 編集状態のリセット
-                if (['beer-modal', 'manual-exercise-modal', 'log-detail-modal'].includes(modal.id)) {
-                    editingLogId = null;
-                }
-                if (['check-modal'].includes(modal.id)) {
-                    editingCheckId = null;
-                }
-            }
-        });
-    });
-    
-    // モーダル背景クリック時
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                toggleModal(modal.id, false);
-                if (['beer-modal', 'manual-exercise-modal', 'log-detail-modal'].includes(modal.id)) {
-                    editingLogId = null;
-                }
-                if (['check-modal'].includes(modal.id)) {
-                    editingCheckId = null;
-                }
-            }
-        });
+    // ---------------------------------------------------------
+    // 8. ユーティリティ (Swipe, Export, Theme)
+    // ---------------------------------------------------------
+    // スワイプ
+    const swipeArea = document.getElementById('app-content') || document.body;
+    if (swipeArea) {
+        swipeArea.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, {passive: true});
+        swipeArea.addEventListener('touchend', handleTouchEnd);
+    }
+
+    // テーマ変更検知
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        if ((localStorage.getItem(APP.STORAGE_KEYS.THEME) || 'system') === 'system') {
+            UI.applyTheme('system');
+            refreshUI();
+        }
     });
 
-    // タイマー操作
-    document.getElementById('start-stepper-btn')?.addEventListener('click', Timer.start);
-    document.getElementById('pause-stepper-btn')?.addEventListener('click', Timer.pause);
-    document.getElementById('resume-stepper-btn')?.addEventListener('click', Timer.resume);
-    document.getElementById('stop-stepper-btn')?.addEventListener('click', Timer.stop);
-    
-    // フォーム送信
-    document.getElementById('beer-form')?.addEventListener('submit', handleBeerSubmit);
-    document.getElementById('btn-save-next')?.addEventListener('click', (e) => { e.preventDefault(); handleSaveAndNext(); });
-    document.getElementById('check-form')?.addEventListener('submit', handleCheckSubmit);
-    // マニュアル入力ボタン（保存）
-    document.getElementById('btn-submit-manual')?.addEventListener('click', handleManualExerciseSubmit);
-    // 設定保存
-    document.getElementById('btn-save-settings')?.addEventListener('click', handleSaveSettings);
-    
-    // 休肝日トグル連動
-    document.getElementById('is-dry-day')?.addEventListener('change', function() { UI.toggleDryDay(this); });
-
-    // シェア機能（ボタンIDがhtmlにあるか確認が必要だが、存在する場合に備えて維持）
-    document.getElementById('btn-share-sns')?.addEventListener('click', handleShare);
-    // ログ詳細からのシェア（IDなし、動的生成される可能性あり）
-    
-    // エクスポート・インポート
+    // データエクスポート・インポート
     document.getElementById('btn-export-logs')?.addEventListener('click', () => DataManager.exportCSV('logs'));
     document.getElementById('btn-export-checks')?.addEventListener('click', () => DataManager.exportCSV('checks'));
     document.getElementById('btn-copy-data')?.addEventListener('click', DataManager.copyToClipboard);
@@ -468,98 +579,9 @@ function bindEvents() {
             }
         }
     });
-
-    // ログリスト内クリックイベント（削除・詳細）
-    const logList = document.getElementById('log-list');
-    logList?.addEventListener('click', async (e) => {
-        // チェックボックスクリックは無視（別途changeイベントで拾う）
-        if (e.target.classList.contains('log-checkbox')) return;
-        
-        // 削除ボタン
-        const deleteBtn = e.target.closest('.delete-log-btn');
-        if (deleteBtn) {
-            e.stopPropagation();
-            await Service.deleteLog(deleteBtn.dataset.id);
-            await refreshUI(); 
-            return;
-        }
-        
-        // 行クリック（詳細表示）
-        const row = e.target.closest('.log-item-row');
-        if (row) {
-            const log = await db.logs.get(parseInt(row.dataset.id));
-            if(log) UI.openLogDetail(log);
-        }
-    });
-
-    // 一括操作用チェックボックス
-    document.getElementById('log-list')?.addEventListener('change', (e) => {
-        if (e.target.classList.contains('log-checkbox')) {
-            UI.updateBulkCount(document.querySelectorAll('.log-checkbox:checked').length);
-        }
-    });
-
-    // 詳細モーダル内のボタン
-    document.getElementById('btn-detail-delete')?.addEventListener('click', async () => {
-        const id = document.getElementById('log-detail-modal').dataset.id;
-        if (id) {
-            await Service.deleteLog(id);
-            toggleModal('log-detail-modal', false);
-            editingLogId = null;
-            await refreshUI();
-        }
-    });
-
-    document.getElementById('btn-detail-edit')?.addEventListener('click', async () => {
-        const id = parseInt(document.getElementById('log-detail-modal').dataset.id);
-        const log = await db.logs.get(id);
-        if (log) {
-            editingLogId = id;
-            toggleModal('log-detail-modal', false);
-            const isDebt = (log.kcal !== undefined) ? log.kcal < 0 : ((log.minutes < 0) || !!log.brand);
-            isDebt ? UI.openBeerModal(log) : UI.openManualInput(log);
-        }
-    });
-
-    document.getElementById('btn-toggle-edit-mode')?.addEventListener('click', UI.toggleEditMode);
-    document.getElementById('btn-select-all')?.addEventListener('click', UI.toggleSelectAll);
-    document.getElementById('btn-bulk-delete')?.addEventListener('click', async () => {
-        const ids = Array.from(document.querySelectorAll('.log-checkbox:checked')).map(cb => parseInt(cb.value));
-        if (ids.length > 0) {
-            await Service.bulkDeleteLogs(ids);
-            await refreshUI(); 
-        }
-    });
-
-    // ヒートマップ操作
-    document.getElementById('heatmap-prev')?.addEventListener('click', () => { StateManager.incrementHeatmapOffset(); refreshUI(); });
-    document.getElementById('heatmap-next')?.addEventListener('click', () => { if(StateManager.heatmapOffset > 0) { StateManager.decrementHeatmapOffset(); refreshUI(); }});
-
-    document.getElementById('heatmap-grid')?.addEventListener('click', async (e) => {
-        const cell = e.target.closest('.heatmap-cell');
-        if (cell && cell.dataset.date) {
-            const dateStr = cell.dataset.date;
-            const checks = await db.checks.toArray();
-            const target = checks.find(c => dayjs(c.timestamp).format('YYYY-MM-DD') === dateStr);
-            editingCheckId = target ? target.id : null;
-            UI.openCheckModal(target, dateStr);
-        }
-    });
-
-    // 設定画面内のセレクトボックス
-    document.getElementById('beer-select')?.addEventListener('change', updateBeerSelectOptions);
-    document.getElementById('exercise-select')?.addEventListener('change', function() {
-        const nameEl = document.getElementById('manual-exercise-name');
-        // dom.jsで定義されたIDと一致させる
-        if(nameEl && EXERCISE[this.value]) nameEl.textContent = EXERCISE[this.value].label;
-    });
-
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-        if ((localStorage.getItem(APP.STORAGE_KEYS.THEME) || 'system') === 'system') {
-            UI.applyTheme('system');
-            refreshUI();
-        }
-    });
+    
+    // シェアボタン (もしHTMLにあれば)
+    document.getElementById('btn-share-sns')?.addEventListener('click', handleShare);
 }
 
 /**
@@ -568,27 +590,26 @@ function bindEvents() {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('[App] Initializing v4 Craft & Flow...');
 
-    // 1. 基本セットアップ
+    // 1. 初期化: DOMとデータハンドラの接続
     UI.initDOM();
     UI.setFetchLogsHandler(Service.getLogsWithPagination);
     UI.setFetchAllDataHandler(Service.getAllDataForUI);
     
-    // Timer保存ハンドラ (v4ではmanual-exercise-modal経由)
+    // タイマー完了時の保存ハンドラ注入
     setTimerSaveHandler(async (type, minutes) => {
-        // タイマー終了時はモーダルを閉じるか、結果を表示するか？
-        // ここではログ保存だけ行い、モーダルは開いたまま（Stop状態）にするか、自動で閉じる
+        // Timerから呼び出される保存処理
         await Service.saveExerciseLog(type, minutes, UI.getTodayString(), true, null);
     });
 
-    // 2. データ整合性の確保
+    // 2. データ準備: 移行と整合性チェック
     await migrateData();
     await Service.ensureTodayCheckRecord();
 
-    // 3. イベント・ライフサイクル監視
+    // 3. イベント開始
     bindEvents();
     setupLifecycleListeners();
 
-    // 4. 初期描画準備
+    // 4. UI構築: 初期設定と描画
     populateSelects();
     UI.applyTheme(localStorage.getItem(APP.STORAGE_KEYS.THEME) || APP.DEFAULTS.THEME);
     
@@ -600,34 +621,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     const gEl = document.getElementById('gender-input');
     if(gEl) gEl.value = p.gender;
 
-    // v4 Home Mode Selector (Settings内にある場合のみ)
+    // v4 Home Mode Selector
     UI.updateModeSelector();
     UI.setBeerMode('mode1');
     updateBeerSelectOptions();
 
     // 5. 状態復元と最終レンダリング
-    // タイマーが動作中だった場合、運動モーダルを開く
     if (Timer.restoreState()) {
+        // タイマー動作中なら記録モーダルを自動オープン
         UI.openManualInput(); 
-        // openManualInput内でTimer要素があれば表示が更新されるはず
     } else {
-        UI.switchTab('home'); // デフォルトはHome
+        // 通常起動
+        UI.switchTab('home');
+        
+        // 初回ユーザーへのガイド
         if (!localStorage.getItem(APP.STORAGE_KEYS.WEIGHT)) {
             setTimeout(() => {
                 UI.openSettings();
-                UI.showMessage('👋 ようこそ！まずはプロフィールと\n基準にする運動を設定しましょう！', 'success');
+                UI.showMessage('👋 ようこそ！まずはプロフィールを設定しましょう！', 'success');
             }, 800);
         } else {
-            setTimeout(() => showSwipeCoachMark(), 1000);
+            // スワイプガイドの表示
+            const KEY = 'nomutore_seen_swipe_hint';
+            if (!localStorage.getItem(KEY)) {
+                setTimeout(() => showSwipeCoachMark(), 1000);
+            }
         }
     }
-
-    localStorage.setItem(LAST_ACTIVE_KEY, dayjs().format('YYYY-MM-DD'));
-    await refreshUI();
     
+    await refreshUI();
     console.log('[App] Ready.');
 });
 
+// ヘルパー: セレクトボックスの選択肢生成
 function populateSelects() {
     const createOpts = (obj, targetId, useKeyAsVal = false) => {
         const el = document.getElementById(targetId);
@@ -660,6 +686,7 @@ function populateSelects() {
     if(bSize) bSize.value = '350';
 }
 
+// ヘルパー: スワイプコーチマーク表示
 const showSwipeCoachMark = () => {
     const KEY = 'nomutore_seen_swipe_hint';
     if (localStorage.getItem(KEY)) return;
@@ -667,6 +694,8 @@ const showSwipeCoachMark = () => {
     if (!el) return;
     el.classList.remove('hidden');
     requestAnimationFrame(() => el.classList.remove('opacity-0'));
+    
+    // 数秒後に自動消去
     setTimeout(() => {
         el.classList.add('opacity-0');
         setTimeout(() => {
@@ -676,6 +705,7 @@ const showSwipeCoachMark = () => {
     }, 3500);
 };
 
+// PWA ServiceWorker
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js'));
 }

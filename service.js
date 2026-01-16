@@ -1,6 +1,6 @@
 import { db, Store } from './store.js';
 import { Calc } from './logic.js';
-import { APP, EXERCISE, STYLE_SPECS } from './constants.js';
+import { APP, EXERCISE, STYLE_METADATA, STYLE_SPECS } from './constants.js'; // STYLE_METADATAを追加
 import { UI, refreshUI } from './ui/index.js';
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
@@ -36,8 +36,7 @@ export const Service = {
     },
 
     /**
-     * 【新規実装】履歴変更時の影響範囲再計算 (カスケード更新)
-     * v2の `recalcDailyExercises` に相当。
+     * 【重要】履歴変更時の影響範囲再計算 (カスケード更新)
      * 過去のログを変更した際、その日以降のストリークボーナスを全て再計算してDBを更新する。
      * @param {number} changedTimestamp - 変更があったログの日付(ms)
      */
@@ -55,27 +54,19 @@ export const Service = {
         let currentDate = startDate;
         let updateCount = 0;
 
-        // 念のため無限ループ防止 (最大365日分)
+        // 無限ループ防止 (最大365日分)
         let safeGuard = 0;
         
         while (currentDate.isBefore(today) || currentDate.isSame(today, 'day')) {
             if (safeGuard++ > 365) break;
 
-            const dateKey = currentDate.format('YYYY-MM-DD');
             const dayStart = currentDate.startOf('day').valueOf();
             const dayEnd = currentDate.endOf('day').valueOf();
 
             // 1. その日時点でのストリークを計算
-            // Calc.getCurrentStreak は referenceDate 時点での状況を返すように改修済み
             const streak = Calc.getCurrentStreak(allLogs, allChecks, profile, currentDate);
-            const multiplier = Calc.getStreakMultiplier(streak);
-
-            // 2. その日の「運動ログ」かつ「ボーナス適用あり(と推測される)」ものを探して更新
-            // ※ v2仕様では「ボーナス適用のチェックボックス」があったが、
-            // データ上は memo に "Bonus" が入っているか等で判定していた。
-            // ここではシンプルに「全ての運動ログ」に対して、現在の正しいmultiplierを適用する。
-            // (手動でOFFにした意図を汲むのは難しいが、整合性優先で再適用する)
             
+            // 2. その日の「運動ログ」を再計算して更新
             const daysExerciseLogs = allLogs.filter(l => 
                 l.type === 'exercise' && 
                 l.timestamp >= dayStart && 
@@ -87,7 +78,7 @@ export const Service = {
                 const mets = EXERCISE[log.exerciseKey] ? EXERCISE[log.exerciseKey].mets : 3.0;
                 const baseBurn = Calc.calculateExerciseBurn(mets, log.minutes, profile);
                 
-                // ボーナス適用
+                // ボーナス適用再計算
                 const creditInfo = Calc.calculateExerciseCredit(baseBurn, streak);
                 let newMemo = log.memo || '';
                 
@@ -116,7 +107,7 @@ export const Service = {
     },
 
     /**
-     * 飲酒ログの追加・更新
+     * 飲酒ログの保存 (追加/更新)
      */
     saveBeerLog: async (data, id = null) => {
         let name, kcal, abv, carb;
@@ -152,7 +143,8 @@ export const Service = {
             memo: data.memo,
             isCustom: data.isCustom,
             customType: data.isCustom ? data.type : null,
-            rawAmount: data.isCustom ? data.ml : null
+            rawAmount: data.isCustom ? data.ml : null,
+            isUntappd: data.useUntappd // 追加
         };
 
         if (id) {
@@ -171,14 +163,13 @@ export const Service = {
             }
         }
 
-        // ★追加: 過去データの変更によるストリーク再計算
+        // 履歴への影響を再計算
         await Service.recalcImpactedHistory(data.timestamp);
-
         await refreshUI();
     },
 
     /**
-     * 運動ログの追加・更新
+     * 運動ログの保存 (追加/更新)
      */
     saveExerciseLog: async (exerciseKey, minutes, dateVal, applyBonus, id = null) => {
         const profile = Store.getProfile();
@@ -188,8 +179,13 @@ export const Service = {
         let finalKcal = baseBurnKcal;
         let memo = '';
         
-        // タイムスタンプ生成
-        const ts = dayjs(dateVal).startOf('day').add(12, 'hour').valueOf();
+        // 日付処理
+        let ts;
+        if (dateVal && dateVal.includes('T')) {
+            ts = dayjs(dateVal).valueOf();
+        } else {
+            ts = dayjs(dateVal || new Date()).startOf('day').add(12, 'hour').valueOf();
+        }
 
         // ボーナス適用計算
         if (applyBonus) {
@@ -228,72 +224,29 @@ export const Service = {
             UI.showMessage(`🏃‍♀️ ${savedMin}分の運動を記録しました！`, 'success');
             UI.showConfetti();
         }
-
-        // ★追加: 運動ログの変更も、その後の整合性に影響する可能性があるため再計算
-        // (例: 運動したことでストリークが繋がった場合など)
+        
         await Service.recalcImpactedHistory(ts);
-
         await refreshUI();
     },
 
     /**
-     * ログの削除
+     * デイリーチェックの保存 (追加/更新)
      */
-    deleteLog: async (id) => {
-        if (!confirm('この記録を削除しますか？')) return;
-        try {
-            const log = await db.logs.get(parseInt(id));
-            const ts = log ? log.timestamp : Date.now();
-
-            await db.logs.delete(parseInt(id));
-            UI.showMessage('削除しました', 'success');
-            
-            // ★追加: 削除による影響再計算
-            await Service.recalcImpactedHistory(ts);
-
-            await refreshUI();
-        } catch (e) {
-            console.error(e);
-            UI.showMessage('削除に失敗しました', 'error');
-        }
-    },
-
-    /**
-     * ログの一括削除
-     */
-    bulkDeleteLogs: async (ids) => {
-        if (!confirm(`${ids.length}件のデータを削除しますか？`)) return;
-        try {
-            // 最も古いログの日付を探す（再計算の起点にするため）
-            let oldestTs = Date.now();
-            for (const id of ids) {
-                const log = await db.logs.get(id);
-                if (log && log.timestamp < oldestTs) oldestTs = log.timestamp;
-            }
-
-            await db.logs.bulkDelete(ids);
-            UI.showMessage(`${ids.length}件削除しました`, 'success');
-            
-            // ★追加: 一括削除による影響再計算
-            await Service.recalcImpactedHistory(oldestTs);
-
-            await refreshUI();
-            UI.toggleSelectAll(); 
-        } catch (e) {
-            console.error(e);
-            UI.showMessage('一括削除に失敗しました', 'error');
-        }
-    },
-
-    /**
-     * デイリーチェックの保存
-     */
-    saveDailyCheck: async (formData) => {
+    saveDailyCheck: async (formData, editingId = null) => {
+        // 日付の正規化 (00:00:00 ではなく、以前の仕様に合わせて12:00にしておくか、あるいはstartOf('day')で統一)
+        // ここではフォームから渡された日付を基準にする
         const ts = dayjs(formData.date).startOf('day').add(12, 'hour').valueOf();
-        
-        const existing = await db.checks.where('timestamp')
-            .between(dayjs(ts).startOf('day').valueOf(), dayjs(ts).endOf('day').valueOf())
-            .first();
+
+        // ターゲットIDの決定: 指定があればそれ、なければ日付重複チェック
+        let targetId = editingId;
+        if (!targetId) {
+            const startOfDay = dayjs(ts).startOf('day').valueOf();
+            const endOfDay = dayjs(ts).endOf('day').valueOf();
+            const existing = await db.checks.where('timestamp')
+                .between(startOfDay, endOfDay)
+                .first();
+            if (existing) targetId = existing.id;
+        }
 
         const data = {
             timestamp: ts,
@@ -305,8 +258,8 @@ export const Service = {
             weight: formData.weight
         };
 
-        if (existing) {
-            await db.checks.update(existing.id, data);
+        if (targetId) {
+            await db.checks.update(parseInt(targetId), data);
             UI.showMessage('✅ デイリーチェックを更新しました', 'success');
         } else {
             await db.checks.add(data);
@@ -318,10 +271,54 @@ export const Service = {
             localStorage.setItem(APP.STORAGE_KEYS.WEIGHT, formData.weight);
         }
 
-        // ★追加: 休肝日情報の変更はストリークに直結するため再計算
+        // 影響再計算
         await Service.recalcImpactedHistory(ts);
-
         await refreshUI();
+    },
+
+    /**
+     * ログ削除
+     */
+    deleteLog: async (id) => {
+        if(!confirm('この記録を削除しますか？')) return;
+        try {
+            const log = await db.logs.get(parseInt(id));
+            const ts = log ? log.timestamp : Date.now();
+
+            await db.logs.delete(parseInt(id));
+            UI.showMessage('🗑️ 削除しました', 'info');
+            
+            await Service.recalcImpactedHistory(ts);
+            await refreshUI();
+        } catch (e) {
+            console.error(e);
+            UI.showMessage('削除に失敗しました', 'error');
+        }
+    },
+
+    /**
+     * ログ一括削除
+     */
+    bulkDeleteLogs: async (ids) => {
+        if(!confirm(`${ids.length}件の記録を削除しますか？`)) return;
+        try {
+            // 再計算起点のために最古の日付を取得
+            let oldestTs = Date.now();
+            for (const id of ids) {
+                const log = await db.logs.get(id);
+                if (log && log.timestamp < oldestTs) oldestTs = log.timestamp;
+            }
+
+            await db.logs.bulkDelete(ids);
+            UI.showMessage('🗑️ 一括削除しました', 'info');
+            
+            await Service.recalcImpactedHistory(oldestTs);
+            await refreshUI();
+            UI.toggleSelectAll(); // 選択解除
+        } catch (e) {
+            console.error(e);
+            UI.showMessage('一括削除に失敗しました', 'error');
+        }
     },
 
     /**
@@ -338,12 +335,7 @@ export const Service = {
      */
     getLogsWithPagination: async (offset, limit) => {
         const totalCount = await db.logs.count();
-        const logs = await db.logs
-            .orderBy('timestamp')
-            .reverse()
-            .offset(offset)
-            .limit(limit)
-            .toArray();
+        const logs = await db.logs.orderBy('timestamp').reverse().offset(offset).limit(limit).toArray();
         return { logs, totalCount };
     }
 };
