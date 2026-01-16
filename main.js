@@ -6,21 +6,18 @@ import { Service } from './service.js';
 import { Timer, setTimerSaveHandler } from './timer.js';
 import { DataManager } from './dataManager.js';
 import { initErrorHandler } from './errorHandler.js';
-import { handleSaveSettings } from './ui/modal.js'; // 追加
+import { handleSaveSettings } from './ui/modal.js'; 
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
 /* ==========================================================================
    Initialization & Global State
    ========================================================================== */
 
-// グローバルエラーハンドリングの初期化
 initErrorHandler();
 
-// 編集中のIDを保持する状態変数
 let editingLogId = null;
 let editingCheckId = null;
 
-// ライフサイクル管理用: 最後にアクティブだった日付
 const LAST_ACTIVE_KEY = 'nomutore_last_active_date';
 let lastActiveDate = localStorage.getItem(LAST_ACTIVE_KEY) || dayjs().format('YYYY-MM-DD');
 
@@ -39,10 +36,9 @@ const setupLifecycleListeners = () => {
                 lastActiveDate = today;
                 localStorage.setItem(LAST_ACTIVE_KEY, today);
                 isResuming = true;
-                await initApp(); // Re-init
+                await initApp(); 
                 isResuming = false;
             } else {
-                // Same day resume
                 if (Timer.restoreState()) {
                     // Timer restored
                 }
@@ -58,45 +54,38 @@ const setupLifecycleListeners = () => {
 const initApp = async () => {
     console.log('App Initializing...');
     
-    // UI初期化 (DOMキャッシュ等)
+    // 【追加】v4 データ移行処理 (UI初期化前に実行)
+    await Store.migrateV3ToV4();
+
+    // UI初期化
     UI.init();
 
-    // 1. 今日のチェックインレコード保証
     await Service.ensureTodayCheckRecord();
 
-    // 2. 期間ロールオーバーチェック (v4)
     const rolledOver = await Service.checkPeriodRollover();
     if (rolledOver) {
-        // ロールオーバーが発生した場合はモーダル表示
         toggleModal('rollover-modal', true);
     }
 
-    // 3. データ読み込みハンドラの設定 (UIモジュールへ注入)
     UI.setFetchAllDataHandler(async () => {
         return await Service.getAllDataForUI();
     });
 
-    // 4. ログリスト用ハンドラ設定
     UI.setFetchLogsHandler(async (offset, limit) => {
         return await Service.getLogsWithPagination(offset, limit);
     });
 
-    // 5. タイマー保存ハンドラ
     setTimerSaveHandler(async (type, minutes) => {
         await Service.saveExerciseLog(type, minutes, dayjs().format('YYYY-MM-DD'), true);
         Timer.reset();
     });
 
-    // 6. 設定項目のDOM生成
     generateSettingsOptions();
 
-    // 7. 初回UI描画
     await refreshUI();
 
-    // 8. ライフサイクル監視開始
     if (!isResuming) setupLifecycleListeners();
     
-    // 9. コーチマーク表示 (初回のみ)
     showSwipeCoachMark();
 };
 
@@ -104,13 +93,11 @@ const initApp = async () => {
    Event Bindings (Global)
    ========================================================================== */
 
-// DOMContentLoaded後に実行
 document.addEventListener('DOMContentLoaded', () => {
     
-    // カスタムイベントリスナー (UIコンポーネントからのアクション)
     document.addEventListener('save-beer', async (e) => {
         await Service.saveBeerLog(e.detail, editingLogId);
-        editingLogId = null; // Reset
+        editingLogId = null; 
     });
 
     document.addEventListener('save-check', async (e) => {
@@ -123,25 +110,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (ids.length > 0) {
             await Service.bulkDeleteLogs(ids);
         } else {
-            UI.toggleEditMode(); // Toggle toolbar
+            UI.toggleEditMode();
         }
     });
     
-    // ロールオーバー確認イベント
     document.addEventListener('confirm-rollover', async () => {
         toggleModal('rollover-modal', false);
         await refreshUI();
         UI.showConfetti();
     });
 
-    // 設定保存ボタンの上書き (modal.jsのロジックを使うため)
     const btnSaveSettings = document.getElementById('btn-save-settings');
     if (btnSaveSettings) {
-        // 既存のイベントリスナーをクローンで削除するハックより、新しいハンドラを上書き
         btnSaveSettings.onclick = handleSaveSettings;
     }
 
-    // Manual Exercise Save
     const btnSaveEx = document.getElementById('btn-save-exercise');
     if (btnSaveEx) {
         btnSaveEx.addEventListener('click', async () => {
@@ -159,7 +142,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Timer Start/Stop/Reset
     const btnTimerStart = document.getElementById('btn-timer-start');
     if(btnTimerStart) btnTimerStart.addEventListener('click', () => Timer.start());
     
@@ -169,7 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnTimerReset = document.getElementById('btn-timer-reset');
     if(btnTimerReset) btnTimerReset.addEventListener('click', () => Timer.reset());
 
-    // アプリ起動
     initApp();
 });
 
@@ -208,7 +189,6 @@ const generateSettingsOptions = () => {
     const bSize = document.getElementById('beer-size');
     if(bSize) bSize.value = '350';
     
-    // v4: プロフィール等の初期値セット
     const profile = Store.getProfile();
     const wIn = document.getElementById('weight-input');
     if(wIn) wIn.value = profile.weight;
