@@ -142,12 +142,20 @@ export const DOM = {
 
     // Dry Day Toggle Animation
     toggleDryDay: (cb) => {
-        const section = document.getElementById('drinking-section');
+        const section = document.getElementById('drinking-only-section');
         if (!section) return;
+
         if (cb.checked) {
-            section.classList.add('opacity-50', 'pointer-events-none', 'grayscale');
+            // 休肝日 ON: 飲酒対策項目(水分・野菜)は不要なので無効化
+            section.classList.add('opacity-40', 'pointer-events-none', 'grayscale');
+            
+            // 誤入力防止のため、内部のチェックも外す
+            section.querySelectorAll('input[type="checkbox"]').forEach(input => {
+                input.checked = false;
+            });
         } else {
-            section.classList.remove('opacity-50', 'pointer-events-none', 'grayscale');
+            // 休肝日 OFF (飲んだ): 入力可能にする
+            section.classList.remove('opacity-40', 'pointer-events-none', 'grayscale');
         }
     },
     

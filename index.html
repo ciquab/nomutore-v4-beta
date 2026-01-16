@@ -323,43 +323,54 @@
             </div>
 
             <div class="p-6 pt-0 space-y-6">
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2 ml-1">種目を選択</label>
+                    <div class="relative">
+                        <select id="exercise-select" class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-lg text-white appearance-none focus:ring-2 focus:ring-emerald-500 outline-none">
+                            </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-400">
+                            <i class="ph-bold ph-caret-down"></i>
+                        </div>
+                    </div>
+                    <span id="manual-exercise-name" class="hidden"></span>
+                </div>
+
                 <div class="bg-slate-900/50 rounded-3xl p-6 border border-slate-700/50 relative overflow-hidden text-center group">
                     <span class="text-slate-400 text-[10px] font-bold tracking-[0.2em] uppercase block mb-1">SESSION TIMER</span>
                     <div id="timer-display" class="text-6xl font-mono-nums font-black text-white tracking-tighter my-2 tabular-nums drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">00:00</div>
-                    <div class="text-emerald-400 text-xs font-bold flex items-center justify-center gap-2">
-                        <i class="ph-fill ph-music-notes"></i> 音楽でも聴きながら...
-                    </div>
                 </div>
 
                 <button id="start-stepper-btn" class="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-xl shadow-lg hover:brightness-110 active:scale-[0.98] transition flex items-center justify-center gap-3">
-                    <i class="ph-fill ph-play"></i> START SESSION
+                    <i class="ph-fill ph-play"></i> START
                 </button>
+                
                 <div class="flex gap-3 hidden" id="timer-controls">
-                    <button id="pause-stepper-btn" class="flex-1 py-4 rounded-2xl bg-yellow-500 text-white font-bold text-lg">PAUSE</button>
-                    <button id="resume-stepper-btn" class="flex-1 py-4 rounded-2xl bg-emerald-500 text-white font-bold text-lg hidden">RESUME</button>
-                    <button id="stop-stepper-btn" class="flex-1 py-4 rounded-2xl bg-red-500 text-white font-bold text-lg animate-pulse">STOP</button>
+                    <button id="pause-stepper-btn" class="flex-1 py-4 rounded-2xl bg-slate-700 text-white font-bold text-lg hover:bg-slate-600 transition flex items-center justify-center gap-2">
+                        <i class="ph-fill ph-pause"></i> PAUSE
+                    </button>
+                    <button id="resume-stepper-btn" class="flex-1 py-4 rounded-2xl bg-emerald-600 text-white font-bold text-lg hover:bg-emerald-500 transition flex items-center justify-center gap-2 hidden">
+                        <i class="ph-fill ph-play"></i> RESUME
+                    </button>
+                    <button id="stop-stepper-btn" class="flex-1 py-4 rounded-2xl bg-red-500/20 border border-red-500 text-red-400 font-bold text-lg hover:bg-red-500 hover:text-white transition flex items-center justify-center gap-2">
+                        <i class="ph-fill ph-stop"></i> STOP
+                    </button>
                 </div>
 
                 <div class="border-t border-slate-700/50 my-4"></div>
 
                 <details class="group">
                     <summary class="list-none flex items-center justify-center gap-2 text-xs font-bold text-slate-500 cursor-pointer hover:text-white transition">
-                        <i class="ph ph-pencil-simple"></i> 手動で入力する
+                        <i class="ph ph-pencil-simple"></i> 手動で時間を入力する
                     </summary>
                     <form id="manual-exercise-form" class="space-y-4 mt-4 animate-fadeIn">
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase mb-1">日時</label>
-                            <input type="datetime-local" id="manual-date" class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white">
-                        </div>
-                        <div>
-                             <label class="block text-xs font-bold text-slate-500 uppercase mb-1">運動の種類</label>
-                             <select id="exercise-select" class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-lg text-white">
-                                </select>
-                             <span id="manual-exercise-name" class="hidden"></span>
+                            <input type="datetime-local" id="manual-date" class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-emerald-500">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase mb-1">時間 (分)</label>
-                            <input type="number" id="manual-minutes" placeholder="30" class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-2xl font-bold text-center text-white">
+                            <input type="number" id="manual-minutes" placeholder="30" class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-2xl font-bold text-center text-white outline-none focus:ring-2 focus:ring-emerald-500">
                         </div>
                          <div class="flex items-center justify-center">
                             <label class="inline-flex items-center cursor-pointer">
@@ -393,20 +404,36 @@
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">対象日</label>
                         <input type="date" id="check-date" class="w-full bg-white dark:bg-slate-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 dark:text-white">
                     </div>
+                    
                     <div class="space-y-3">
                         <label class="flex items-center p-4 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600 cursor-pointer transition hover:border-emerald-400">
                             <input type="checkbox" id="is-dry-day" class="w-6 h-6 text-emerald-500 rounded focus:ring-emerald-500">
                             <span class="ml-3 font-bold text-gray-700 dark:text-white">🚫 休肝日 (一滴も飲んでない)</span>
                         </label>
-                        <div id="drinking-section">
-                            <div class="grid grid-cols-2 gap-3">
-                                <label class="flex items-center p-3 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600"><input type="checkbox" name="waistEase" class="w-5 h-5 text-indigo-500 rounded"><span class="ml-2 text-sm text-gray-700 dark:text-gray-200">👖 お腹スッキリ</span></label>
-                                <label class="flex items-center p-3 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600"><input type="checkbox" name="footLightness" class="w-5 h-5 text-indigo-500 rounded"><span class="ml-2 text-sm text-gray-700 dark:text-gray-200">🦶 足が軽い</span></label>
-                                <label class="flex items-center p-3 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600"><input type="checkbox" name="waterOk" class="w-5 h-5 text-blue-500 rounded"><span class="ml-2 text-sm text-gray-700 dark:text-gray-200">💧 水分とった</span></label>
-                                <label class="flex items-center p-3 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600"><input type="checkbox" name="fiberOk" class="w-5 h-5 text-green-500 rounded"><span class="ml-2 text-sm text-gray-700 dark:text-gray-200">🥗 野菜食べた</span></label>
-                            </div>
+                        
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="flex items-center p-3 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600">
+                                <input type="checkbox" name="waistEase" class="w-5 h-5 text-indigo-500 rounded">
+                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-200">👖 お腹スッキリ</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600">
+                                <input type="checkbox" name="footLightness" class="w-5 h-5 text-indigo-500 rounded">
+                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-200">🦶 足が軽い</span>
+                            </label>
+                        </div>
+
+                        <div id="drinking-only-section" class="grid grid-cols-2 gap-3 transition-opacity duration-300">
+                            <label class="flex items-center p-3 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600">
+                                <input type="checkbox" name="waterOk" class="w-5 h-5 text-blue-500 rounded">
+                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-200">💧 水分とった</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600">
+                                <input type="checkbox" name="fiberOk" class="w-5 h-5 text-green-500 rounded">
+                                <span class="ml-2 text-sm text-gray-700 dark:text-gray-200">🥗 野菜食べた</span>
+                            </label>
                         </div>
                     </div>
+
                     <div>
                          <label class="block text-xs font-bold text-gray-500 uppercase mb-1">体重 (kg)</label>
                          <div class="flex items-center bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600 px-4">
