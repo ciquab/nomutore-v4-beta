@@ -4,7 +4,6 @@ import { Store, db } from '../store.js';
 import { StateManager } from './state.js';
 import { DOM, toggleModal, escapeHtml, toggleDryDay, showMessage } from './dom.js';
 import { Service } from '../service.js';
-import { refreshUI } from './index.js';
 import { Timer } from './timer.js'; // Timer追加
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
@@ -234,14 +233,14 @@ export const handleSaveSettings = async () => {
         localStorage.setItem(APP.STORAGE_KEYS.BASE_EXERCISE, base);
         localStorage.setItem(APP.STORAGE_KEYS.DEFAULT_RECORD_EXERCISE, defRec);
         
-        // テーマ変更検知 (即時反映のため)
         const theme = document.getElementById('theme-input').value;
         localStorage.setItem(APP.STORAGE_KEYS.THEME, theme);
 
         showMessage('設定を保存しました', 'success');
         toggleModal('settings-modal', false);
         
-        await refreshUI();
+        // 変更: 直接関数を呼ばず、イベントを発火してmain.jsに依頼する
+        document.dispatchEvent(new CustomEvent('refresh-ui'));
 
     } catch(e) {
         console.error(e);

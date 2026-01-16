@@ -11,17 +11,50 @@ import { renderChart } from './chart.js';
 import { updateLogListView, toggleEditMode, toggleSelectAll, updateBulkCount, setFetchLogsHandler } from './logList.js';
 import { renderBeerStats } from './beerStats.js';
 import { renderArchives } from './archiveManager.js';
-import { Timer } from './timer.js'; // Timer Import
+import { Timer } from './timer.js';
 
 import { 
     getBeerFormData, resetBeerForm, openBeerModal, switchBeerInputTab, 
     openCheckModal, openManualInput, openSettings, openHelp, openLogDetail,
     updateModeSelector, updateBeerSelectOptions, updateInputSuggestions, renderQuickButtons,
     closeModal, adjustBeerCount, searchUntappd,
-    openTimer, closeTimer // New exports
+    openTimer, closeTimer 
 } from './modal.js';
 
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
+
+// ★追加: refreshUI の定義
+export const refreshUI = async () => {
+    if (!UI._fetchAllDataHandler) return;
+    
+    // ロード開始
+    const { logs, checks } = await UI._fetchAllDataHandler();
+    
+    // 今の期間の収支計算 (簡易)
+    const profile = Store.getProfile();
+    let balance = 0;
+    logs.forEach(l => {
+        // service.js/logic.js の計算結果(kcal)をそのまま加算
+        balance += (l.kcal || 0);
+    });
+    
+    // 各コンポーネントの描画
+    renderBeerTank(balance);
+    renderLiverRank(checks, logs);
+    renderCheckStatus(checks, logs);
+    renderWeeklyAndHeatUp(logs, checks);
+    renderChart(logs, checks);
+    
+    // Cellar View Update
+    const cellarMode = StateManager.cellarViewMode;
+    if (cellarMode === 'logs') {
+        updateLogListView();
+    } else if (cellarMode === 'stats') {
+        renderBeerStats(logs);
+    } else if (cellarMode === 'archives') {
+        renderArchives();
+    }
+};
 
 export const UI = {
     setFetchLogsHandler: (fn) => { setFetchLogsHandler(fn); },
@@ -56,11 +89,6 @@ export const UI = {
             const date = document.getElementById('check-date').value;
             const isDryDay = !document.getElementById('check-is-dry').checked;
             const weight = document.getElementById('check-weight').value;
-            
-            // Dynamic Checks Retrieval
-            // 従来の固定IDではなく、生成されたチェックボックスから取得するようにService側かここで吸収する必要がある。
-            // Phase 3では簡略化のため、既存の主要4項目はID固定で生成されている前提で取得。
-            // (modal.jsの生成コードで id="check-waistEase" のように付与している)
             
             const waistEase = document.getElementById('check-waistEase')?.checked || false;
             const footLightness = document.getElementById('check-footLightness')?.checked || false;
@@ -184,7 +212,10 @@ export const UI = {
     
     // Timer
     openTimer: openTimer,
-    closeTimer: closeTimer
+    closeTimer: closeTimer,
+    
+    // ★追加: 外部からrefreshUIを呼べるように参照を持たせる
+    refreshUI: refreshUI 
 };
 
 export { renderBeerTank, renderLiverRank, renderCheckStatus, renderWeeklyAndHeatUp, renderChart, updateLogListView, updateModeSelector, updateBeerSelectOptions };
