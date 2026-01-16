@@ -1,86 +1,122 @@
-import { db } from '../store.js';
 import { Calc } from '../logic.js';
-import { STYLE_METADATA } from '../constants.js';
-import { escapeHtml } from './dom.js';
+import { BEER_COLORS, STYLE_COLOR_MAP } from '../constants.js';
 
-/**
- * Beer Stats (Collection) Renderer
- * 全期間のログからビール帳を集計・表示する
- */
-export async function renderBeerStats() {
-    const grid = document.getElementById('cellar-grid');
-    if (!grid) return;
+export function renderBeerStats(logs) {
+    const container = document.getElementById('view-cellar-stats');
+    if (!container) return;
 
-    // Loading State
-    grid.innerHTML = '<div class="col-span-2 text-center py-8 text-xs text-gray-400">Loading cellar...</div>';
+    // 全期間のビールログを集計
+    const stats = Calc.getBeerStats(logs);
 
-    try {
-        // 1. Fetch ALL beer logs (Not filtered by period)
-        const allLogs = await db.logs.where('type').equals('beer').toArray();
-        
-        if (allLogs.length === 0) {
-            grid.innerHTML = `
-                <div class="col-span-2 text-center py-10">
-                    <div class="text-4xl mb-3 opacity-50">🍺</div>
-                    <p class="text-sm font-bold text-text-mutedDark dark:text-text-muted">No beers collected yet.</p>
-                </div>`;
-            return;
-        }
+    // HTML構造生成
+    container.innerHTML = `
+        <div class="space-y-4 pb-20">
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="glass-panel p-4 rounded-2xl flex flex-col items-center justify-center">
+                    <span class="text-[10px] font-bold uppercase text-gray-400">Total Drunk</span>
+                    <span class="text-3xl font-black text-indigo-600 dark:text-indigo-400">${stats.totalCount} <span class="text-sm font-bold text-gray-400">cans</span></span>
+                </div>
+                <div class="glass-panel p-4 rounded-2xl flex flex-col items-center justify-center">
+                    <span class="text-[10px] font-bold uppercase text-gray-400">Total Volume</span>
+                    <span class="text-3xl font-black text-indigo-600 dark:text-indigo-400">${(stats.totalMl / 1000).toFixed(1)} <span class="text-sm font-bold text-gray-400">L</span></span>
+                </div>
+            </div>
 
-        // 2. Calculate Stats
-        const { beerStats, styleCount } = Calc.getBeerStats(allLogs);
-
-        // 3. Render Grid
-        const html = beerStats.map(beer => {
-            const meta = STYLE_METADATA[beer.style] || { color: 'gold', icon: '🍺' };
-            const safeName = escapeHtml(beer.name);
-            const safeBrewery = escapeHtml(beer.brewery || 'Unknown Brewery');
-            
-            // Rating Stars
-            const ratingAvg = Math.round(beer.averageRating);
-            const stars = '★'.repeat(ratingAvg) + '☆'.repeat(5 - ratingAvg);
-            
-            // Color Class Mapping (Simple mapping for now)
-            let badgeClass = "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300";
-            if (meta.color === 'gold') badgeClass = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
-            if (meta.color === 'amber' || meta.color === 'copper') badgeClass = "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400";
-            if (meta.color === 'black') badgeClass = "bg-gray-800 text-gray-200 dark:bg-black dark:text-gray-400 border border-gray-700";
-            if (meta.color === 'hazy') badgeClass = "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
-
-            return `
-                <div class="glass-panel p-3 rounded-xl hover:bg-base-100 dark:hover:bg-base-700/50 transition cursor-pointer group flex flex-col h-full border border-transparent hover:border-accent/30" onclick="alert('Detail view coming soon: ${safeName}')">
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded border border-black/5 dark:border-white/5 ${badgeClass}">${escapeHtml(beer.style)}</span>
-                        <div class="flex text-yellow-500 text-[10px] tracking-tighter">
-                            ${stars}
-                        </div>
-                    </div>
-                    
-                    <div class="flex-grow">
-                        <h4 class="font-bold text-text-dark dark:text-white text-sm line-clamp-2 leading-tight group-hover:text-accent transition">${safeName}</h4>
-                        <p class="text-[10px] text-text-mutedDark dark:text-text-muted truncate mt-0.5">${safeBrewery}</p>
-                    </div>
-
-                    <div class="mt-3 flex justify-between items-end border-t border-gray-100 dark:border-gray-700 pt-2">
-                        <span class="text-[10px] font-mono text-text-mutedDark dark:text-text-muted">
-                            <i class="ph-bold ph-pint-glass mr-0.5"></i>${(beer.totalMl / 1000).toFixed(1)}L
-                        </span>
-                        <span class="text-[10px] font-bold text-accent bg-accent/10 px-1.5 rounded">x${beer.count}</span>
+            <!-- Style Chart -->
+            <div class="glass-panel p-5 rounded-3xl">
+                <h3 class="text-sm font-bold text-gray-500 mb-4 uppercase tracking-wider text-center">Style Breakdown</h3>
+                <div class="relative h-48 w-full">
+                    <canvas id="styleChart"></canvas>
+                    <!-- Center Text -->
+                    <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span class="text-3xl font-black text-gray-800 dark:text-white">${stats.logsCount}</span>
+                        <span class="text-[10px] font-bold text-gray-400">RECORDS</span>
                     </div>
                 </div>
-            `;
-        }).join('');
+            </div>
 
-        grid.innerHTML = html;
+            <!-- Top Brands -->
+            <div class="glass-panel p-5 rounded-3xl">
+                <h3 class="text-sm font-bold text-gray-500 mb-4 uppercase tracking-wider">Top Favorites</h3>
+                <ul class="space-y-3">
+                    ${renderTopStylesList(stats.topStyles)}
+                </ul>
+            </div>
+        </div>
+    `;
+
+    // チャート描画 (Chart.js)
+    requestAnimationFrame(() => {
+        renderStyleChart(stats.styleCounts);
+    });
+}
+
+function renderTopStylesList(topStyles) {
+    if (!topStyles || topStyles.length === 0) return '<li class="text-center text-gray-400 text-xs">No data yet</li>';
+
+    return topStyles.slice(0, 5).map((item, index) => {
+        const percent = Math.min(100, (item.count / topStyles[0].count) * 100); // 1位を100%としたバー
+        const colorKey = STYLE_COLOR_MAP[item.style] || 'gold';
+        // BEER_COLORSはgradient定義なので、簡易的な単色に変換するか、CSS変数を使う。
+        // ここではTailwindの色クラスを動的に割り当てるのは難しいため、style属性でバーの色を制御
         
-        // Update Total Count in Header
-        const totalCountEl = document.getElementById('cellar-total-count');
-        if (totalCountEl) {
-            totalCountEl.textContent = `${beerStats.length} Beers`;
-        }
+        return `
+            <li class="flex items-center gap-3">
+                <span class="w-4 text-xs font-bold text-gray-400 text-center">${index + 1}</span>
+                <div class="flex-1">
+                    <div class="flex justify-between items-baseline mb-1">
+                        <span class="text-xs font-bold text-gray-700 dark:text-gray-200">${item.style}</span>
+                        <span class="text-[10px] font-bold text-gray-400">${item.count}</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div class="h-full bg-indigo-500 rounded-full" style="width: ${percent}%"></div>
+                    </div>
+                </div>
+            </li>
+        `;
+    }).join('');
+}
 
-    } catch (e) {
-        console.error("Failed to render beer stats:", e);
-        grid.innerHTML = '<div class="col-span-2 text-center text-red-500 text-xs">Error loading data</div>';
-    }
+function renderStyleChart(styleCounts) {
+    const ctx = document.getElementById('styleChart');
+    if (!ctx) return;
+
+    const labels = Object.keys(styleCounts);
+    const data = Object.values(styleCounts);
+    
+    // スタイルに対応する色をBEER_COLORSから取得したいが、Chart.jsは単色hex推奨。
+    // 簡易パレット
+    const colors = [
+        '#FBBF24', '#F59E0B', '#D97706', '#B45309', '#78350F', 
+        '#FEF3C7', '#10B981', '#6366F1', '#8B5CF6', '#EC4899'
+    ];
+
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: colors,
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '75%',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    bodyFont: { family: 'Inter', size: 12 },
+                    padding: 10,
+                    cornerRadius: 8,
+                    displayColors: true
+                }
+            }
+        }
+    });
 }

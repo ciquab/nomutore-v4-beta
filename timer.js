@@ -1,147 +1,200 @@
-import { APP, EXERCISE } from './constants.js';
-import { StateManager } from './ui/index.js'; // ui/index.js経由でStateを参照
-import { UI } from './ui/index.js';
+import { APP, EXERCISE } from '../constants.js';
+import { Calc } from '../logic.js';
+import { Store } from '../store.js';
+import { Service } from '../service.js'; // 直接Serviceを呼ぶ
+import { toggleModal } from './dom.js';
+import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
-// 保存処理を実行するためのハンドラ（外部から注入）
-let _saveExerciseHandler = null;
+// タイマー状態
+let timerInterval = null;
+let isRunning = false;
 
-// ハンドラ設定用関数
-export const setTimerSaveHandler = (fn) => {
-    _saveExerciseHandler = fn;
-};
-
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-
-// 内部関数: タイマー表示更新
-const updateTimeDisplay = () => { 
-    const stStr = localStorage.getItem(APP.STORAGE_KEYS.TIMER_START);
-    const accStr = localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
-    let totalMs = 0;
-    
-    if (accStr) totalMs += parseInt(accStr, 10);
-    if (stStr) totalMs += (Date.now() - parseInt(stStr, 10));
-
-    const mm = Math.floor(totalMs / 60000).toString().padStart(2, '0');
-    const ss = Math.floor((totalMs % 60000) / 1000).toString().padStart(2, '0');
-    
-    const display = document.getElementById('timer-display');
-    if(display) display.textContent = `${mm}:${ss}`;
-};
-
-// 内部関数: ボタン表示更新
-const updateButtons = (state) => {
-    const startBtn = document.getElementById('start-stepper-btn');
-    const manualBtn = document.getElementById('manual-record-btn');
-    const pauseBtn = document.getElementById('pause-stepper-btn');
-    const resumeBtn = document.getElementById('resume-stepper-btn');
-    const stopBtn = document.getElementById('stop-stepper-btn');
-    const statusText = document.getElementById('timer-status');
-    
-    [startBtn, manualBtn, pauseBtn, resumeBtn, stopBtn].forEach(el => el?.classList.add('hidden'));
-
-    if (state === 'running') {
-        pauseBtn?.classList.remove('hidden');
-        stopBtn?.classList.remove('hidden');
-        if(statusText) { 
-            statusText.textContent = '計測中...'; 
-            statusText.className = 'text-xs text-green-600 font-bold mb-1 animate-pulse'; 
-        }
-    } else if (state === 'paused') {
-        resumeBtn?.classList.remove('hidden');
-        stopBtn?.classList.remove('hidden');
-        if(statusText) { 
-            statusText.textContent = '一時停止中'; 
-            statusText.className = 'text-xs text-yellow-500 font-bold mb-1'; 
-        }
-    } else { 
-        startBtn?.classList.remove('hidden');
-        manualBtn?.classList.remove('hidden');
-        if(statusText) { 
-            statusText.textContent = 'READY'; 
-            statusText.className = 'text-xs text-gray-400 mt-1 font-medium'; 
-        }
-    }
+// 内部関数: 時間整形
+const formatTime = (ms) => {
+    const totalSec = Math.floor(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 };
 
 export const Timer = {
+    init: () => {
+        // セレクトボックス生成 (Main.jsでやっているが、Modal内にもあるため)
+        const el = document.getElementById('timer-exercise-select');
+        if (el && el.children.length === 0) {
+            Object.keys(EXERCISE).forEach(k => {
+                const o = document.createElement('option');
+                o.value = k;
+                o.textContent = EXERCISE[k].icon + ' ' + EXERCISE[k].label;
+                el.appendChild(o);
+            });
+            el.value = Store.getDefaultRecordExercise();
+        }
+        
+        // 復帰処理
+        Timer.checkResume();
+    },
+
+    checkResume: () => {
+        const start = localStorage.getItem(APP.STORAGE_KEYS.TIMER_START);
+        const accumulated = parseInt(localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED)) || 0;
+        
+        if (start) {
+            // 計測中だった場合、自動再開しないがUIは「計測中」にする
+            isRunning = true;
+            Timer.startLoop(); 
+            Timer.updateUI(true);
+            // モーダルを開く
+            toggleModal('timer-modal', true);
+        } else if (accumulated > 0) {
+            // 一時停止中
+            isRunning = false;
+            Timer.updateUI(false);
+            // 値の表示更新だけする
+            Timer.tick(); 
+        }
+    },
+
+    toggle: () => {
+        if (isRunning) {
+            Timer.pause();
+        } else {
+            Timer.start();
+        }
+    },
+
     start: () => {
-        if (StateManager.timerId) return;
-        localStorage.setItem(APP.STORAGE_KEYS.TIMER_START, Date.now());
-        updateButtons('running');
-        updateTimeDisplay();
-        StateManager.setTimerId(setInterval(updateTimeDisplay, 1000));
+        if (isRunning) return;
+        
+        const now = Date.now();
+        localStorage.setItem(APP.STORAGE_KEYS.TIMER_START, now);
+        
+        isRunning = true;
+        Timer.startLoop();
+        Timer.updateUI(true);
     },
 
     pause: () => {
-        if (StateManager.timerId) {
-            clearInterval(StateManager.timerId);
-            StateManager.setTimerId(null);
-        }
-        const stStr = localStorage.getItem(APP.STORAGE_KEYS.TIMER_START);
-        if (stStr) {
-            const currentSession = Date.now() - parseInt(stStr, 10);
-            const prevAcc = parseInt(localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED) || '0', 10);
-            localStorage.setItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED, prevAcc + currentSession);
-            localStorage.removeItem(APP.STORAGE_KEYS.TIMER_START);
-        }
-        updateButtons('paused');
-        updateTimeDisplay();
-    },
+        if (!isRunning) return;
 
-    resume: () => {
-        if (StateManager.timerId) return;
-        localStorage.setItem(APP.STORAGE_KEYS.TIMER_START, Date.now());
-        updateButtons('running');
-        updateTimeDisplay();
-        StateManager.setTimerId(setInterval(updateTimeDisplay, 1000));
-    },
-
-    stop: async () => {
-        Timer.pause();
-        const totalMs = parseInt(localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED) || '0', 10);
-        const m = Math.round(totalMs / 60000);
+        const now = Date.now();
+        const start = parseInt(localStorage.getItem(APP.STORAGE_KEYS.TIMER_START));
+        const accumulated = parseInt(localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED)) || 0;
         
+        // 経過時間を累積に加算
+        const currentSession = now - start;
+        localStorage.setItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED, accumulated + currentSession);
+        localStorage.removeItem(APP.STORAGE_KEYS.TIMER_START);
+
+        isRunning = false;
+        if (timerInterval) cancelAnimationFrame(timerInterval);
+        
+        Timer.updateUI(false);
+    },
+
+    finish: async () => {
+        Timer.pause(); // まず止める
+        
+        const totalMs = parseInt(localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED)) || 0;
+        const minutes = Math.round(totalMs / 60000);
+
+        if (minutes > 0) {
+            const type = document.getElementById('timer-exercise-select').value;
+            await Service.saveExerciseLog(type, minutes, dayjs().format('YYYY-MM-DD'), true);
+        } else {
+            alert('1分未満のため記録しませんでした。');
+        }
+
+        Timer.reset();
+        toggleModal('timer-modal', false);
+    },
+
+    reset: () => {
+        isRunning = false;
+        if (timerInterval) cancelAnimationFrame(timerInterval);
         localStorage.removeItem(APP.STORAGE_KEYS.TIMER_START);
         localStorage.removeItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
         
-        updateButtons('initial');
+        // UI Reset
         const display = document.getElementById('timer-display');
-        if (display) display.textContent = '00:00';
+        const kcalEl = document.getElementById('timer-kcal');
+        const beerEl = document.getElementById('timer-beer');
         
-        if (m > 0) {
-            if (_saveExerciseHandler) {
-                const type = document.getElementById('exercise-select').value;
-                await _saveExerciseHandler(type, m);
-            } else {
-                console.warn("Save handler not set for Timer.");
-                UI.showMessage('保存処理が設定されていません', 'error');
-            }
-        } else {
-            UI.showMessage('1分未満のため記録せず', 'error');
+        if (display) display.textContent = '00:00';
+        if (kcalEl) kcalEl.textContent = '0';
+        if (beerEl) beerEl.textContent = '0.0';
+        
+        Timer.updateUI(false);
+    },
+
+    startLoop: () => {
+        const loop = () => {
+            if (!isRunning) return;
+            Timer.tick();
+            timerInterval = requestAnimationFrame(loop);
+        };
+        timerInterval = requestAnimationFrame(loop);
+    },
+
+    tick: () => {
+        const startStr = localStorage.getItem(APP.STORAGE_KEYS.TIMER_START);
+        const accStr = localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
+        
+        let totalMs = 0;
+        if (accStr) totalMs += parseInt(accStr, 10);
+        if (startStr) totalMs += (Date.now() - parseInt(startStr, 10));
+
+        // UI更新
+        const display = document.getElementById('timer-display');
+        const kcalEl = document.getElementById('timer-kcal');
+        const beerEl = document.getElementById('timer-beer');
+        const typeSelect = document.getElementById('timer-exercise-select');
+
+        if (display) display.textContent = formatTime(totalMs);
+
+        // カロリー計算
+        if (kcalEl && beerEl && typeSelect) {
+            const profile = Store.getProfile();
+            const type = typeSelect.value;
+            const mets = EXERCISE[type] ? EXERCISE[type].mets : 3.0;
+            const minutes = totalMs / 60000;
+            
+            const burned = Calc.calculateExerciseBurn(mets, minutes, profile);
+            kcalEl.textContent = Math.floor(burned);
+            
+            // ビール換算 (350ml Lager基準)
+            // convertKcalToBeerCount は本数文字列を返す
+            const beers = Calc.convertKcalToBeerCount(burned, '国産ピルスナー');
+            beerEl.textContent = beers;
         }
     },
 
-    // アプリ起動時の状態復元
-    restoreState: () => {
-        const st = localStorage.getItem(APP.STORAGE_KEYS.TIMER_START);
-        const acc = localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
-        
-        if (st) {
-            const elapsed = Date.now() - parseInt(st, 10);
-            // 24時間以上経過していたらリセット
-            if (elapsed > ONE_DAY_MS) {
-                localStorage.removeItem(APP.STORAGE_KEYS.TIMER_START);
-                localStorage.removeItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
-                UI.showMessage('中断された古い計測をリセットしました', 'error');
-                return false;
+    updateUI: (running) => {
+        const toggleBtn = document.getElementById('btn-timer-toggle');
+        const icon = document.getElementById('icon-timer-toggle');
+        const finishBtn = document.getElementById('btn-timer-finish');
+        const select = document.getElementById('timer-exercise-select');
+
+        if (running) {
+            toggleBtn.classList.remove('bg-indigo-500', 'hover:bg-indigo-600');
+            toggleBtn.classList.add('bg-yellow-500', 'hover:bg-yellow-600', 'shadow-yellow-500/50');
+            icon.className = 'ph-fill ph-pause text-3xl';
+            finishBtn.classList.add('hidden');
+            if(select) select.disabled = true;
+        } else {
+            toggleBtn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600', 'shadow-yellow-500/50');
+            toggleBtn.classList.add('bg-indigo-500', 'hover:bg-indigo-600');
+            icon.className = 'ph-fill ph-play text-3xl';
+            
+            // 一時停止中で、かつ時間が記録されていればFinishボタン表示
+            const acc = localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
+            if (acc && parseInt(acc) > 0) {
+                finishBtn.classList.remove('hidden');
+            } else {
+                finishBtn.classList.add('hidden');
             }
-            Timer.start();
-            return true;
-        } else if (acc) {
-            updateButtons('paused');
-            updateTimeDisplay();
-            return true;
+            
+            if(select) select.disabled = false;
         }
-        return false;
     }
 };

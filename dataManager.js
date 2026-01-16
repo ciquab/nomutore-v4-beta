@@ -23,92 +23,95 @@ export const DataManager = {
                     const rawMin = r.rawMinutes !== undefined ? r.rawMinutes : '-';
                     // kcalがない場合は補完
                     const kcal = r.kcal !== undefined ? Math.round(r.kcal) : Math.round(r.minutes * Calc.burnRate(6.0, profile));
-                    return `${new Date(r.timestamp).toLocaleString()},${escapeCSV(r.name)},${kcal},${r.minutes},${rawMin},${escapeCSV(r.brewery)},${escapeCSV(r.brand)},${r.rating || 0},${escapeCSV(r.memo || '')}`;
-                }).join('\n'); 
-            filename = "beer-log"; 
-        } else { 
+                    return `${new Date(r.timestamp).toLocaleString()},${escapeCSV(r.name)},${kcal},${r.minutes},${rawMin},${escapeCSV(r.brewery||'')},${escapeCSV(r.brand||'')},${r.rating||''},${escapeCSV(r.memo||'')}`;
+                }).join("\n");
+            filename = `nomutore_logs_${new Date().toISOString().slice(0,10)}.csv`;
+        } else if (type === 'checks') {
             data = await db.checks.toArray();
-            data.sort((a,b) => a.timestamp - b.timestamp); 
-            content = "日時,休肝日,ウエスト,足,水分,繊維,体重\n" + 
-                data.map(r => `${new Date(r.timestamp).toLocaleString()},${r.isDryDay},${r.waistEase||false},${r.footLightness||false},${r.waterOk||false},${r.fiberOk||false},${r.weight||''}`).join('\n'); 
-            filename = "check-log"; 
-        } 
-        DataManager.download(content, `nomutore-${filename}.csv`, 'text/csv'); 
+            data.sort((a,b) => a.timestamp - b.timestamp);
+            content = "日時,休肝日,腹囲,足軽,水分,食物繊維,体重\n" + 
+                data.map(r => `${new Date(r.timestamp).toLocaleString()},${r.isDryDay},${r.waistEase},${r.footLightness},${r.waterOk},${r.fiberOk},${r.weight||''}`).join("\n");
+            filename = `nomutore_checks_${new Date().toISOString().slice(0,10)}.csv`;
+        }
+        
+        DataManager.download(content, filename, 'text/csv');
     },
 
     /**
-     * 全データの取得（バックアップ用）
+     * 【改修】JSONバックアップ (Full Dump)
+     * v4対応: logs, checks, period_archives, settings を全て出力
      */
-    getAllData: async () => {
+    exportJSON: async () => {
         const logs = await db.logs.toArray();
         const checks = await db.checks.toArray();
+        const archives = await db.period_archives.toArray(); // 新テーブル
+
+        // LocalStorageから設定値を収集
         const settings = {};
         Object.values(APP.STORAGE_KEYS).forEach(key => {
             const val = localStorage.getItem(key);
             if (val !== null) settings[key] = val;
         });
-        return { logs, checks, settings };
+
+        const backupData = {
+            version: 4.0,
+            exportedAt: Date.now(),
+            data: {
+                logs,
+                checks,
+                archives
+            },
+            settings: settings
+        };
+
+        const jsonStr = JSON.stringify(backupData, null, 2);
+        const filename = `nomutore_backup_v4_${new Date().toISOString().slice(0,10)}.json`;
+        DataManager.download(jsonStr, filename, 'application/json');
     },
 
-    exportJSON: async () => { 
-        const data = await DataManager.getAllData();
-        DataManager.download(JSON.stringify(data, null, 2), 'nomutore-backup.json', 'application/json'); 
-    },
-
-    copyToClipboard: async () => { 
-        const data = await DataManager.getAllData();
-        navigator.clipboard.writeText(JSON.stringify(data, null, 2))
-            .then(() => UI.showMessage('コピーしました','success'))
-            .catch(() => UI.showMessage('コピーに失敗しました', 'error')); 
-    },
-
+    /**
+     * JSONインポート (v4対応版はPhase 4で実装予定、現在はv3互換維持)
+     * ※現状はlogs/checksのみ復元
+     */
     importJSON: (inputElement) => { 
+        if (!inputElement.files.length) return; 
         const f = inputElement.files[0]; 
-        if(!f) return; 
-        
         const r = new FileReader(); 
         r.onload = async (e) => { 
             try { 
                 const d = JSON.parse(e.target.result); 
-                if(confirm('データを復元しますか？\n※既存のデータと重複しないログのみ追加されます。\n※設定は上書きされます。')){ 
+                
+                // v4フォーマットかどうか判定
+                const isV4 = d.version && d.version >= 4.0;
+                const logs = isV4 ? d.data.logs : (d.logs || []);
+                const checks = isV4 ? d.data.checks : (d.checks || []);
+                // const archives = isV4 ? d.data.archives : []; // ※復元ロジックは別途必要
+
+                if (confirm(`ログ ${logs.length}件、チェック ${checks.length}件を復元しますか？\n(既存データと重複するものはスキップされます)`)) { 
                     
-                    if (d.settings) {
-                        Object.entries(d.settings).forEach(([k, v]) => localStorage.setItem(k, v));
-                    }
-
-                    if (d.logs && Array.isArray(d.logs)) {
+                    // Logs
+                    if (logs.length > 0) {
                         const existingLogs = await db.logs.toArray();
-                        const existingTimestamps = new Set(existingLogs.map(l => l.timestamp));
-
-                        // 重複チェック
-                        const uniqueLogs = d.logs
-                            .filter(l => !existingTimestamps.has(l.timestamp))
+                        const existingLogKeys = new Set(existingLogs.map(l => `${l.timestamp}_${l.type}`));
+                        
+                        const uniqueLogs = logs
+                            .filter(l => !existingLogKeys.has(`${l.timestamp}_${l.type}`))
                             .map(l => {
-                                const { id, ...rest } = l; // ID除外
+                                const { id, ...rest } = l; // IDは除外して新規採番
                                 return rest;
                             });
-                        
-                        const profile = Store.getProfile();
-
-                        // インポート時のデータ補完 (kcalがない場合)
-                        const migratedLogs = uniqueLogs.map(l => {
-                            if (l.kcal === undefined && l.minutes !== undefined) {
-                                const stepperRate = Calc.burnRate(6.0, profile);
-                                l.kcal = l.minutes * stepperRate;
-                            }
-                            return l;
-                        });
-
-                        if (migratedLogs.length > 0) {
-                            await db.logs.bulkAdd(migratedLogs);
-                            console.log(`${migratedLogs.length}件のログを追加しました`);
+                            
+                        if (uniqueLogs.length > 0) {
+                            await db.logs.bulkAdd(uniqueLogs);
                         }
                     }
 
-                    if (d.checks && Array.isArray(d.checks)) {
+                    // Checks
+                    if (checks.length > 0) {
                         const existingChecks = await db.checks.toArray();
                         const existingCheckTimestamps = new Set(existingChecks.map(c => c.timestamp));
-                        const uniqueChecks = d.checks
+                        
+                        const uniqueChecks = checks
                             .filter(c => !existingCheckTimestamps.has(c.timestamp))
                             .map(c => {
                                 const { id, ...rest } = c;
@@ -118,6 +121,13 @@ export const DataManager = {
                             await db.checks.bulkAdd(uniqueChecks);
                         }
                     }
+                    
+                    // Settings (v4バックアップからの復元)
+                    if (isV4 && d.settings) {
+                        Object.entries(d.settings).forEach(([key, val]) => {
+                            localStorage.setItem(key, val);
+                        });
+                    }
 
                     // UI更新
                     UI.updateModeSelector();
@@ -125,7 +135,7 @@ export const DataManager = {
                     UI.applyTheme(localStorage.getItem(APP.STORAGE_KEYS.THEME) || 'system');
                     await refreshUI(); 
                     
-                    UI.showMessage('復元しました (重複はスキップ)','success'); 
+                    UI.showMessage('復元しました','success'); 
                 } 
             } catch(err) { 
                 console.error(err);
@@ -143,6 +153,6 @@ export const DataManager = {
         a.href = url; 
         a.download = filename; 
         a.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => { URL.revokeObjectURL(url); }, 100); 
     }
 };

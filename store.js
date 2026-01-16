@@ -3,11 +3,20 @@ import { APP } from './constants.js';
 // DexieはHTMLで読み込んでいるため window.Dexie として存在します
 export const db = new Dexie("NomutoreDB");
 
-// Version 2: カロリー基準へ移行
-// ※既存データは互換性がなくなるため、アプリ起動時にリセット処理が必要です
+// Version 2: カロリー基準へ移行 (History)
 db.version(2).stores({
-    logs: '++id, timestamp, type, name, kcal', // minutes ではなく kcal を基準にする
+    logs: '++id, timestamp, type, name, kcal',
     checks: '++id, timestamp'
+});
+
+// Version 3: v4対応 (Period Mode & Enhanced Logs)
+// - logs: memo, untappd_query を検索可能にするためインデックスに追加
+// - period_archives: 期間ごとの成績を保存する新テーブル
+// - checks: 変更なし (全期間保持のため)
+db.version(3).stores({
+    logs: '++id, timestamp, type, name, kcal, memo, untappd_query',
+    checks: '++id, timestamp',
+    period_archives: '++id, startDate, endDate, mode'
 });
 
 export const Store = {

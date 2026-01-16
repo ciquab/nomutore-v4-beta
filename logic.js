@@ -19,6 +19,13 @@ export const Calc = {
             return ((0.0481 * weight) + (0.0234 * height) - (0.0138 * age) - 0.9708) * k;
         }
     },
+
+    /**
+     * 【エイリアス】BMR計算 (Plan上の名称統一用)
+     */
+    calculateBMR: (profile) => {
+        return Calc.getBMR(profile);
+    },
     
     /**
      * 消費カロリーレート計算
@@ -112,47 +119,36 @@ export const Calc = {
     },
 
     /**
-     * ストリーク計算 (v3完全版)
-     * @param {Array} logs - ログ配列
-     * @param {Array} checks - チェック配列
-     * @param {Object} profile - プロフィール
-     * @param {string|number|Date} referenceDate - 基準日 (省略時は今日)
-     * * v2ロジックの完全再現:
-     * 指定された基準日時点でのストリークを計算する。
-     * 基準日に活動(飲酒or運動or休肝チェック)があればそこから、なければ前日から遡る。
+     * ストリーク計算 (v4改修版: みなし休肝ロジック修正済み)
      */
     getCurrentStreak: (logs, checks, profile, referenceDate = null) => {
         const safeLogs = Array.isArray(logs) ? logs : [];
         const safeChecks = Array.isArray(checks) ? checks : [];
 
-        // 【修正1】データが全くない場合は即座に0を返す
+        // 全くデータがない場合は0
         if (safeLogs.length === 0 && safeChecks.length === 0) {
             return 0;
         }
 
-        // 【修正2】最古の記録日を探す (これ以前はストリークに含めない)
+        // 最古の記録日を探す
         let minTs = Number.MAX_SAFE_INTEGER;
         let found = false;
 
-        safeLogs.forEach(l => {
-            if (l.timestamp < minTs) { minTs = l.timestamp; found = true; }
-        });
-        safeChecks.forEach(c => {
-            if (c.timestamp < minTs) { minTs = c.timestamp; found = true; }
-        });
+        if (safeLogs.length > 0) {
+            safeLogs.forEach(l => { if (l.timestamp < minTs) minTs = l.timestamp; });
+            found = true;
+        }
+        if (safeChecks.length > 0) {
+            safeChecks.forEach(c => { if (c.timestamp < minTs) minTs = c.timestamp; });
+            found = true;
+        }
 
-        // データがある場合、その日を「開始日」とする
         const firstDate = found ? dayjs(minTs).startOf('day') : dayjs();
-
         const targetDate = referenceDate ? dayjs(referenceDate) : dayjs();
         
         // 基準日「そのもの」に活動があるかチェック
-        const hasLogOnTarget = safeLogs.some(l => {
-            return dayjs(l.timestamp).isSame(targetDate, 'day');
-        });
-        const hasCheckOnTarget = safeChecks.some(c => {
-            return dayjs(c.timestamp).isSame(targetDate, 'day');
-        });
+        const hasLogOnTarget = safeLogs.some(l => dayjs(l.timestamp).isSame(targetDate, 'day'));
+        const hasCheckOnTarget = safeChecks.some(c => dayjs(c.timestamp).isSame(targetDate, 'day'));
 
         // 基準日に活動があればそこからスタート、なければ前日からスタート
         let checkDate = (hasLogOnTarget || hasCheckOnTarget) ? targetDate : targetDate.subtract(1, 'day');
@@ -162,51 +158,57 @@ export const Calc = {
         // 高速化のためMap化
         const logMap = new Map();
         const checkMap = new Map();
-        const checkDateEndLimit = checkDate.endOf('day').valueOf();
-
+        
         safeLogs.forEach(l => {
-            if (l.timestamp <= checkDateEndLimit) {
-                const d = dayjs(l.timestamp).format('YYYY-MM-DD');
-                if (!logMap.has(d)) logMap.set(d, { hasBeer: false, hasExercise: false });
-                if (l.type === 'beer') logMap.get(d).hasBeer = true;
-                if (l.type === 'exercise') logMap.get(d).hasExercise = true;
-            }
+            const d = dayjs(l.timestamp).format('YYYY-MM-DD');
+            if (!logMap.has(d)) logMap.set(d, { hasBeer: false, hasExercise: false });
+            if (l.type === 'beer') logMap.get(d).hasBeer = true;
+            if (l.type === 'exercise') logMap.get(d).hasExercise = true;
         });
+        
         safeChecks.forEach(c => {
-            if (c.timestamp <= checkDateEndLimit) {
-                const d = dayjs(c.timestamp).format('YYYY-MM-DD');
-                checkMap.set(d, c.isDryDay);
-            }
+            const d = dayjs(c.timestamp).format('YYYY-MM-DD');
+            checkMap.set(d, c.isDryDay);
         });
 
         while (true) {
-            // 【修正3】チェック日が「最古の記録日」より前になったら終了
+            // 最古の記録日より前になったら終了
             if (checkDate.isBefore(firstDate, 'day')) {
                 break;
             }
 
             const dateStr = checkDate.format('YYYY-MM-DD');
+            
             const dayLogs = logMap.get(dateStr) || { hasBeer: false, hasExercise: false };
-            const isDryCheck = checkMap.get(dateStr) || false;
+            const isDryCheck = checkMap.get(dateStr) || false; // 明示的な休肝チェック
 
-            // ★修正ポイント: 
-            // 「今日」の場合は、「記録がない＝休肝日」という見なしルールを適用しない。
-            // (まだ一日が終わっておらず、記録していないだけかもしれないため)
             const isToday = checkDate.isSame(dayjs(), 'day');
             
-            // 過去の日付なら「ビール記録なし」でOK。今日なら「明示的な休肝チェック」が必要。
-            const isPassiveDryAllowed = !isToday; 
+            // 【修正】みなし休肝ロジック (Passive Dry)
+            // 今日以外で、かつ「ビールを飲んだ記録」がない日は、
+            // 運動記録の有無や明示的チェックの有無に関わらず「休肝日」とみなす。
+            let isPassiveDry = false;
+            if (!isToday && !dayLogs.hasBeer) {
+                isPassiveDry = true;
+            }
             
-            const isDry = isDryCheck || (isPassiveDryAllowed && !dayLogs.hasBeer);
+            // ストリーク継続条件:
+            // 1. 明示的に休肝チェックしている (isDryCheck)
+            // 2. 黙って休肝している (isPassiveDry)
+            // 3. 飲んだけど運動している (dayLogs.hasExercise) ※v3仕様準拠: 飲んで運動してもストリークは繋がる
+            
+            const isDry = isDryCheck || isPassiveDry;
             const workedOut = dayLogs.hasExercise;
 
             if (isDry || workedOut) {
                 streak++;
                 checkDate = checkDate.subtract(1, 'day');
             } else {
-                break; // 飲んだ、または今日で記録がない
+                // ビール記録があり、かつ運動記録がない場合のみここに来る
+                break; 
             }
-            if (streak > 3650) break; 
+            
+            if (streak > 3650) break; // 安全装置
         }
 
         return streak;
@@ -219,10 +221,7 @@ export const Calc = {
         return 1.0;
     },
 
-    /**
-     * ランク判定ロジック
-     */
-getRecentGrade: (checks, logs, profile) => {
+    getRecentGrade: (checks, logs, profile) => {
         const safeLogs = Array.isArray(logs) ? logs : [];
         const safeChecks = Array.isArray(checks) ? checks : [];
 
@@ -240,7 +239,6 @@ getRecentGrade: (checks, logs, profile) => {
         
         const recentSuccessDays = Calc.getCurrentStreak(safeLogs, safeChecks, profile);
 
-        // --- ルーキー判定 ---
         if (isRookie) {
             const rate = daysSinceStart > 0 ? (recentSuccessDays / daysSinceStart) : 0;
             
@@ -250,7 +248,6 @@ getRecentGrade: (checks, logs, profile) => {
             return { rank: 'Beginner', label: 'たまご 🥚', color: 'text-gray-500', bg: 'bg-gray-100', next: 1, current: recentSuccessDays, isRookie: true, rawRate: rate, targetRate: 0.25 };
         }
 
-        // --- 通常ユーザー判定 ---
         if (recentSuccessDays >= 20) return { rank: 'S', label: '神の肝臓 👼', color: 'text-purple-600', bg: 'bg-purple-100', next: null, current: recentSuccessDays };
         if (recentSuccessDays >= 12) return { rank: 'A', label: '鉄の肝臓 🛡️', color: 'text-indigo-600', bg: 'bg-indigo-100', next: 20, current: recentSuccessDays };
         if (recentSuccessDays >= 8)  return { rank: 'B', label: '健康志向 🌿', color: 'text-green-600', bg: 'bg-green-100', next: 12, current: recentSuccessDays };
@@ -275,21 +272,11 @@ getRecentGrade: (checks, logs, profile) => {
         return best;
     },
 
-    // ----------------------------------------------------------------
-    // 【追加】 不足していたメソッド
-    // ----------------------------------------------------------------
-
-    /**
-     * 指定日に飲酒ログがあるか (checkStatus.jsで使用)
-     */
     hasAlcoholLog: (logs, timestamp) => {
         const target = dayjs(timestamp);
         return logs.some(l => l.type === 'beer' && dayjs(l.timestamp).isSame(target, 'day'));
     },
 
-    /**
-     * 日付ごとのステータス判定 (weekly.js/heatmapで使用)
-     */
     getDayStatus: (date, logs, checks, profile) => {
         const d = dayjs(date);
         const dayStart = d.startOf('day').valueOf();
@@ -302,11 +289,8 @@ getRecentGrade: (checks, logs, profile) => {
         const hasExercise = dayLogs.some(l => l.type === 'exercise');
         const isDryDay = dayCheck ? dayCheck.isDryDay : false;
 
-        // 収支計算 (簡易: ログのkcalが正なら運動、負なら飲酒と想定されるが、ここでは単純にkcalを積算)
-        // 運動ログのkcalは正、飲酒ログのkcalは負で保存されている前提
         let balance = 0;
         dayLogs.forEach(l => {
-            // kcalが未定義の場合は簡易計算で補完
             const val = l.kcal !== undefined ? l.kcal : (l.type === 'exercise' ? (l.minutes * Calc.burnRate(6.0, profile)) : -150);
             balance += val;
         });
@@ -314,12 +298,52 @@ getRecentGrade: (checks, logs, profile) => {
         if (isDryDay) return hasExercise ? 'rest_exercise' : 'rest';
         if (hasBeer) {
             if (hasExercise) {
-                // 飲んで運動して、収支がプラス（完済）なら success
                 return balance >= 0 ? 'drink_exercise_success' : 'drink_exercise';
             }
             return 'drink';
         }
         if (hasExercise) return 'exercise';
         return 'none';
+    },
+
+    /**
+     * 【新規実装】ビール帳集計ロジック
+     * 期間制限を受けない全ログから集計を行う
+     */
+    getBeerStats: (allLogs) => {
+        const beerLogs = allLogs.filter(l => l.type === 'beer');
+        
+        const totalCount = beerLogs.reduce((sum, l) => sum + (l.count || 1), 0);
+        const totalMl = beerLogs.reduce((sum, l) => sum + (l.rawAmount || (l.size * (l.count || 1)) || 0), 0);
+        const totalKcal = beerLogs.reduce((sum, l) => sum + Math.abs(l.kcal || 0), 0);
+
+        const styleCounts = {};
+        beerLogs.forEach(l => {
+            const s = l.style || 'Unknown';
+            styleCounts[s] = (styleCounts[s] || 0) + (l.count || 1);
+        });
+
+        // 銘柄コレクション
+        const uniqueBeers = new Set();
+        beerLogs.forEach(l => {
+            if (l.brewery && l.brand) {
+                uniqueBeers.add(`${l.brewery}|${l.brand}`);
+            }
+        });
+
+        // ソート済みの人気スタイル
+        const topStyles = Object.entries(styleCounts)
+            .sort((a, b) => b[1] - a[1])
+            .map(([style, count]) => ({ style, count }));
+
+        return {
+            totalCount,
+            totalMl,
+            totalKcal,
+            styleCounts,
+            topStyles,
+            uniqueBeersCount: uniqueBeers.size,
+            logsCount: beerLogs.length
+        };
     }
 };

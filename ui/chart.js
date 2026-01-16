@@ -6,9 +6,9 @@ import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
 export function renderChart(logs, checks) {
     const ctxCanvas = document.getElementById('balanceChart');
-    if (!ctxCanvas || typeof Chart === 'undefined') return; // ガード節
+    if (!ctxCanvas || typeof Chart === 'undefined') return;
 
-    // フィルタボタンの更新（存在チェック付き）
+    // フィルタボタンの更新
     const filters = DOM.elements['chart-filters'] || document.getElementById('chart-filters');
     if(filters) {
         filters.querySelectorAll('button').forEach(btn => {
@@ -23,128 +23,146 @@ export function renderChart(logs, checks) {
     try {
         const now = dayjs();
         let cutoffDate = StateManager.chartRange === '1w' ? now.subtract(7, 'day').valueOf() :
-                         StateManager.chartRange === '1m' ? now.subtract(30, 'day').valueOf() : 0;
+                         StateManager.chartRange === '1m' ? now.subtract(1, 'month').valueOf() :
+                         now.subtract(3, 'month').valueOf();
 
-        const allLogsSorted = [...logs].sort((a, b) => a.timestamp - b.timestamp);
-        const allChecksSorted = [...checks].sort((a, b) => a.timestamp - b.timestamp);
+        const profile = Store.getProfile();
+        const baseEx = profile.baseExercise || 'walking';
+
+        // --- データセット準備 ---
+        const dateMap = new Map();
         
-        const fullHistoryMap = new Map();
-        let runningKcalBalance = 0;
-        const baseEx = Store.getBaseExercise();
-        const userProfile = Store.getProfile();
-
-        allLogsSorted.forEach(l => {
-            const d = dayjs(l.timestamp);
-            const k = d.format('M/D');
-            
-            if (!fullHistoryMap.has(k)) fullHistoryMap.set(k, {plusKcal:0, minusKcal:0, balKcal:0, weight:null, ts: l.timestamp});
-            const e = fullHistoryMap.get(k);
-            
-            const kcal = l.kcal !== undefined ? l.kcal : (l.minutes * Calc.burnRate(6.0, userProfile));
-            if (kcal >= 0) e.plusKcal += kcal; else e.minusKcal += kcal;
-            
-            runningKcalBalance += kcal;
-            e.balKcal = runningKcalBalance;
-        });
-
-        allChecksSorted.forEach(c => {
-            const k = dayjs(c.timestamp).format('M/D');
-            if (!fullHistoryMap.has(k)) {
-                fullHistoryMap.set(k, {plusKcal:0, minusKcal:0, balKcal: runningKcalBalance, weight:null, ts: c.timestamp});
-            }
-            if (c.weight) fullHistoryMap.get(k).weight = parseFloat(c.weight);
-        });
-
-        let dataArray = Array.from(fullHistoryMap.entries()).map(([label, v]) => ({
-            label,
-            plus: Calc.convertKcalToMinutes(v.plusKcal, baseEx, userProfile),
-            minus: Calc.convertKcalToMinutes(v.minusKcal, baseEx, userProfile),
-            bal: Calc.convertKcalToMinutes(v.balKcal, baseEx, userProfile),
-            weight: v.weight,
-            ts: v.ts
-        })).sort((a, b) => a.ts - b.ts);
-
-        if (cutoffDate > 0) dataArray = dataArray.filter(d => d.ts >= cutoffDate);
-        if (dataArray.length === 0) dataArray.push({label: now.format('M/D'), plus:0, minus:0, bal:0, weight:null});
-
-        const validWeights = dataArray.map(d => d.weight).filter(w => typeof w === 'number' && !isNaN(w));
-        let weightMin = 40, weightMax = 90;
-        if (validWeights.length > 0) {
-            weightMin = Math.floor(Math.min(...validWeights) - 2);
-            weightMax = Math.ceil(Math.max(...validWeights) + 2);
+        // 1. 日付ごとの枠を作成
+        let current = dayjs(cutoffDate);
+        const end = dayjs();
+        while(current.isBefore(end) || current.isSame(end, 'day')) {
+            const dStr = current.format('MM/DD');
+            dateMap.set(dStr, { date: dStr, balance: 0, weight: null, hasWeight: false });
+            current = current.add(1, 'day');
         }
 
+        // 2. ログデータの集計 (Balance)
+        logs.forEach(l => {
+            if (l.timestamp >= cutoffDate) {
+                const dStr = dayjs(l.timestamp).format('MM/DD');
+                if (dateMap.has(dStr)) {
+                    // kcalがあれば優先、なければminutesから計算
+                    const val = l.kcal !== undefined ? l.kcal : (l.minutes * Calc.burnRate(6.0, profile));
+                    dateMap.get(dStr).balance += val;
+                }
+            }
+        });
+
+        // 3. チェックデータの集計 (Weight)
+        // 同じ日に複数記録がある場合は最新を採用
+        checks.forEach(c => {
+            if (c.timestamp >= cutoffDate && c.weight) {
+                const dStr = dayjs(c.timestamp).format('MM/DD');
+                if (dateMap.has(dStr)) {
+                    dateMap.get(dStr).weight = parseFloat(c.weight);
+                    dateMap.get(dStr).hasWeight = true;
+                }
+            }
+        });
+
+        // 4. 配列化 & 体重データの補間 (nullだと線が切れるため、前日データで埋めるオプションも考えられるが、Chart.jsのspanGapsを使う)
+        const dataArray = Array.from(dateMap.values());
+
+        // 体重グラフのY軸範囲調整 (見やすくするため)
+        const weights = dataArray.filter(d => d.hasWeight).map(d => d.weight);
+        let weightMin = 40, weightMax = 100;
+        if (weights.length > 0) {
+            weightMin = Math.min(...weights) - 2.0;
+            weightMax = Math.max(...weights) + 2.0;
+        }
+
+        // Chart生成
         if (StateManager.chart) StateManager.chart.destroy();
-        
+
+        // Dark mode detection for Chart.js colors
         const isDark = document.documentElement.classList.contains('dark');
-        const textColor = isDark ? '#9ca3af' : '#6b7280';
-        const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+        const textColor = isDark ? '#9CA3AF' : '#6B7280';
+        const gridColor = isDark ? 'rgba(75, 85, 99, 0.2)' : 'rgba(229, 231, 235, 0.5)';
 
         const newChart = new Chart(ctxCanvas, {
-            data: { 
-                labels: dataArray.map(d => d.label), 
-                datasets: [ 
+            type: 'bar',
+            data: {
+                labels: dataArray.map(d => d.date),
+                datasets: [
                     { 
-                        type: 'line', 
-                        label: '体重 (kg)', 
-                        data: dataArray.map(d => d.weight), 
-                        borderColor: '#F59E0B', 
-                        borderDash: [5, 5],
-                        yAxisID: 'y1',
-                        spanGaps: true,
-                        order: 0 
+                        // 運動 (プラス)
+                        label: 'Earned', 
+                        data: dataArray.map(d => d.balance > 0 ? Math.round(Calc.convertKcalToMinutes(d.balance, baseEx, profile)) : 0), 
+                        backgroundColor: '#10B981', 
+                        borderRadius: 4,
+                        stack: '0', 
+                        order: 2,
+                        yAxisID: 'y'
                     },
                     { 
-                        type: 'line', 
-                        label: '累積残高', 
-                        data: dataArray.map(d => d.bal), 
-                        borderColor: '#4F46E5', 
-                        tension: 0.3, 
-                        fill: false, 
-                        order: 1 
-                    }, 
-                    { 
-                        type: 'bar', 
-                        label: '返済', 
-                        data: dataArray.map(d => d.plus), 
-                        backgroundColor: '#10B981', 
-                        stack: '0', 
-                        order: 2 
-                    }, 
-                    { 
-                        type: 'bar', 
-                        label: '借金', 
-                        data: dataArray.map(d => d.minus), 
+                        // 飲酒 (マイナス) - グラフ上はプラス方向に表示した方が見やすい場合もあるが、収支通りマイナスに出す
+                        label: 'Consumed', 
+                        data: dataArray.map(d => d.balance < 0 ? Math.round(Calc.convertKcalToMinutes(d.balance, baseEx, profile)) : 0), 
                         backgroundColor: '#EF4444', 
+                        borderRadius: 4,
                         stack: '0', 
-                        order: 2 
-                    } 
+                        order: 3,
+                        yAxisID: 'y'
+                    },
+                    {
+                        // 体重 (折れ線) - 右軸
+                        type: 'line',
+                        label: 'Weight',
+                        data: dataArray.map(d => d.weight), // nullが含まれるとspanGaps: trueが必要
+                        borderColor: '#6366F1', // Indigo
+                        backgroundColor: '#6366F1',
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        tension: 0.3,
+                        yAxisID: 'y1',
+                        order: 1,
+                        spanGaps: true // データ欠損時も線をつなぐ
+                    }
                 ] 
             },
             options: { 
                 responsive: true, 
                 maintainAspectRatio: false, 
                 scales: { 
-                    x: { stacked: true }, 
+                    x: { 
+                        stacked: true,
+                        ticks: { color: textColor, font: { size: 10 } },
+                        grid: { display: false }
+                    }, 
                     y: { 
+                        // 左軸: カロリー(分)
                         beginAtZero: true,
-                        title: { display: true, text: `収支 (${baseEx}分)`, color: textColor },
-                        ticks: { color: textColor },
+                        position: 'left',
+                        title: { display: false }, // スペース節約
+                        ticks: { color: textColor, font: { size: 10 } },
                         grid: { color: gridColor }
                     },
                     y1: {
+                        // 右軸: 体重
                         type: 'linear',
                         display: true,
                         position: 'right',
                         min: weightMin,
                         max: weightMax,
-                        grid: { drawOnChartArea: false },
-                        title: { display: true, text: '体重 (kg)', color: textColor },
-                        ticks: { color: textColor }
+                        grid: { drawOnChartArea: false }, // グリッド線は左軸に合わせる
+                        ticks: { color: '#6366F1', font: { size: 10, weight: 'bold' } }
                     }
                 }, 
                 plugins: { 
-                    legend: { display: true, position: 'bottom', labels: { color: textColor } } 
+                    legend: { 
+                        display: true, 
+                        position: 'bottom', 
+                        labels: { color: textColor, boxWidth: 10, font: { size: 10 } } 
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
                 } 
             }
         });

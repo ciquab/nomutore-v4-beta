@@ -7,117 +7,112 @@ export const APP = {
         AGE: 'hazy_payback_age', 
         GENDER: 'hazy_payback_gender', 
         TIMER_START: 'hazy_payback_timer_start',
-        TIMER_ACCUMULATED: 'hazy_payback_timer_accumulated', // 【追加】一時停止用 
+        TIMER_ACCUMULATED: 'hazy_payback_timer_accumulated',
         MODE1: 'hazy_payback_mode_1', 
         MODE2: 'hazy_payback_mode_2',
         BASE_EXERCISE: 'hazy_payback_base_exercise',
         THEME: 'hazy_payback_theme',
-        DEFAULT_RECORD_EXERCISE: 'hazy_payback_default_record_exercise' // 追加
+        DEFAULT_RECORD_EXERCISE: 'hazy_payback_default_record_exercise',
+        
+        PERIOD_MODE: 'hazy_payback_balance_mode',
+        PERIOD_START: 'hazy_payback_period_start',
+        CHECK_SCHEMA: 'hazy_payback_check_schema',
+        ORB_STYLE: 'hazy_payback_orb_style',
+        UNIT_MODE: 'hazy_payback_unit_mode',
+        PROFILE: 'hazy_payback_profile'
     },
     DEFAULTS: { 
         WEIGHT: 60, HEIGHT: 160, AGE: 30, GENDER: 'female', 
         MODE1: '国産ピルスナー', MODE2: 'Hazy IPA',
         BASE_EXERCISE: 'walking',
         THEME: 'system',
-        DEFAULT_RECORD_EXERCISE: 'walking' // 追加
+        DEFAULT_RECORD_EXERCISE: 'walking',
+        PERIOD_MODE: 'weekly',
+        ORB_STYLE: 'lager',
+        UNIT_MODE: 'kcal'
     },
     TANK_MAX_CANS: 3.0
 };
 
+// 【新規】デイリーチェック項目の定義 (v4 Schema)
+// drinking_only: true の項目は「休肝日OFF」の時のみ表示される
+export const CHECK_SCHEMA = [
+    { id: 'waistEase', label: 'Waist Ease', icon: '👖', type: 'boolean', desc: 'お腹周りスッキリ' },
+    { id: 'footLightness', label: 'Foot Light', icon: '🦶', type: 'boolean', desc: '足取りが軽い' },
+    { id: 'waterOk', label: 'Water OK', icon: '💧', type: 'boolean', desc: '水分とれた' },
+    { id: 'fiberOk', label: 'Fiber OK', icon: '🥗', type: 'boolean', desc: '野菜とれた' },
+    { id: 'noHangover', label: 'No Hangover', icon: '😵', type: 'boolean', drinking_only: true, desc: '二日酔いなし' }
+];
+
 export const CALORIES = { 
     STYLES: { 
-        // --- ラガー / すっきり系 ---
-        '国産ピルスナー': 145,      // 旧: 大手ラガー
-        '糖質オフ/新ジャンル': 110, // 旧: 第三のビール
+        '国産ピルスナー': 145,
+        '糖質オフ/新ジャンル': 110,
         'ピルスナー': 140,
         'ドルトムンター': 145,
         'シュバルツ': 155,
-
-        // --- エール / 小麦系 ---
-        'ゴールデンエール': 150,    // New
+        'ゴールデンエール': 150,
         'ペールエール': 160,
         'ジャパニーズエール': 160,
         'ヴァイツェン': 180,
         'ベルジャンホワイト': 160,
         'セゾン': 165,
-
-        // --- IPA / ホップ系 ---
         'セッションIPA': 130,
         'IPA (West Coast)': 190,
         'Hazy IPA': 220,
         'Hazyペールエール': 170,
         'ダブルIPA (DIPA)': 270,
-
-        // --- 黒 / 濃厚系 ---
         'アンバーエール': 165,
         'ポーター': 170,
         'スタウト': 200,
-        'インペリアルスタウト': 280, // New
-
-        // --- ハイアルコール / 特殊 ---
+        'インペリアルスタウト': 280,
         'ベルジャン・トリペル': 250,
         'バーレイワイン': 320,
-        
-        // --- サワー / フルーツ ---
         'サワーエール': 140,
         'フルーツビール': 160,
-  
-        // 【追加】ノンアル (350ml換算: 糖質を含むものも考慮して50kcal程度に設定)
         'ノンアル': 50,
     } 
 };
 
 export const BEER_COLORS = {
-    'pale': 'linear-gradient(to top, #fde047, #fef08a)',   // 薄い黄色 (ライトラガー等)
-    'gold': 'linear-gradient(to top, #eab308, #facc15)',   // 黄金色 (ピルスナー等)
-    'copper': 'linear-gradient(to top, #d97706, #fbbf24)', // 銅色/オレンジ (IPA, ペールエール)
-    'amber': 'linear-gradient(to top, #b45309, #d97706)',  // 茶褐色 (アンバー, バーレイワイン)
-    'black': 'linear-gradient(to top, #000000, #4b2c20)',  // 黒
-    'white': 'linear-gradient(to top, #fcd34d, #fef3c7)',  // 白濁イエロー
-    'hazy': 'linear-gradient(to top, #ca8a04, #facc15)',   // 濁ったオレンジ
-    'red': 'linear-gradient(to top, #991b1b, #ef4444)',    // 赤/ルビー
+    'pale': 'linear-gradient(to top, #fde047, #fef08a)',
+    'gold': 'linear-gradient(to top, #eab308, #facc15)',
+    'copper': 'linear-gradient(to top, #d97706, #fbbf24)',
+    'amber': 'linear-gradient(to top, #b45309, #d97706)',
+    'black': 'linear-gradient(to top, #000000, #4b2c20)',
+    'white': 'linear-gradient(to top, #fcd34d, #fef3c7)',
+    'hazy': 'linear-gradient(to top, #ca8a04, #facc15)',
+    'red': 'linear-gradient(to top, #991b1b, #ef4444)',
 };
 
-// 【変更】スタイルごとの「色」と「アイコン」の定義
 export const STYLE_METADATA = {
-    // ラガー系
     '国産ピルスナー': { color: 'gold', icon: '🍺' },
     '糖質オフ/新ジャンル': { color: 'pale', icon: '🍺' },
     'ピルスナー': { color: 'gold', icon: '🍺' },
     'ドルトムンター': { color: 'gold', icon: '🍺' },
     'シュバルツ': { color: 'black', icon: '🍺' },
-
-    // エール系
     'アンバーエール': { color: 'amber', icon: '🍺' },
     'ゴールデンエール': { color: 'gold', icon: '🍺' },
     'ペールエール': { color: 'copper', icon: '🍺' },
     'ジャパニーズエール': { color: 'copper', icon: '🍺' },
-    'ヴァイツェン': { color: 'white', icon: '🥛' }, // ヴァイツェングラス的なイメージ
+    'ヴァイツェン': { color: 'white', icon: '🥛' },
     'ベルジャンホワイト': { color: 'white', icon: '🥛' },
     'セゾン': { color: 'white', icon: '🥂' },
-
-    // IPA系
     'セッションIPA': { color: 'copper', icon: '🍺' },
     'IPA (West Coast)': { color: 'copper', icon: '🍺' },
-    'Hazy IPA': { color: 'hazy', icon: '🍹' }, // ジュースのような見た目
+    'Hazy IPA': { color: 'hazy', icon: '🍹' },
     'Hazyペールエール': { color: 'hazy', icon: '🍹' },
     'ダブルIPA (DIPA)': { color: 'copper', icon: '🍺' },
-
-    // 黒系
-    'ポーター': { color: 'black', icon: '☕' }, // コーヒーのようなニュアンス
+    'ポーター': { color: 'black', icon: '☕' },
     'スタウト': { color: 'black', icon: '☕' },
     'インペリアルスタウト': { color: 'black', icon: '☕' },
-
-    // ハイアル・特殊
-    'ベルジャン・トリペル': { color: 'gold', icon: '🍷' }, // ワイングラスで飲むイメージ
+    'ベルジャン・トリペル': { color: 'gold', icon: '🍷' },
     'バーレイワイン': { color: 'amber', icon: '🍷' },
     'サワーエール': { color: 'red', icon: '🍷' },
     'フルーツビール': { color: 'red', icon: '🍒' },
-
     'ノンアル': { color: 'green', icon: '🍃' },
 };
 
-// 互換性維持のためのマッピング (logic.js変更回避のため既存のSTYLE_COLOR_MAPも残すが、中身は新定義を参照)
 export const STYLE_COLOR_MAP = {};
 Object.keys(CALORIES.STYLES).forEach(style => {
     STYLE_COLOR_MAP[style] = STYLE_METADATA[style] ? STYLE_METADATA[style].color : 'gold';
@@ -131,7 +126,6 @@ export const ALCOHOL_CONSTANTS = {
     CARB_CALORIES: 4.0
 };
 
-// 【移動】main.js から移動したスタイル定義
 export const STYLE_SPECS = {
     'ラガー': { abv: 5.0, carb: 3.5 },
     'エール': { abv: 5.5, carb: 3.8 },
@@ -149,7 +143,7 @@ export const STYLE_SPECS = {
     'ベルジャン・トリペル': { abv: 8.5, carb: 4.5 },
     'バーレイワイン': { abv: 10.0, carb: 6.0 },
     'サワーエール': { abv: 5.0, carb: 3.5 },
-    'フルーツビール': { abv: 5.0, carb: 5.0 }, // 糖質高め
-    'ノンアル': { abv: 0.0, carb: 2.0 }, // カロリーはある
-    'Custom': { abv: 5.0, carb: 3.0 } // デフォルト
+    'フルーツビール': { abv: 5.0, carb: 5.0 }, 
+    'ノンアル': { abv: 0.0, carb: 2.0 }, 
+    'Custom': { abv: 5.0, carb: 3.0 } 
 };

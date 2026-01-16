@@ -1,7 +1,7 @@
 import { db, Store } from './store.js';
 import { Calc } from './logic.js';
 import { APP, EXERCISE, STYLE_SPECS } from './constants.js';
-import { UI, refreshUI } from './ui/index.js';
+import { UI, refreshUI, toggleModal } from './ui/index.js';
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
 export const Service = {
@@ -36,46 +36,32 @@ export const Service = {
     },
 
     /**
-     * 【新規実装】履歴変更時の影響範囲再計算 (カスケード更新)
-     * v2の `recalcDailyExercises` に相当。
-     * 過去のログを変更した際、その日以降のストリークボーナスを全て再計算してDBを更新する。
-     * @param {number} changedTimestamp - 変更があったログの日付(ms)
+     * 履歴変更時の影響範囲再計算
      */
     recalcImpactedHistory: async (changedTimestamp) => {
-        console.log('[Service] Recalculating history from:', dayjs(changedTimestamp).format('YYYY-MM-DD'));
+        console.log('[Service] Recalculating history & archives from:', dayjs(changedTimestamp).format('YYYY-MM-DD'));
         
         const allLogs = await db.logs.toArray();
         const allChecks = await db.checks.toArray();
         const profile = Store.getProfile();
 
-        // 変更日当日を含めて、今日までループ
         const startDate = dayjs(changedTimestamp).startOf('day');
         const today = dayjs().endOf('day');
         
         let currentDate = startDate;
         let updateCount = 0;
-
-        // 念のため無限ループ防止 (最大365日分)
         let safeGuard = 0;
         
         while (currentDate.isBefore(today) || currentDate.isSame(today, 'day')) {
             if (safeGuard++ > 365) break;
 
-            const dateKey = currentDate.format('YYYY-MM-DD');
             const dayStart = currentDate.startOf('day').valueOf();
             const dayEnd = currentDate.endOf('day').valueOf();
 
-            // 1. その日時点でのストリークを計算
-            // Calc.getCurrentStreak は referenceDate 時点での状況を返すように改修済み
             const streak = Calc.getCurrentStreak(allLogs, allChecks, profile, currentDate);
-            const multiplier = Calc.getStreakMultiplier(streak);
+            const creditInfo = Calc.calculateExerciseCredit(100, streak); 
+            const bonusMultiplier = creditInfo.bonusMultiplier;
 
-            // 2. その日の「運動ログ」かつ「ボーナス適用あり(と推測される)」ものを探して更新
-            // ※ v2仕様では「ボーナス適用のチェックボックス」があったが、
-            // データ上は memo に "Bonus" が入っているか等で判定していた。
-            // ここではシンプルに「全ての運動ログ」に対して、現在の正しいmultiplierを適用する。
-            // (手動でOFFにした意図を汲むのは難しいが、整合性優先で再適用する)
-            
             const daysExerciseLogs = allLogs.filter(l => 
                 l.type === 'exercise' && 
                 l.timestamp >= dayStart && 
@@ -83,44 +69,213 @@ export const Service = {
             );
 
             for (const log of daysExerciseLogs) {
-                // 基礎カロリー再計算
                 const mets = EXERCISE[log.exerciseKey] ? EXERCISE[log.exerciseKey].mets : 3.0;
                 const baseBurn = Calc.calculateExerciseBurn(mets, log.minutes, profile);
+                const updatedCredit = Calc.calculateExerciseCredit(baseBurn, streak);
                 
-                // ボーナス適用
-                const creditInfo = Calc.calculateExerciseCredit(baseBurn, streak);
                 let newMemo = log.memo || '';
-                
-                // メモ内の古いボーナス表記を削除して更新
                 newMemo = newMemo.replace(/Streak Bonus x[0-9.]+/g, '').trim();
-                if (creditInfo.bonusMultiplier > 1.0) {
-                    newMemo = newMemo ? `${newMemo} Streak Bonus x${creditInfo.bonusMultiplier.toFixed(1)}` : `Streak Bonus x${creditInfo.bonusMultiplier.toFixed(1)}`;
+                if (bonusMultiplier > 1.0) {
+                    const bonusTag = `Streak Bonus x${bonusMultiplier.toFixed(1)}`;
+                    newMemo = newMemo ? `${newMemo} ${bonusTag}` : bonusTag;
                 }
 
-                // 値が変わる場合のみDB更新
-                if (Math.abs(log.kcal - creditInfo.kcal) > 0.1 || log.memo !== newMemo) {
+                if (Math.abs(log.kcal - updatedCredit.kcal) > 0.1 || log.memo !== newMemo) {
                     await db.logs.update(log.id, {
-                        kcal: creditInfo.kcal,
+                        kcal: updatedCredit.kcal,
                         memo: newMemo
                     });
                     updateCount++;
                 }
             }
-
             currentDate = currentDate.add(1, 'day');
         }
 
-        if (updateCount > 0) {
-            console.log(`[Service] Updated ${updateCount} logs due to streak recalc.`);
+        if (updateCount > 0) console.log(`[Service] Updated ${updateCount} logs.`);
+
+        // アーカイブのサマリー更新
+        try {
+            const affectedArchives = await db.period_archives
+                .where('endDate')
+                .aboveOrEqual(changedTimestamp)
+                .toArray();
+
+            for (const archive of affectedArchives) {
+                if (archive.startDate <= changedTimestamp) {
+                    const periodLogs = await db.logs
+                        .where('timestamp')
+                        .between(archive.startDate, archive.endDate, true, true)
+                        .toArray();
+
+                    const totalBalance = periodLogs.reduce((sum, log) => sum + (log.kcal || 0), 0);
+                    
+                    await db.period_archives.update(archive.id, {
+                        totalBalance: totalBalance,
+                        updatedAt: Date.now()
+                    });
+                    console.log(`[Service] Updated archive #${archive.id} summary.`);
+                }
+            }
+        } catch (e) {
+            console.error('[Service] Failed to update archives:', e);
         }
     },
 
     /**
-     * 飲酒ログの追加・更新
+     * 【新規実装】期間設定の更新
+     * - モード変更時の初期化や、過去データのUnarchiveを行う
+     * @param {string} newMode - 'weekly' | 'monthly' | 'permanent'
      */
+    updatePeriodSettings: async (newMode) => {
+        const currentMode = localStorage.getItem(APP.STORAGE_KEYS.PERIOD_MODE);
+        if (currentMode === newMode) return;
+
+        localStorage.setItem(APP.STORAGE_KEYS.PERIOD_MODE, newMode);
+
+        // --- Permanentへの変更: 全ログ復元 ---
+        if (newMode === 'permanent') {
+            const archives = await db.period_archives.toArray();
+            if (archives.length > 0) {
+                console.log(`[Service] Unarchiving ${archives.length} periods for Permanent mode...`);
+                // アーカイブに保存されているスナップショットデータ（現在はlogsテーブルに残っている前提だが、
+                // 将来的にlogsを消す実装にするならここで復元処理が必要）
+                // 現状の仕様では「logsをクリア」して「period_archives」にのみ残す形になるため、
+                // period_archives から logs への復元ロジックが必要だが、
+                // 今回のStep 3.3の実装では「logsをクリアする」処理が入るため、
+                // 復元ロジックは「期間ロールオーバー時にlogsを消去している場合」に必須となる。
+                
+                // ※重要: 今回のStep 3.3の実装では、ロールオーバー時にlogsを削除する仕様になっているため、
+                // ここで「period_archives内のデータ」ではなく「logsテーブル」に戻す必要があるが、
+                // Dexieのperiod_archivesスキーマには 'logs' そのものは含まれていない（summaryのみ）。
+                // ★ Plan補正: Step 3.3の実装では、logsを削除せず timestamp フィルタで制御するか、
+                // period_archives に full_logs を持たせる必要がある。
+                // Dexieは容量制限が厳しくないため、period_archives に `logs: [...]` を持たせるのが安全。
+                // ここでは、ロールオーバー時に logs を period_archives.logs に退避させ、
+                // Permanent変更時にそれを logs テーブルに書き戻すロジックとする。
+                
+                let restoredCount = 0;
+                for (const arch of archives) {
+                    if (arch.logs && arch.logs.length > 0) {
+                        // IDの衝突を避けるため、IDを除外して追加
+                        const logsToRestore = arch.logs.map(({id, ...rest}) => rest);
+                        await db.logs.bulkAdd(logsToRestore);
+                        restoredCount += logsToRestore.length;
+                    }
+                }
+                
+                // アーカイブを空にする
+                await db.period_archives.clear();
+                
+                // PERIOD_START をリセット (全期間表示)
+                localStorage.setItem(APP.STORAGE_KEYS.PERIOD_START, 0);
+                
+                UI.showMessage(`${restoredCount}件の過去ログを復元しました`, 'success');
+            }
+        } 
+        // --- Weekly/Monthlyへの変更 ---
+        else {
+            // 現在の期間を設定
+            const start = Service.calculatePeriodStart(newMode);
+            localStorage.setItem(APP.STORAGE_KEYS.PERIOD_START, start);
+            
+            // 注: 既存のlogsは消さない。
+            // 次回のロールオーバー時に、新しい期間設定に基づいてアーカイブされる。
+        }
+    },
+
+    /**
+     * 期間開始日の計算
+     */
+    calculatePeriodStart: (mode) => {
+        const now = dayjs();
+        if (mode === 'weekly') {
+            return now.startOf('week').valueOf(); // Sunday start? or Monday? dayjs defaults Sunday
+        } else if (mode === 'monthly') {
+            return now.startOf('month').valueOf();
+        }
+        return 0; // Permanent
+    },
+
+    /**
+     * 【新規実装】期間ロールオーバーのチェックと実行
+     */
+    checkPeriodRollover: async () => {
+        const mode = localStorage.getItem(APP.STORAGE_KEYS.PERIOD_MODE) || APP.DEFAULTS.PERIOD_MODE;
+        
+        // Permanentなら何もしない
+        if (mode === 'permanent') return false;
+
+        const storedStart = parseInt(localStorage.getItem(APP.STORAGE_KEYS.PERIOD_START));
+        
+        // 初回起動時などで設定がない場合は初期化して終了
+        if (!storedStart) {
+            const newStart = Service.calculatePeriodStart(mode);
+            localStorage.setItem(APP.STORAGE_KEYS.PERIOD_START, newStart);
+            return false;
+        }
+
+        const startDate = dayjs(storedStart);
+        const now = dayjs();
+        let shouldRollover = false;
+        let nextStart = null;
+
+        if (mode === 'weekly') {
+            // 週の開始が変わっているか (現在時刻の週開始 != 保存された週開始)
+            const currentWeekStart = now.startOf('week');
+            if (!currentWeekStart.isSame(startDate, 'day')) {
+                shouldRollover = true;
+                nextStart = currentWeekStart.valueOf();
+            }
+        } else if (mode === 'monthly') {
+            const currentMonthStart = now.startOf('month');
+            if (!currentMonthStart.isSame(startDate, 'day')) {
+                shouldRollover = true;
+                nextStart = currentMonthStart.valueOf();
+            }
+        }
+
+        if (shouldRollover) {
+            // UI側で確認モーダルを出すためにイベント発火、またはここで処理
+            // 自動処理する場合:
+            console.log(`[Service] Rollover detected. Mode: ${mode}`);
+            
+            // 1. アーカイブ対象データの取得 (古い期間のログ)
+            // 次の期間の開始(=今の期間の終了) より前のログ
+            const logsToArchive = await db.logs.where('timestamp').below(nextStart).toArray();
+            
+            if (logsToArchive.length > 0) {
+                // 2. period_archives に保存
+                // 復元用に生ログも保存する (重要)
+                const totalBalance = logsToArchive.reduce((sum, l) => sum + (l.kcal || 0), 0);
+                
+                await db.period_archives.add({
+                    startDate: storedStart,
+                    endDate: nextStart - 1,
+                    mode: mode,
+                    totalBalance: totalBalance,
+                    logs: logsToArchive, // 全データ退避
+                    createdAt: Date.now()
+                });
+
+                // 3. logs テーブルから削除
+                const idsToDelete = logsToArchive.map(l => l.id);
+                await db.logs.bulkDelete(idsToDelete);
+                
+                console.log(`[Service] Archived ${logsToArchive.length} logs.`);
+            }
+
+            // 4. 新しい期間開始日を保存
+            localStorage.setItem(APP.STORAGE_KEYS.PERIOD_START, nextStart);
+            
+            return true; // ロールオーバーが発生したことを通知
+        }
+
+        return false;
+    },
+
+    // --- 既存メソッド (変更なし) ---
     saveBeerLog: async (data, id = null) => {
         let name, kcal, abv, carb;
-
         if (data.isCustom) {
             name = data.type === 'dry' ? '蒸留酒 (糖質ゼロ)' : '醸造酒/カクテル';
             abv = data.abv;
@@ -136,7 +291,6 @@ export const Service = {
             name = `${data.style}`;
             if (data.count !== 1) name += ` x${data.count}`;
         }
-
         const logData = {
             timestamp: data.timestamp,
             type: 'beer',
@@ -154,7 +308,6 @@ export const Service = {
             customType: data.isCustom ? data.type : null,
             rawAmount: data.isCustom ? data.ml : null
         };
-
         if (id) {
             await db.logs.update(parseInt(id), logData);
             UI.showMessage('📝 記録を更新しました', 'success');
@@ -170,44 +323,28 @@ export const Service = {
                 window.open(`https://untappd.com/search?q=${query}`, '_blank');
             }
         }
-
-        // ★追加: 過去データの変更によるストリーク再計算
         await Service.recalcImpactedHistory(data.timestamp);
-
         await refreshUI();
     },
 
-    /**
-     * 運動ログの追加・更新
-     */
     saveExerciseLog: async (exerciseKey, minutes, dateVal, applyBonus, id = null) => {
         const profile = Store.getProfile();
         const mets = EXERCISE[exerciseKey] ? EXERCISE[exerciseKey].mets : 3.0;
-        
         const baseBurnKcal = Calc.calculateExerciseBurn(mets, minutes, profile);
         let finalKcal = baseBurnKcal;
         let memo = '';
-        
-        // タイムスタンプ生成
         const ts = dayjs(dateVal).startOf('day').add(12, 'hour').valueOf();
-
-        // ボーナス適用計算
         if (applyBonus) {
             const logs = await db.logs.toArray();
             const checks = await db.checks.toArray();
-            // 指定日時点でのストリークを計算
             const streak = Calc.getCurrentStreak(logs, checks, profile, dayjs(ts));
-            
             const creditInfo = Calc.calculateExerciseCredit(baseBurnKcal, streak);
             finalKcal = creditInfo.kcal;
-            
             if (creditInfo.bonusMultiplier > 1.0) {
                 memo = `Streak Bonus x${creditInfo.bonusMultiplier.toFixed(1)}`;
             }
         }
-
         const label = EXERCISE[exerciseKey] ? EXERCISE[exerciseKey].label : '運動';
-
         const logData = {
             timestamp: ts,
             type: 'exercise',
@@ -218,7 +355,6 @@ export const Service = {
             rawMinutes: minutes,
             memo: memo
         };
-
         if (id) {
             await db.logs.update(parseInt(id), logData);
             UI.showMessage('📝 運動記録を更新しました', 'success');
@@ -228,29 +364,18 @@ export const Service = {
             UI.showMessage(`🏃‍♀️ ${savedMin}分の運動を記録しました！`, 'success');
             UI.showConfetti();
         }
-
-        // ★追加: 運動ログの変更も、その後の整合性に影響する可能性があるため再計算
-        // (例: 運動したことでストリークが繋がった場合など)
         await Service.recalcImpactedHistory(ts);
-
         await refreshUI();
     },
 
-    /**
-     * ログの削除
-     */
     deleteLog: async (id) => {
         if (!confirm('この記録を削除しますか？')) return;
         try {
             const log = await db.logs.get(parseInt(id));
             const ts = log ? log.timestamp : Date.now();
-
             await db.logs.delete(parseInt(id));
             UI.showMessage('削除しました', 'success');
-            
-            // ★追加: 削除による影響再計算
             await Service.recalcImpactedHistory(ts);
-
             await refreshUI();
         } catch (e) {
             console.error(e);
@@ -258,25 +383,17 @@ export const Service = {
         }
     },
 
-    /**
-     * ログの一括削除
-     */
     bulkDeleteLogs: async (ids) => {
         if (!confirm(`${ids.length}件のデータを削除しますか？`)) return;
         try {
-            // 最も古いログの日付を探す（再計算の起点にするため）
             let oldestTs = Date.now();
             for (const id of ids) {
                 const log = await db.logs.get(id);
                 if (log && log.timestamp < oldestTs) oldestTs = log.timestamp;
             }
-
             await db.logs.bulkDelete(ids);
             UI.showMessage(`${ids.length}件削除しました`, 'success');
-            
-            // ★追加: 一括削除による影響再計算
             await Service.recalcImpactedHistory(oldestTs);
-
             await refreshUI();
             UI.toggleSelectAll(); 
         } catch (e) {
@@ -285,16 +402,11 @@ export const Service = {
         }
     },
 
-    /**
-     * デイリーチェックの保存
-     */
     saveDailyCheck: async (formData) => {
         const ts = dayjs(formData.date).startOf('day').add(12, 'hour').valueOf();
-        
         const existing = await db.checks.where('timestamp')
             .between(dayjs(ts).startOf('day').valueOf(), dayjs(ts).endOf('day').valueOf())
             .first();
-
         const data = {
             timestamp: ts,
             isDryDay: formData.isDryDay,
@@ -304,7 +416,6 @@ export const Service = {
             fiberOk: formData.fiberOk,
             weight: formData.weight
         };
-
         if (existing) {
             await db.checks.update(existing.id, data);
             UI.showMessage('✅ デイリーチェックを更新しました', 'success');
@@ -313,33 +424,25 @@ export const Service = {
             UI.showMessage('✅ デイリーチェックを記録しました', 'success');
             UI.showConfetti();
         }
-
         if (formData.weight) {
             localStorage.setItem(APP.STORAGE_KEYS.WEIGHT, formData.weight);
         }
-
-        // ★追加: 休肝日情報の変更はストリークに直結するため再計算
         await Service.recalcImpactedHistory(ts);
-
         await refreshUI();
     },
 
-    /**
-     * UI表示用の全データ取得
-     */
     getAllDataForUI: async () => {
-        const logs = await db.logs.toArray();
+        const periodStart = parseInt(localStorage.getItem(APP.STORAGE_KEYS.PERIOD_START)) || 0;
+        const logs = await db.logs.where('timestamp').aboveOrEqual(periodStart).toArray();
         const checks = await db.checks.toArray();
         return { logs, checks };
     },
 
-    /**
-     * ログリスト用データ取得 (ページネーション)
-     */
     getLogsWithPagination: async (offset, limit) => {
-        const totalCount = await db.logs.count();
+        const periodStart = parseInt(localStorage.getItem(APP.STORAGE_KEYS.PERIOD_START)) || 0;
+        const totalCount = await db.logs.where('timestamp').aboveOrEqual(periodStart).count();
         const logs = await db.logs
-            .orderBy('timestamp')
+            .where('timestamp').aboveOrEqual(periodStart)
             .reverse()
             .offset(offset)
             .limit(limit)

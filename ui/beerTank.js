@@ -21,95 +21,103 @@ export function renderBeerTank(currentBalanceKcal) {
         isHazy 
     } = Calc.getTankDisplayData(currentBalanceKcal, StateManager.beerMode, settings, profile);
 
-    const liquid = DOM.elements['tank-liquid'];
-    const emptyIcon = DOM.elements['tank-empty-icon'];
-    const cansText = DOM.elements['tank-cans'];
-    const minText = DOM.elements['tank-minutes'];
-    const msgContainer = DOM.elements['tank-message'];
+    const liquidFront = DOM.elements['tank-liquid'] || document.getElementById('orb-liquid-front');
+    const liquidBack = DOM.elements['tank-liquid-back'] || document.getElementById('orb-liquid-back');
+    const emptyIcon = DOM.elements['tank-empty-icon'] || document.getElementById('tank-empty-icon');
+    const cansText = DOM.elements['tank-cans'] || document.getElementById('tank-cans');
+    const minText = DOM.elements['tank-minutes'] || document.getElementById('tank-minutes');
+    const msgContainer = DOM.elements['tank-message'] || document.getElementById('tank-message');
+    const orbContainer = document.querySelector('.orb-container'); // Need explicit select
     
-    if (!liquid || !emptyIcon || !cansText || !minText || !msgContainer) return;
+    if (!liquidFront || !liquidBack || !cansText || !minText || !msgContainer) return;
     
-    // メッセージ表示用のpタグを取得（なければ作成）
     let msgText = msgContainer.querySelector('p');
     if (!msgText) {
         msgText = document.createElement('p');
         msgContainer.appendChild(msgText);
     }
-    
-    // ★追加: 提案表示エリアを取得（なければ作成）
-    let suggestionEl = document.getElementById('tank-suggestion');
-    if (!suggestionEl) {
-        suggestionEl = document.createElement('div');
-        suggestionEl.id = 'tank-suggestion';
-        suggestionEl.className = "mt-2 pt-2 border-t border-dashed border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 hidden";
-        msgContainer.appendChild(suggestionEl);
-    }
 
     requestAnimationFrame(() => {
-        liquid.style.background = liquidColor;
-        liquid.style.filter = isHazy ? 'blur(1px) brightness(1.1)' : 'none';
+        // --- Color & Hazy Effect ---
+        liquidFront.style.background = liquidColor;
+        liquidBack.style.background = liquidColor;
+        
+        if (isHazy) {
+            liquidFront.style.filter = 'blur(1px) brightness(1.1)';
+            liquidBack.style.filter = 'blur(2px) brightness(0.9)';
+        } else {
+            liquidFront.style.filter = 'none';
+            liquidBack.style.filter = 'opacity(0.6)';
+        }
+
+        // --- Zen Mode Check (Positive Balance) ---
+        if (orbContainer) {
+            if (currentBalanceKcal >= 0) {
+                orbContainer.classList.add('zen-mode');
+            } else {
+                orbContainer.classList.remove('zen-mode');
+            }
+        }
+
+        let fillRatio = 0;
 
         if (currentBalanceKcal > 0) {
-            // --- 貯金あり ---
-            emptyIcon.style.opacity = '0';
-            let h = (canCount / APP.TANK_MAX_CANS) * 100;
-            liquid.style.height = `${Math.max(5, Math.min(100, h))}%`;
-            cansText.textContent = canCount.toFixed(1);
+            emptyIcon.classList.add('hidden');
+            const rawRatio = (canCount / APP.TANK_MAX_CANS) * 100;
+            fillRatio = Math.max(5, Math.min(100, rawRatio));
+
+            cansText.textContent = `+${canCount.toFixed(1)}`;
+            cansText.className = "text-4xl font-black text-emerald-600 dark:text-emerald-400 drop-shadow-sm";
             
             const safeIcon = escapeHtml(baseExData.icon);
-            minText.innerHTML = `+${Math.round(displayMinutes)} min <span class="text-[10px] font-normal text-gray-400">(${safeIcon})</span>`;
-            minText.className = 'text-sm font-bold text-gray-600 dark:text-gray-300'; // 色を通常に戻す
+            minText.innerHTML = `+${Math.round(displayMinutes)} min <span class="text-[10px] font-normal opacity-70">(${safeIcon})</span>`;
+            minText.className = 'text-sm font-bold text-emerald-600 dark:text-emerald-400';
 
-            // 達成感のあるメッセージ
-            if (canCount < 0.5) { 
-                msgText.textContent = 'まずは0.5本分貯めよう！😐'; 
-                msgText.className = 'text-sm font-bold text-gray-500 dark:text-gray-400'; 
-            } else if (canCount < 1.0) { 
-                msgText.textContent = 'あと少しで1本飲めるよ！🤔'; 
-                msgText.className = 'text-sm font-bold text-orange-500 dark:text-orange-400'; 
-            } else if (canCount < 2.0) { 
-                msgText.textContent = `1本飲めるよ！(${escapeHtml(targetStyle)})🍺`; 
-                msgText.className = 'text-sm font-bold text-green-600 dark:text-green-400'; 
-            } else { 
-                msgText.textContent = '余裕の貯金！最高だね！✨'; 
-                msgText.className = 'text-sm font-bold text-green-800 dark:text-green-300'; 
+            if (canCount < 0.5) {
+                msgText.textContent = 'Good start! Keep going! 👍';
+                msgText.className = 'text-sm font-bold text-emerald-600 dark:text-emerald-400';
+            } else if (canCount < 2.0) {
+                msgText.textContent = 'Great Condition! 🌿';
+                msgText.className = 'text-sm font-bold text-emerald-600 dark:text-emerald-400 animate-pulse';
+            } else {
+                msgText.textContent = 'Perfect! You are GOD! 👼';
+                msgText.className = 'text-sm font-bold text-purple-600 dark:text-purple-400 animate-bounce';
             }
-            
-            // 借金なし時は提案非表示
-            suggestionEl.classList.add('hidden');
 
-        } else {
-            // --- 借金あり (枯渇中) ---
-            liquid.style.height = '0%';
-            emptyIcon.style.opacity = '1';
-            cansText.textContent = "0.0";
-            
+        } else if (currentBalanceKcal < 0) {
+            emptyIcon.classList.remove('hidden');
+            fillRatio = 10; 
+
+            cansText.textContent = canCount.toFixed(1);
+            cansText.className = "text-4xl font-black text-red-500 dark:text-red-400 drop-shadow-sm";
+
             const safeIcon = escapeHtml(baseExData.icon);
-            // 赤字で強調
-            minText.innerHTML = `${Math.round(Math.abs(displayMinutes))} min <span class="text-[10px] font-normal text-red-300">(${safeIcon})</span>`;
+            minText.innerHTML = `${Math.round(Math.abs(displayMinutes))} min <span class="text-[10px] font-normal opacity-70">to burn</span>`;
             minText.className = 'text-sm font-bold text-red-500 dark:text-red-400';
             
             const debtCansVal = Math.abs(canCount);
             if (debtCansVal > 1.5) {
-                const oneCanMin = Calc.convertKcalToMinutes(unitKcal, Store.getBaseExercise(), profile);
-                msgText.textContent = `借金山積み...😱 まずは1杯分 (${oneCanMin}分) だけ返そう！`;
-                msgText.className = 'text-sm font-bold text-orange-500 dark:text-orange-400 animate-pulse';
+                msgText.textContent = 'Heavy Debt... Move now! 😱';
+                msgText.className = 'text-sm font-bold text-red-600 dark:text-red-400 animate-pulse';
             } else {
-                msgText.textContent = `枯渇中... あと${debtCansVal.toFixed(1)}本分動こう😱`;
-                msgText.className = 'text-sm font-bold text-red-500 dark:text-red-400 animate-pulse';
+                msgText.textContent = `Recovery Needed... (${debtCansVal.toFixed(1)} cans) 💦`;
+                msgText.className = 'text-sm font-bold text-orange-500 dark:text-orange-400';
             }
 
-            // ★罪滅ぼし提案を表示
-            const suggestion = Calc.getRedemptionSuggestion(currentBalanceKcal, profile);
-            if (suggestion) {
-                suggestionEl.classList.remove('hidden');
-                suggestionEl.innerHTML = `
-                    <span class="block mb-1 font-bold opacity-70">💡 ヒント: これで完済！</span>
-                    <span class="flex items-center justify-center gap-1 text-indigo-600 dark:text-indigo-400 font-bold">
-                        ${suggestion.icon} ${suggestion.label}なら <span class="text-lg underline">${suggestion.mins}</span> 分
-                    </span>
-                `;
-            }
+        } else {
+            emptyIcon.classList.add('hidden');
+            fillRatio = 50; 
+
+            cansText.textContent = "0.0";
+            cansText.className = "text-4xl font-black text-base-800 dark:text-white drop-shadow-sm";
+            minText.textContent = "Perfect Balance";
+            minText.className = "text-sm font-bold text-gray-400 dark:text-gray-500";
+            msgText.textContent = "Ready for a drink? 🍺";
+            msgText.className = "text-sm font-bold text-gray-400 dark:text-gray-500";
         }
+
+        const topVal = 100 - fillRatio;
+        liquidFront.style.top = `${topVal}%`;
+        liquidBack.style.top = `${topVal + 2}%`; 
     });
 }
