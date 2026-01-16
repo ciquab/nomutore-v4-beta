@@ -1,136 +1,119 @@
-import { APP, CALORIES, BEER_COLORS, STYLE_COLOR_MAP } from '../constants.js';
+import { APP, EXERCISE, BEER_COLORS, STYLE_METADATA } from '../constants.js';
 import { Calc } from '../logic.js';
 import { Store } from '../store.js';
 import { StateManager } from './state.js';
-import { DOM, escapeHtml } from './dom.js';
+import { DOM } from './dom.js';
 
 /**
- * Liquid Orb Rendering Logic
- * デザインガイドライン 1.2 "Logic Inversion" 準拠
- * - 借金 (balance < 0): 液体が増える (Fill)
- * - 貯金 (balance >= 0): 液体が減る/消える (Drain -> Zen Mode)
+ * "Craft & Flow" Orb Renderer
+ * Logic Inversion: 
+ * - 借金 (マイナス) = 液体が増える (Fill)
+ * - 貯金 (プラス) = 液体が減る/空になる (Drain/Clean)
  */
-export function renderOrb(currentBalanceKcal) {
+export function updateOrb(currentBalanceKcal) {
+    const orbFront = DOM.elements['orb-liquid-front'];
+    const orbBack = DOM.elements['orb-liquid-back'];
+    const balanceVal = DOM.elements['balance-val'];
+    const statusText = DOM.elements['status-text'];
+
+    // 要素がなければスキップ（エラー回避）
+    if (!orbFront || !balanceVal) return;
+
     const profile = Store.getProfile();
     const settings = {
         modes: Store.getModes(),
         baseExercise: Store.getBaseExercise()
     };
 
-    // DOM Elements
-    const elements = {
-        liquidFront: document.getElementById('orb-liquid-front'),
-        liquidBack: document.getElementById('orb-liquid-back'),
-        balanceVal: document.getElementById('balance-val'),
-        statusText: document.getElementById('status-text'),
-        redemptionBtn: document.getElementById('btn-redemption'),
-        redemptionText: document.getElementById('redemption-text'),
-        orbContainer: document.querySelector('.fluid-sphere')
-    };
+    // 1. 数値表示の更新
+    balanceVal.textContent = Math.round(currentBalanceKcal);
 
-    if (!elements.liquidFront || !elements.balanceVal) return;
-
-    // 1. Calculate Debt & Capacity
-    // 借金(負の値)を正の数として扱う
-    const debt = currentBalanceKcal < 0 ? Math.abs(currentBalanceKcal) : 0;
-    const isSavings = currentBalanceKcal >= 0;
-
-    // 現在のモード（スタイル）に応じた基準カロリーを取得
-    const currentMode = StateManager.beerMode || 'mode1'; // 'mode1' or 'mode2'
-    const targetStyle = currentMode === 'mode1' ? settings.modes.mode1 : settings.modes.mode2;
-    const unitKcal = CALORIES.STYLES[targetStyle] || 140; 
+    // 2. スタイル情報の取得 (constants.jsと整合)
+    // 現在選択中のモード ("mode1" or "mode2") に対応するビールスタイル名を取得
+    const currentStyleName = StateManager.beerMode === 'mode1' ? settings.modes.mode1 : settings.modes.mode2;
     
-    const maxCapacityKcal = unitKcal * APP.TANK_MAX_CANS; 
+    // メタデータから色キーを取得 (例: "Hazy IPA" -> "hazy")
+    // 定義がない場合はデフォルトで 'gold' (ピルスナー色)
+    const styleMeta = STYLE_METADATA[currentStyleName] || { color: 'gold' };
+    const colorKey = styleMeta.color;
     
-    // 液体充填率
-    let fillRatio = Math.min(debt / maxCapacityKcal, 1.0);
-    if (debt > 0 && fillRatio < 0.05) fillRatio = 0.05; 
+    // グラデーション定義を取得
+    let liquidGradient = BEER_COLORS[colorKey] || BEER_COLORS['gold'];
 
-    // 2. Liquid Animation
-    // Debt Mode: 100% (Empty) -> 0% (Full)
-    // Savings Mode: 110% (Completely Empty/Hidden)
-    const topPos = isSavings ? 110 : Math.round((1 - fillRatio) * 100);
-    
-    // スタイルに応じた液色の取得
-    const colorKey = STYLE_COLOR_MAP[targetStyle] || 'gold';
-    const liquidStyle = BEER_COLORS[colorKey] || BEER_COLORS['gold'];
+    // Hazy判定 (名前による判定は維持しつつ、メタデータ優先)
+    const lowerName = currentStyleName.toLowerCase();
+    const isHazy = lowerName.includes('hazy') || lowerName.includes('wheat') || lowerName.includes('weizen');
 
-    requestAnimationFrame(() => {
-        // --- 液体制御 ---
-        elements.liquidFront.style.top = `${topPos}%`;
-        elements.liquidBack.style.top = `${topPos}%`;
-        elements.liquidFront.style.background = liquidStyle;
+    // 3. 水位と状態メッセージの計算
+    const MAX_DEBT_CAP = 700; // 満タンになる借金量 (kcal)
+    let fillPercentage = 0;
+    let statusMsg = "";
+    let statusClass = "";
+
+    if (currentBalanceKcal < 0) {
+        // --- 借金あり (液体充填) ---
+        const debt = Math.abs(currentBalanceKcal);
         
-        // --- 数値表示 ---
-        const sign = currentBalanceKcal > 0 ? '+' : '';
-        elements.balanceVal.textContent = `${sign}${Math.round(currentBalanceKcal)}`;
-        
-        elements.balanceVal.className = `text-5xl font-black tracking-tighter transition-colors ${
-            isSavings ? 'text-emerald-500 dark:text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'text-gray-800 dark:text-white'
-        }`;
+        // 借金が多いほど満たされる (上限100%)
+        // 視認性のため、わずかでも借金があれば最低15%は表示
+        fillPercentage = Math.min(100, Math.max(15, (debt / MAX_DEBT_CAP) * 100));
 
-        // --- ステータス & Zen Mode Effect ---
-        const orbWrapper = elements.orbContainer;
+        const baseExData = EXERCISE[settings.baseExercise] || EXERCISE['stepper'];
+        const debtMins = Calc.convertKcalToMinutes(debt, settings.baseExercise, profile);
 
-        if (isSavings) {
-            // Zen Mode (Purified)
-            elements.statusText.textContent = "Zen Mode 🧘";
-            elements.statusText.className = "text-xs font-semibold text-emerald-500 animate-pulse";
-            
-            // Orb Glow Effect
-            // Tailwindのクラス操作で光彩効果を追加
-            if (orbWrapper) {
-                // 既存の影を上書きするような強いGlow
-                orbWrapper.classList.add('shadow-[0_0_50px_rgba(16,185,129,0.3)]', 'brightness-110');
-                
-                // 背景にパーティクル演出用クラスを追加 (CSS側で対応が必要だが、ここではJSで簡易対応)
-                if (!document.getElementById('zen-particles')) {
-                    const particles = document.createElement('div');
-                    particles.id = 'zen-particles';
-                    particles.className = "absolute inset-0 z-0 pointer-events-none";
-                    // 簡易的な光の粒
-                    particles.innerHTML = `
-                        <div class="absolute top-1/4 left-1/4 w-2 h-2 bg-emerald-400 rounded-full blur-[1px] animate-[ping_3s_infinite]"></div>
-                        <div class="absolute top-3/4 right-1/4 w-1 h-1 bg-white rounded-full blur-[0px] animate-[ping_4s_infinite_1s]"></div>
-                    `;
-                    orbWrapper.appendChild(particles);
-                }
-            }
-
-            // 提案ボタン
-            if (elements.redemptionText) elements.redemptionText.textContent = "Maintain this flow!";
-            if (elements.redemptionBtn) {
-                const iconContainer = elements.redemptionBtn.querySelector('div.rounded-full');
-                if (iconContainer) iconContainer.className = "w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-500";
-            }
-
+        if (debt > 500) {
+            statusMsg = `Warning: ${debtMins} min debt`;
+            statusClass = "text-red-500 animate-pulse";
+            // 警告時は少し赤みを混ぜても良いが、今回はビール色を尊重
         } else {
-            // Debt Mode
-            const debtCans = (debt / unitKcal).toFixed(1);
-            elements.statusText.textContent = `${targetStyle} ${debtCans}杯分`;
-            elements.statusText.className = "text-xs font-semibold text-accent";
+            statusMsg = `Recovery: ${debtMins} min (${baseExData.label})`;
+            statusClass = "text-accent"; // Amber color
+        }
 
-            // Remove Zen Effects
-            if (orbWrapper) {
-                orbWrapper.classList.remove('shadow-[0_0_50px_rgba(16,185,129,0.3)]', 'brightness-110');
-                const p = document.getElementById('zen-particles');
-                if (p) p.remove();
-            }
+    } else {
+        // --- 貯金あり (クリーン/空) ---
+        fillPercentage = 0;
+        
+        // 貯金時は「回復の泉」としてエメラルド色に変更 (guideline: Recovery Color)
+        liquidGradient = "linear-gradient(135deg, #10b981, #34d399)"; 
+        
+        const creditMins = Calc.convertKcalToMinutes(currentBalanceKcal, settings.baseExercise, profile);
+        
+        if (currentBalanceKcal === 0) {
+            statusMsg = "Balanced";
+            statusClass = "text-gray-400";
+        } else {
+            statusMsg = `Savings: +${creditMins} min`;
+            statusClass = "text-recovery font-bold";
+        }
+    }
 
-            // 罪滅ぼし提案
-            const suggestion = Calc.getRedemptionSuggestion(currentBalanceKcal, profile);
-            if (suggestion && elements.redemptionText) {
-                elements.redemptionText.textContent = `${suggestion.label} ${suggestion.mins} min`;
-                
-                if (elements.redemptionBtn) {
-                    const iconEl = elements.redemptionBtn.querySelector('i');
-                    if (iconEl) {
-                        iconEl.className = "ph-fill ph-sneaker-move text-xl"; 
-                    }
-                    const iconContainer = elements.redemptionBtn.querySelector('div.rounded-full');
-                    if (iconContainer) iconContainer.className = "w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500";
-                }
-            }
+    // 4. DOMへの反映 (アニメーション)
+    requestAnimationFrame(() => {
+        // CSSの top は 100% が底、0% が天井
+        const topValue = 100 - fillPercentage;
+        
+        orbFront.style.top = `${topValue}%`;
+        orbBack.style.top = `${topValue}%`;
+        
+        // 液色の適用
+        orbFront.style.background = liquidGradient;
+        orbBack.style.background = liquidGradient; 
+        
+        // Back wave は少し透明度を下げて奥行きを出す
+        orbBack.style.opacity = '0.6';
+
+        // 濁り表現
+        if (isHazy && currentBalanceKcal < 0) {
+            orbFront.style.filter = 'blur(1px) brightness(1.1)';
+        } else {
+            orbFront.style.filter = 'none';
+        }
+
+        // テキスト更新
+        if (statusText) {
+            statusText.textContent = statusMsg;
+            statusText.className = `text-xl font-bold drop-shadow-sm transition-colors duration-300 ${statusClass}`;
         }
     });
 }

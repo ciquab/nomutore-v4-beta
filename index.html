@@ -1,33 +1,26 @@
 <!DOCTYPE html>
 <html lang="ja" class="dark">
 <head>
+    <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Nomutore v4 - Craft & Flow</title>
     
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#f59e0b">
+    <meta name="theme-color" content="#0f172a">
     <link rel="apple-touch-icon" href="icon-192.png">
 
-    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
     
-    <!-- Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <!-- IndexedDB (Dexie) -->
     <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.js"></script>
 
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="style.css">
 
     <script>
+        // Tailwind Configuration
         tailwind.config = {
             darkMode: 'class',
             theme: {
@@ -39,402 +32,664 @@
                         base: {
                             50: '#f9fafb',
                             100: '#f3f4f6',
-                            200: '#e5e7eb',
-                            900: '#0f0f13', 
-                            800: '#18181b', 
-                            700: '#27272a',
+                            800: '#1f2937',
+                            900: '#0f172a',
                         },
-                        accent: {
-                            DEFAULT: '#f59e0b', // Amber
-                            hover: '#d97706',
-                            light: '#fbbf24',
-                            glow: 'rgba(245, 158, 11, 0.5)',
-                        },
-                        recovery: {
-                            DEFAULT: '#10b981', // Emerald
-                            hover: '#059669',
-                            glow: 'rgba(16, 185, 129, 0.4)',
-                        },
-                        text: {
-                            dark: '#111827',
-                            light: '#fafafa',
-                            muted: '#9ca3af',
-                            mutedDark: '#6b7280',
-                        }
+                        accent: '#f59e0b',   // Amber
+                        recovery: '#10b981', // Emerald
+                        brand: { DEFAULT: '#4F46E5' }
                     },
                     animation: {
-                        'float': 'float 6s ease-in-out infinite',
-                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'wave-rotate': 'wave-rotate 8s linear infinite',
+                        'blob': 'blob 7s infinite',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'fadeIn': 'fadeIn 0.3s ease-in-out',
                     },
                     keyframes: {
-                        float: {
-                            '0%, 100%': { transform: 'translateY(0)' },
-                            '50%': { transform: 'translateY(-10px)' },
+                        // wave-rotateはstyle.cssに移動しましたが、Tailwindの設定としても残しておくと
+                        // クラス名(animate-wave-rotate)で呼び出しやすいため維持します
+                        'wave-rotate': {
+                            '0%': { transform: 'rotate(0deg)' },
+                            '100%': { transform: 'rotate(360deg)' },
+                        },
+                        blob: {
+                            "0%": { transform: "translate(0px, 0px) scale(1)" },
+                            "33%": { transform: "translate(30px, -50px) scale(1.1)" },
+                            "66%": { transform: "translate(-20px, 20px) scale(0.9)" },
+                            "100%": { transform: "translate(0px, 0px) scale(1)" }
+                        },
+                        fadeIn: {
+                            "0%": { opacity: 0, transform: "translateY(5px)" },
+                            "100%": { opacity: 1, transform: "translateY(0)" }
                         }
                     }
                 }
             }
         }
     </script>
-</head>
-<body class="font-sans antialiased pb-24 transition-colors duration-300">
+    
+    </head>
+<body class="h-full w-full relative text-slate-200">
 
-    <!-- Global Header -->
-    <header class="fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center glass-nav border-b-0 bg-opacity-0">
-        <div class="flex flex-col">
-            <span class="text-xs font-bold text-accent tracking-widest uppercase">Weekly Period</span>
-            <div class="flex items-center gap-2">
-                <span id="header-period-label" class="text-sm font-semibold text-text-mutedDark dark:text-text-muted transition-colors">Loading...</span>
-                <span id="header-day-label" class="bg-base-200 dark:bg-base-700 text-[10px] px-1.5 py-0.5 rounded text-gray-500 dark:text-gray-400 transition-colors">Day --</span>
-            </div>
-        </div>
-        <div class="flex gap-4">
-            <button id="btn-notifications" class="text-text-mutedDark dark:text-text-muted hover:text-black dark:hover:text-white transition">
-                <i class="ph ph-bell text-2xl"></i>
-            </button>
-            <button id="btn-open-settings" onclick="openSettings()" class="text-text-mutedDark dark:text-text-muted hover:text-black dark:hover:text-white transition">
-                <i class="ph ph-gear text-2xl"></i>
-            </button>
-        </div>
-    </header>
+    <div class="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <div class="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-900/30 rounded-full mix-blend-screen filter blur-3xl opacity-50 animate-blob"></div>
+        <div class="absolute top-[20%] right-[-10%] w-[400px] h-[400px] bg-accent/20 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+    </div>
 
-    <!-- Main Content Area -->
-    <main id="app-container" class="pt-24 px-4 container mx-auto max-w-md">
+    <div id="app-content" class="relative z-10 h-full overflow-y-auto pb-32">
         
-        <!-- Tab: Dashboard -->
-        <section id="tab-home" class="fade-in">
+        <div id="tab-home" class="tab-content block min-h-screen px-4 pt-6">
             
-            <!-- Hero: Condition Orb -->
-            <div class="relative mb-10 mt-4">
-                <div class="fluid-sphere animate-float">
-                    
-                    <!-- 1. Mask Container -->
-                    <div class="absolute inset-0 rounded-full overflow-hidden z-10 isolate">
-                        <div class="fluid-bg"></div>
-                        
-                        <!-- 2. Double Wave Liquid -->
-                        <!-- Back Wave -->
-                        <div id="orb-liquid-back" class="fluid-liquid fluid-liquid-back"></div>
-                        <!-- Front Wave -->
-                        <div id="orb-liquid-front" class="fluid-liquid fluid-liquid-front"></div>
-                    </div>
-                    
-                    <!-- 3. Rings -->
-                    <div class="status-ring"></div>
-                    <div class="status-progress" style="transform: rotate(45deg);"></div>
+            <header class="flex justify-between items-center mb-8">
+                <div>
+                    <h1 class="text-xs font-bold tracking-widest text-slate-400 uppercase">Current Status</h1>
+                    <div id="status-text" class="text-xl font-bold text-accent drop-shadow-sm">Checking...</div>
+                </div>
+                <button onclick="UI.openSettings()" class="p-2 rounded-full glass-panel hover:bg-white/10 transition text-slate-300">
+                    <i class="ph ph-gear text-xl"></i>
+                </button>
+            </header>
 
-                    <!-- 4. Inner Content (Text) -->
-                    <div class="absolute inset-0 flex flex-col items-center justify-center z-30 text-center pointer-events-none drop-shadow-md">
-                        <span class="text-xs font-bold text-gray-500 dark:text-white/60 tracking-widest mb-1 transition-colors">BALANCE</span>
-                        <div class="flex items-baseline gap-1">
-                            <span class="text-5xl font-black text-gray-800 dark:text-white tracking-tighter transition-colors" id="balance-val">---</span>
-                            <span class="text-sm font-bold text-gray-500 dark:text-white/60 transition-colors">kcal</span>
-                        </div>
-                        <div class="mt-2 px-3 py-1 rounded-full bg-white/60 dark:bg-black/40 backdrop-blur-sm border border-black/5 dark:border-white/10 flex items-center gap-1.5 transition-colors">
-                            <div class="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
-                            <span class="text-xs font-semibold text-accent" id="status-text">Loading...</span>
+            <div class="relative w-full flex justify-center py-4 mb-8">
+                <div class="relative w-64 h-64">
+                    <div class="absolute inset-0 rounded-full glass-panel z-20 shadow-[0_0_40px_rgba(245,158,11,0.2)]"></div>
+                    
+                    <div class="absolute inset-2 rounded-full overflow-hidden z-10 fluid-sphere bg-slate-900/50 isolate">
+                        <div id="orb-liquid-back" class="fluid-wave bg-accent/60" style="top: 100%;"></div>
+                        <div id="orb-liquid-front" class="fluid-wave bg-gradient-to-tr from-accent to-yellow-400" style="top: 100%;"></div>
+                    </div>
+
+                    <div class="absolute inset-0 z-30 flex flex-col items-center justify-center pointer-events-none">
+                        <span class="text-xs font-bold tracking-widest text-white/60 mb-1">BALANCE</span>
+                        <div class="flex items-baseline gap-1 text-shadow">
+                            <span id="balance-val" class="text-5xl font-w_800 text-white tracking-tighter">0</span>
+                            <span class="text-sm font-medium text-white/80">kcal</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- 5. Recovery Proposal (Dynamic) -->
-                <div class="absolute -bottom-4 left-1/2 transform -translate-x-1/2 w-full max-w-[80%] z-40">
-                    <button id="btn-redemption" class="w-full glass-panel rounded-xl p-3 flex items-center justify-between group hover:bg-base-100 dark:hover:bg-base-700/80 transition border-accent/30 shadow-lg shadow-accent/10">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-recovery/10 flex items-center justify-center text-recovery">
-                                <i class="ph-fill ph-sneaker-move text-xl"></i>
-                            </div>
-                            <div class="text-left">
-                                <p class="text-xs text-text-mutedDark dark:text-text-muted font-bold transition-colors">Recommended</p>
-                                <p id="redemption-text" class="text-sm font-bold text-text-dark dark:text-white transition-colors">Perfect Condition</p>
-                            </div>
-                        </div>
-                        <div class="w-8 h-8 rounded-full bg-base-100 dark:bg-base-800 flex items-center justify-center group-hover:bg-recovery group-hover:text-black transition-colors">
-                            <i class="ph-bold ph-arrow-right"></i>
-                        </div>
+                <div class="absolute -bottom-4 z-40">
+                     <button id="action-trigger" class="flex items-center gap-2 px-6 py-3 rounded-full glass-panel text-white font-bold shadow-lg shadow-accent/20 border border-accent/30 hover:scale-105 active:scale-95 transition-all group">
+                        <i class="ph ph-plus text-xl text-accent group-hover:rotate-90 transition-transform"></i>
+                        <span>Record</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Stats Grid -->
-            <div class="grid grid-cols-2 gap-3 mb-6 mt-12">
-                <!-- Rank Card -->
-                <div class="glass-panel rounded-2xl p-4 relative overflow-hidden group">
-                    <div class="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition">
-                        <i class="ph-fill ph-trophy text-4xl text-purple-400"></i>
+            <div class="space-y-4">
+                 <div id="liver-rank-card" class="glass-panel rounded-2xl p-4 hidden">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 id="rank-title" class="font-bold text-lg">Liver Rank</h3>
+                        <span id="dry-count" class="text-xs bg-white/10 px-2 py-1 rounded">0 Days</span>
                     </div>
-                    <p class="text-xs font-bold text-text-mutedDark dark:text-text-muted mb-1 transition-colors">LIVER RANK</p>
-                    <div class="flex items-end gap-2 mb-2">
-                        <span id="rank-value" class="text-2xl font-black text-purple-500 dark:text-purple-400">-</span>
-                        <span id="rank-label" class="text-xs text-text-mutedDark dark:text-white/60 mb-1 transition-colors">---</span>
+                    <div class="w-full bg-slate-700/50 rounded-full h-2 mb-2 overflow-hidden">
+                        <div id="rank-progress" class="bg-accent h-full rounded-full" style="width: 0%"></div>
                     </div>
-                    <div class="w-full h-1 bg-base-200 dark:bg-base-700 rounded-full overflow-hidden transition-colors">
-                        <div id="rank-progress-bar" class="h-full bg-purple-500 w-[0%]"></div>
-                    </div>
-                    <p id="rank-next-text" class="text-[10px] text-text-mutedDark dark:text-text-muted mt-2 text-right transition-colors">---</p>
+                    <p id="rank-next-msg" class="text-xs text-slate-400 text-right">Loading...</p>
                 </div>
 
-                <!-- Streak Card -->
-                <div class="glass-panel rounded-2xl p-4 relative overflow-hidden group">
-                    <div class="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition">
-                        <i class="ph-fill ph-fire text-4xl text-orange-500"></i>
+                <div id="check-status" class="mb-4"></div>
+
+                <div class="glass-panel rounded-2xl p-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-sm font-bold text-slate-300">Weekly Rhythm</h2>
+                        <span id="streak-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-700">Streak</span>
                     </div>
-                    <p class="text-xs font-bold text-text-mutedDark dark:text-text-muted mb-1 transition-colors">STREAK</p>
-                    <div class="flex items-end gap-2 mb-1">
-                        <span id="streak-value" class="text-2xl font-black text-orange-500">-</span>
-                        <span class="text-xs text-text-mutedDark dark:text-white/60 mb-1 transition-colors">Days</span>
-                    </div>
-                    <div class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-orange-500/10 dark:bg-orange-500/20 border border-orange-500/30">
-                        <i class="ph-bold ph-trend-up text-[10px] text-orange-500 dark:text-orange-400"></i>
-                        <span id="streak-bonus-text" class="text-[10px] font-bold text-orange-500 dark:text-orange-400">x1.0 Bonus</span>
+                    <div id="weekly-calendar" class="grid grid-cols-7 gap-2 text-center text-xs text-slate-500 mb-2">
+                        </div>
+                    <div class="text-center mt-2">
+                        <span id="streak-count" class="text-2xl font-w_800 text-white">0</span>
+                        <span class="text-xs text-slate-400">Day Streak</span>
                     </div>
                 </div>
-            </div>
-
-            <!-- Weekly Rhythm -->
-            <div class="mb-24">
-                <div class="flex justify-between items-center mb-3 px-1">
-                    <h3 class="text-sm font-bold text-text-dark dark:text-white transition-colors">Weekly Rhythm</h3>
-                    <button class="text-xs text-text-mutedDark dark:text-text-muted hover:text-black dark:hover:text-white transition-colors">View History</button>
-                </div>
-                <div id="weekly-rhythm-container" class="glass-panel rounded-2xl p-4 flex justify-between items-center">
-                    <!-- Injected by JS -->
-                    <span class="text-xs text-gray-500">Loading...</span>
-                </div>
-            </div>
-
-        </section>
-
-        <!-- Tab: Cellar (History) -->
-        <section id="tab-cellar" class="hidden fade-in pb-24">
-            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
-                <span class="text-accent">My Cellar</span>
-                <span id="cellar-total-count" class="text-xs bg-base-200 dark:bg-base-800 text-text-mutedDark dark:text-text-muted px-2 py-1 rounded border border-base-300 dark:border-base-700 transition-colors">-- Logs</span>
-            </h2>
-            
-            <!-- Segmented Control for Subviews -->
-            <div class="flex gap-2 mb-6 overflow-x-auto no-scrollbar pb-2" id="cellar-view-selector">
-                <button data-view="logs" class="px-4 py-2 rounded-full bg-accent text-black font-bold text-xs whitespace-nowrap shadow-md shadow-accent/20">Logs</button>
-                <button data-view="beers" class="px-4 py-2 rounded-full bg-white dark:bg-base-800 border border-base-200 dark:border-base-700 text-text-mutedDark dark:text-text-muted font-bold text-xs whitespace-nowrap transition-colors">Beers</button>
-                <button data-view="archives" class="px-4 py-2 rounded-full bg-white dark:bg-base-800 border border-base-200 dark:border-base-700 text-text-mutedDark dark:text-text-muted font-bold text-xs whitespace-nowrap transition-colors">Archives</button>
-            </div>
-
-            <!-- Subview: Logs -->
-            <div id="cellar-subview-logs" class="cellar-subview">
-                <div id="log-list" class="space-y-3">
-                    <!-- Injected by JS -->
+                
+                <div id="chart-container" class="glass-panel rounded-2xl p-4">
+                    <div class="flex justify-between items-center mb-4">
+                         <h2 class="text-sm font-bold text-slate-300">Balance History</h2>
+                         <div class="flex gap-1 bg-slate-800 p-0.5 rounded-lg" id="chart-filters">
+                            <button data-range="1w" class="px-2 py-1 text-[10px] font-bold rounded hover:bg-slate-700">1W</button>
+                            <button data-range="1m" class="px-2 py-1 text-[10px] font-bold rounded hover:bg-slate-700">1M</button>
+                        </div>
+                    </div>
+                    <div class="relative h-48 w-full">
+                        <canvas id="balanceChart"></canvas>
+                    </div>
                 </div>
             </div>
             
-            <!-- Subview: Beers (Mock) -->
-            <div id="cellar-subview-beers" class="cellar-subview hidden">
-                <div class="grid grid-cols-2 gap-3" id="cellar-grid">
-                    <!-- Injected by JS -->
+            <div class="h-20"></div></div>
+
+        <div id="tab-cellar" class="tab-content hidden min-h-screen px-4 pt-6">
+            <header class="mb-6 flex justify-between items-end">
+                <div>
+                    <h1 class="text-2xl font-w_800 text-white">Cellar</h1>
+                    <p class="text-sm text-slate-400">History & Logs</p>
                 </div>
-            </div>
-
-            <!-- Subview: Archives (Mock) -->
-            <div id="cellar-subview-archives" class="cellar-subview hidden">
-                <div id="archive-list" class="space-y-3">
-                    <!-- Injected by JS -->
+                <div class="flex gap-2">
+                     <button id="btn-toggle-edit-mode" class="text-xs bg-slate-800 px-3 py-1.5 rounded-lg text-slate-300">編集</button>
+                     <button id="btn-select-all" class="hidden text-xs bg-slate-700 px-3 py-1.5 rounded-lg text-white">全選択</button>
                 </div>
+            </header>
+            
+            <div id="log-list" class="space-y-3 pb-32">
+                <div class="text-center text-slate-500 mt-10">Loading history...</div>
             </div>
-        </section>
-
-    </main>
-
-    <!-- Floating Action Dock -->
-    <div class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-sm px-4">
-        <div class="glass-nav rounded-2xl p-2 flex justify-between items-center shadow-2xl border border-white/20 dark:border-white/10">
-            <button onclick="switchTab('home')" id="nav-home" class="flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition text-accent"><i class="ph-fill ph-house text-2xl"></i><span class="text-[10px] font-bold">Home</span></button>
-            <div class="relative -top-6">
-                <button onclick="openMenu()" class="w-16 h-16 rounded-full bg-gradient-to-tr from-accent to-yellow-400 text-black shadow-[0_4px_20px_rgba(245,158,11,0.5)] flex items-center justify-center transform transition hover:scale-105 active:scale-95 border-4 border-white dark:border-base-900"><i class="ph-bold ph-plus text-3xl"></i></button>
+            
+            <div id="bulk-action-bar" class="hidden fixed bottom-24 left-4 right-4 z-50">
+                 <button id="btn-bulk-delete" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2">
+                    <i class="ph ph-trash"></i> 削除 (<span id="bulk-selected-count">0</span>)
+                 </button>
             </div>
-            <button onclick="switchTab('cellar')" id="nav-cellar" class="flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition text-text-mutedDark dark:text-text-muted hover:text-black dark:hover:text-white"><i class="ph-bold ph-books text-2xl"></i><span class="text-[10px] font-bold">Cellar</span></button>
+        </div>
+
+    </div>
+
+    <nav class="fixed bottom-6 left-4 right-4 h-16 glass-nav rounded-2xl z-50 flex justify-around items-center px-2 shadow-2xl shadow-black/50">
+        <button id="nav-home" onclick="UI.switchTab('home')" class="flex-1 flex flex-col items-center justify-center text-accent active:scale-90 transition">
+            <i class="ph ph-house-line text-2xl mb-0.5"></i>
+        </button>
+        
+        <div class="w-12"></div> <button id="nav-cellar" onclick="UI.switchTab('cellar')" class="flex-1 flex flex-col items-center justify-center text-slate-500 hover:text-slate-300 active:scale-90 transition">
+            <i class="ph ph-clock-counter-clockwise text-2xl mb-0.5"></i>
+        </button>
+    </nav>
+
+
+    <div id="global-error-overlay" class="hidden fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-red-500/50 p-6 rounded-2xl max-w-sm w-full text-center">
+            <div class="text-4xl mb-4">⚠️</div>
+            <h3 class="text-xl font-bold text-white mb-2">System Error</h3>
+            <p id="global-error-message" class="text-gray-300 mb-6 text-sm">Unknown Error</p>
+            <button onclick="location.reload()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition w-full">Reload App</button>
         </div>
     </div>
 
-    <!-- Record Menu Modal -->
-    <div id="record-menu" class="fixed inset-0 z-[60] bg-black/60 dark:bg-black/90 backdrop-blur-md hidden opacity-0 transition-opacity duration-300 flex items-end justify-center pb-24">
-        <button onclick="closeMenu()" class="absolute top-6 right-6 text-white/70 hover:text-white p-2"><i class="ph ph-x text-3xl"></i></button>
-        <div class="w-full max-w-sm px-6 grid gap-4 transform translate-y-10 transition duration-300" id="menu-items">
-            <div class="text-center mb-4"><span class="text-xs font-bold text-white/80 tracking-widest uppercase">Select Action</span></div>
-            <button onclick="openLogModal('beer')" class="glass-panel p-4 rounded-2xl flex items-center gap-4 group hover:bg-accent/10 transition border-l-4 border-transparent hover:border-accent bg-base-900/80 dark:bg-base-800/80">
-                <div class="w-12 h-12 rounded-full bg-accent/20 text-accent flex items-center justify-center text-2xl group-hover:scale-110 transition">🍺</div>
-                <div class="text-left flex-1"><h3 class="font-bold text-white text-lg group-hover:text-accent transition">Drink Beer</h3><p class="text-xs text-text-muted">Record debt & add to cellar</p></div><i class="ph-bold ph-caret-right text-white/30"></i>
+    <div id="record-menu" class="hidden fixed inset-0 z-[60] bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center transition-opacity opacity-0">
+        <button id="close-record-menu" class="absolute top-8 right-8 text-white/50 hover:text-white p-2">
+            <i class="ph ph-x text-3xl"></i>
+        </button>
+        
+        <div class="grid grid-cols-2 gap-4 w-full max-w-xs px-4" id="menu-items">
+            <button onclick="UI.openBeerModal(); document.getElementById('record-menu').classList.add('hidden');" 
+                class="aspect-square glass-panel rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-white/10 transition group">
+                <i class="ph ph-beer-bottle text-4xl text-amber-400 group-hover:scale-110 transition-transform"></i>
+                <span class="font-bold text-lg text-white">Drink</span>
             </button>
-            <button onclick="openLogModal('exercise')" class="glass-panel p-4 rounded-2xl flex items-center gap-4 group hover:bg-recovery/10 transition border-l-4 border-transparent hover:border-recovery bg-base-900/80 dark:bg-base-800/80">
-                <div class="w-12 h-12 rounded-full bg-recovery/20 text-recovery flex items-center justify-center text-2xl group-hover:scale-110 transition">🏃‍♀️</div>
-                <div class="text-left flex-1"><h3 class="font-bold text-white text-lg group-hover:text-recovery transition">Exercise</h3><p class="text-xs text-text-muted">Pay back debt & recover</p></div><i class="ph-bold ph-caret-right text-white/30"></i>
+            
+            <button onclick="UI.openManualInput(); document.getElementById('record-menu').classList.add('hidden');" 
+                class="aspect-square glass-panel rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-white/10 transition group">
+                <i class="ph ph-sneaker text-4xl text-cyan-400 group-hover:scale-110 transition-transform"></i>
+                <span class="font-bold text-lg text-white">Move</span>
             </button>
-            <button onclick="openLogModal('check')" class="glass-panel p-4 rounded-2xl flex items-center gap-4 group hover:bg-purple-500/10 transition border-l-4 border-transparent hover:border-purple-500 bg-base-900/80 dark:bg-base-800/80">
-                <div class="w-12 h-12 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center text-2xl group-hover:scale-110 transition">🌿</div>
-                <div class="text-left flex-1"><h3 class="font-bold text-white text-lg group-hover:text-purple-400 transition">Conditioning</h3><p class="text-xs text-text-muted">Daily check & habits</p></div><i class="ph-bold ph-caret-right text-white/30"></i>
+            
+            <button onclick="UI.openCheckModal(); document.getElementById('record-menu').classList.add('hidden');" 
+                class="aspect-square glass-panel rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-white/10 transition group">
+                <i class="ph ph-clipboard-text text-4xl text-emerald-400 group-hover:scale-110 transition-transform"></i>
+                <span class="font-bold text-lg text-white">Check</span>
+            </button>
+
+            <button onclick="UI.openCheckModal(); document.getElementById('record-menu').classList.add('hidden');" 
+                class="aspect-square glass-panel rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-white/10 transition group">
+                <i class="ph ph-scales text-4xl text-purple-400 group-hover:scale-110 transition-transform"></i>
+                <span class="font-bold text-lg text-white">Body</span>
             </button>
         </div>
     </div>
 
-    <!-- Beer Modal -->
-    <div id="beer-modal" class="fixed inset-0 z-[70] bg-black/60 dark:bg-black/90 backdrop-blur-md hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="w-full max-w-sm glass-panel rounded-3xl p-6 transform scale-95 transition duration-300 bg-white dark:bg-base-800 flex flex-col max-h-[90vh]">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-text-dark dark:text-white">Record Beer</h3>
-                <button onclick="toggleModal('beer-modal', false)" class="text-text-mutedDark dark:text-text-muted hover:text-black dark:hover:text-white"><i class="ph ph-x text-2xl"></i></button>
+    <div id="beer-modal" class="modal hidden fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-md h-[90vh] sm:h-auto sm:max-h-[85vh] sm:rounded-3xl rounded-t-3xl shadow-2xl flex flex-col overflow-hidden transition-transform transform translate-y-0">
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-slate-800 shrink-0">
+                <h2 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                    <span class="text-2xl">🍺</span> 飲酒記録
+                </h2>
+                <button class="modal-close p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                    <i class="ph ph-x text-lg"></i>
+                </button>
             </div>
-            <div class="flex p-1 bg-base-100 dark:bg-base-900 rounded-xl mb-4">
-                <button id="tab-beer-preset" class="flex-1 py-2 rounded-lg text-xs font-bold transition bg-white dark:bg-base-700 shadow text-accent">Preset</button>
-                <button id="tab-beer-custom" class="flex-1 py-2 rounded-lg text-xs font-bold transition text-text-mutedDark dark:text-text-muted">Custom</button>
-            </div>
-            <form id="beer-form" class="flex-1 overflow-y-auto no-scrollbar space-y-4">
-                <div id="beer-view-preset" class="space-y-4">
+            
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50 dark:bg-slate-900/50">
+                <form id="beer-form" class="space-y-6">
                     <div>
-                        <label class="block text-xs font-bold text-text-mutedDark dark:text-text-muted mb-1.5 uppercase tracking-wide">Style</label>
-                        <div class="relative"><select id="beer-select" class="w-full appearance-none bg-base-50 dark:bg-base-700 border border-base-200 dark:border-base-600 text-text-dark dark:text-white rounded-xl py-3 px-4 pr-8 font-bold focus:ring-2 focus:ring-accent outline-none"></select><i class="ph-bold ph-caret-down absolute right-3 top-3.5 text-text-mutedDark dark:text-text-muted"></i></div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">日時</label>
+                        <input type="datetime-local" id="beer-date" class="w-full bg-white dark:bg-slate-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 text-base outline-none dark:text-white">
                     </div>
-                </div>
-                <div id="beer-view-custom" class="hidden space-y-4">
-                     <div><label class="block text-xs font-bold text-text-mutedDark dark:text-text-muted mb-1.5 uppercase tracking-wide">Brand</label><input type="text" id="beer-brand" class="w-full p-3 bg-base-50 dark:bg-base-700 border border-base-200 dark:border-base-600 rounded-xl focus:ring-2 focus:ring-accent outline-none text-text-dark dark:text-white font-bold"></div>
-                     <div><label class="block text-xs font-bold text-text-mutedDark dark:text-text-muted mb-1.5 uppercase tracking-wide">Brewery</label><input type="text" id="beer-brewery" class="w-full p-3 bg-base-50 dark:bg-base-700 border border-base-200 dark:border-base-600 rounded-xl focus:ring-2 focus:ring-accent outline-none text-text-dark dark:text-white font-bold"></div>
-                     <div class="grid grid-cols-2 gap-3">
-                        <div><label class="block text-xs font-bold text-text-mutedDark dark:text-text-muted mb-1.5 uppercase tracking-wide">ABV</label><input type="number" id="custom-abv" step="0.1" class="w-full p-3 bg-base-50 dark:bg-base-700 border border-base-200 dark:border-base-600 rounded-xl focus:ring-2 focus:ring-accent outline-none text-text-dark dark:text-white font-bold"></div>
-                        <div><label class="block text-xs font-bold text-text-mutedDark dark:text-text-muted mb-1.5 uppercase tracking-wide">ml</label><input type="number" id="custom-amount" class="w-full p-3 bg-base-50 dark:bg-base-700 border border-base-200 dark:border-base-600 rounded-xl focus:ring-2 focus:ring-accent outline-none text-text-dark dark:text-white font-bold"></div>
+                    <div class="bg-gray-200 dark:bg-slate-700 p-1 rounded-xl flex text-sm font-bold">
+                        <button type="button" id="tab-beer-preset" class="flex-1 py-2 rounded-lg bg-white dark:bg-slate-600 shadow-sm text-brand-DEFAULT dark:text-indigo-300 transition-all">プリセット</button>
+                        <button type="button" id="tab-beer-custom" class="flex-1 py-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-all">カスタム詳細</button>
                     </div>
-                </div>
-                <div><label class="block text-xs font-bold text-text-mutedDark dark:text-text-muted mb-1.5 uppercase tracking-wide">Size</label><div class="relative"><select id="beer-size" class="w-full appearance-none bg-base-50 dark:bg-base-700 border border-base-200 dark:border-base-600 text-text-dark dark:text-white rounded-xl py-3 px-4 pr-8 font-bold focus:ring-2 focus:ring-accent outline-none"></select><i class="ph-bold ph-caret-down absolute right-3 top-3.5 text-text-mutedDark dark:text-text-muted"></i></div></div>
-                <div><label class="block text-xs font-bold text-text-mutedDark dark:text-text-muted mb-1.5 uppercase tracking-wide">Count</label><input type="number" id="beer-count" value="1" class="w-full p-3 bg-base-50 dark:bg-base-700 border border-base-200 dark:border-base-600 rounded-xl focus:ring-2 focus:ring-accent outline-none text-text-dark dark:text-white font-bold"></div>
-                <div><label class="block text-xs font-bold text-text-mutedDark dark:text-text-muted mb-1.5 uppercase tracking-wide">Date</label><input type="date" id="beer-date" class="w-full p-3 bg-base-50 dark:bg-base-700 border border-base-200 dark:border-base-600 rounded-xl focus:ring-2 focus:ring-accent outline-none text-text-dark dark:text-white font-bold"></div>
-                <div class="hidden"><input type="number" id="beer-rating" value="0"><textarea id="beer-memo"></textarea></div>
-                <div class="flex items-center gap-2"><input type="checkbox" id="untappd-check" class="w-5 h-5 text-accent rounded border-gray-300 focus:ring-accent"><label for="untappd-check" class="text-sm font-bold text-text-mutedDark dark:text-text-muted">Search Untappd</label></div>
-                <div class="flex gap-3 pt-2">
-                    <button type="button" id="btn-save-next" class="flex-1 py-3 rounded-xl border-2 border-accent text-accent font-bold hover:bg-accent hover:text-black transition">One more</button>
-                    <button type="submit" id="beer-submit-btn" class="flex-[2] py-3 rounded-xl bg-accent text-black font-bold hover:bg-accent-hover transition shadow-lg shadow-accent/20">Save</button>
-                </div>
-            </form>
+                    <div id="beer-input-preset" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-2">何を飲みますか？</label>
+                            <select id="beer-select" class="w-full bg-white dark:bg-slate-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 text-lg appearance-none dark:text-white"></select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">サイズ (ml)</label>
+                                <select id="beer-size" class="w-full bg-white dark:bg-slate-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 text-lg dark:text-white"></select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">本数</label>
+                                <div class="flex items-center bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden">
+                                    <button type="button" class="w-12 py-3 bg-gray-50 dark:bg-slate-600 hover:bg-gray-100 dark:hover:bg-slate-500 font-bold text-xl transition" onclick="this.nextElementSibling.stepDown()">-</button>
+                                    <input type="number" id="beer-count" value="1" min="1" max="20" class="flex-1 text-center text-lg font-bold border-x border-gray-200 dark:border-gray-600 py-3 appearance-none dark:bg-slate-700 dark:text-white">
+                                    <button type="button" class="w-12 py-3 bg-gray-50 dark:bg-slate-600 hover:bg-gray-100 dark:hover:bg-slate-500 font-bold text-xl transition" onclick="this.previousElementSibling.stepUp()">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="beer-input-custom" class="hidden space-y-4">
+                         <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">度数 (%)</label>
+                                <input type="number" id="custom-abv" step="0.1" placeholder="5.0" class="w-full bg-white dark:bg-slate-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 dark:text-white">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">量 (ml)</label>
+                                <input type="number" id="custom-amount" placeholder="350" class="w-full bg-white dark:bg-slate-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 dark:text-white">
+                            </div>
+                         </div>
+                         <input type="text" id="beer-brewery" placeholder="ブルワリー名 (任意)" list="brewery-list" class="w-full bg-white dark:bg-slate-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 dark:text-white">
+                         <input type="text" id="beer-brand" placeholder="銘柄名 (任意)" list="brand-list" class="w-full bg-white dark:bg-slate-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 dark:text-white">
+                    </div>
+                    
+                    <div>
+                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">メモ / Untappd</label>
+                         <textarea id="beer-memo" rows="2" class="w-full bg-white dark:bg-slate-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 dark:text-white text-sm" placeholder="感想など..."></textarea>
+                         <div class="mt-2 flex items-center">
+                            <input type="checkbox" id="untappd-check" class="w-5 h-5 text-yellow-500 rounded border-gray-300 focus:ring-yellow-500">
+                            <label for="untappd-check" class="ml-2 text-sm text-gray-600 dark:text-gray-300">Untappdにチェックイン済</label>
+                         </div>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="p-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-slate-800 shrink-0 pb-safe">
+                <button id="btn-save-beer" class="w-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 active:scale-[0.98] transition-all flex justify-center items-center gap-2">
+                    <span class="text-xl">🍺</span> 記録する
+                </button>
+            </div>
         </div>
     </div>
 
-    <!-- Manual Exercise Modal (Modified) -->
-    <div id="manual-exercise-modal" class="fixed inset-0 z-[70] bg-black/60 dark:bg-black/90 backdrop-blur-md hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="w-full max-w-sm glass-panel rounded-3xl p-6 transform scale-95 transition duration-300 bg-white dark:bg-base-800">
-             <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-bold text-text-dark dark:text-white">Record Exercise</h3>
-                <button onclick="toggleModal('manual-exercise-modal', false)" class="text-text-mutedDark dark:text-text-muted hover:text-black dark:hover:text-white"><i class="ph ph-x text-2xl"></i></button>
-            </div>
-
-            <!-- 【追加】Timer Mode Entry Point -->
-            <div class="mb-6 p-4 bg-indigo-900/10 dark:bg-indigo-500/10 rounded-2xl border border-indigo-500/20 flex items-center justify-between group cursor-pointer hover:bg-indigo-900/20 transition">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
-                        <i class="ph-fill ph-timer text-xl"></i>
-                    </div>
-                    <div>
-                        <p class="text-sm font-bold text-indigo-900 dark:text-indigo-100">Timer Mode</p>
-                        <p class="text-[10px] text-indigo-500 dark:text-indigo-300">Track in real-time</p>
-                    </div>
-                </div>
-                <button id="btn-open-timer" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition shadow-lg shadow-indigo-500/20 group-hover:scale-105">
-                    Start
+    <div id="manual-exercise-modal" class="modal hidden fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-md h-auto sm:rounded-[2.5rem] rounded-t-[2.5rem] shadow-2xl flex flex-col border border-white/10">
+            <div class="px-6 py-4 flex justify-between items-center">
+                <h2 class="text-xl font-black text-gray-800 dark:text-white flex items-center gap-2">
+                    <span class="text-2xl">🏃‍♂️</span> 運動を記録
+                </h2>
+                <button class="modal-close p-2 bg-gray-100 dark:bg-slate-700 rounded-full hover:bg-gray-200 transition">
+                    <i class="ph ph-x text-lg"></i>
                 </button>
             </div>
 
-            <div class="relative py-2 flex items-center mb-4">
-                <div class="flex-grow border-t border-gray-200 dark:border-gray-700"></div>
-                <span class="flex-shrink-0 mx-4 text-gray-400 text-[10px] font-bold uppercase tracking-widest">OR Manual Input</span>
-                <div class="flex-grow border-t border-gray-200 dark:border-gray-700"></div>
+            <div class="p-6 pt-0 space-y-6">
+                <div class="bg-slate-900/50 rounded-3xl p-6 border border-slate-700/50 relative overflow-hidden text-center group">
+                    <span class="text-slate-400 text-[10px] font-bold tracking-[0.2em] uppercase block mb-1">SESSION TIMER</span>
+                    <div id="timer-display" class="text-6xl font-mono-nums font-black text-white tracking-tighter my-2 tabular-nums drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">00:00</div>
+                    <div class="text-emerald-400 text-xs font-bold flex items-center justify-center gap-2">
+                        <i class="ph-fill ph-music-notes"></i> 音楽でも聴きながら...
+                    </div>
+                </div>
+
+                <button id="start-stepper-btn" class="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-xl shadow-lg hover:brightness-110 active:scale-[0.98] transition flex items-center justify-center gap-3">
+                    <i class="ph-fill ph-play"></i> START SESSION
+                </button>
+                <div class="flex gap-3 hidden" id="timer-controls">
+                    <button id="pause-stepper-btn" class="flex-1 py-4 rounded-2xl bg-yellow-500 text-white font-bold text-lg">PAUSE</button>
+                    <button id="resume-stepper-btn" class="flex-1 py-4 rounded-2xl bg-emerald-500 text-white font-bold text-lg hidden">RESUME</button>
+                    <button id="stop-stepper-btn" class="flex-1 py-4 rounded-2xl bg-red-500 text-white font-bold text-lg animate-pulse">STOP</button>
+                </div>
+
+                <div class="border-t border-slate-700/50 my-4"></div>
+
+                <details class="group">
+                    <summary class="list-none flex items-center justify-center gap-2 text-xs font-bold text-slate-500 cursor-pointer hover:text-white transition">
+                        <i class="ph ph-pencil-simple"></i> 手動で入力する
+                    </summary>
+                    <form id="manual-exercise-form" class="space-y-4 mt-4 animate-fadeIn">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">日時</label>
+                            <input type="datetime-local" id="manual-date" class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white">
+                        </div>
+                        <div>
+                             <label class="block text-xs font-bold text-slate-500 uppercase mb-1">運動の種類</label>
+                             <select id="exercise-select" class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-lg text-white">
+                                </select>
+                             <span id="manual-exercise-name" class="hidden"></span>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">時間 (分)</label>
+                            <input type="number" id="manual-minutes" placeholder="30" class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-2xl font-bold text-center text-white">
+                        </div>
+                         <div class="flex items-center justify-center">
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="manual-apply-bonus" class="sr-only peer" checked>
+                                <div class="relative w-11 h-6 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                                <span class="ms-3 text-xs font-medium text-slate-300">🔥 Streakボーナスを適用</span>
+                            </label>
+                        </div>
+                        <button type="button" id="btn-submit-manual" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition">
+                            手動記録を保存
+                        </button>
+                    </form>
+                </details>
+            </div>
+        </div>
+    </div>
+
+    <div id="check-modal" class="modal hidden fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-md h-[90vh] sm:h-auto sm:rounded-3xl rounded-t-3xl shadow-2xl flex flex-col">
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                <h2 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                    <span class="text-2xl">📝</span> 今日のコンディション
+                </h2>
+                <button class="modal-close p-2 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 transition">
+                    <i class="ph ph-x text-lg"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50 dark:bg-slate-900/50">
+                 <form id="check-form" class="space-y-6">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">対象日</label>
+                        <input type="date" id="check-date" class="w-full bg-white dark:bg-slate-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 dark:text-white">
+                    </div>
+                    <div class="space-y-3">
+                        <label class="flex items-center p-4 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600 cursor-pointer transition hover:border-emerald-400">
+                            <input type="checkbox" id="is-dry-day" class="w-6 h-6 text-emerald-500 rounded focus:ring-emerald-500">
+                            <span class="ml-3 font-bold text-gray-700 dark:text-white">🚫 休肝日 (一滴も飲んでない)</span>
+                        </label>
+                        <div id="drinking-section">
+                            <div class="grid grid-cols-2 gap-3">
+                                <label class="flex items-center p-3 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600"><input type="checkbox" name="waistEase" class="w-5 h-5 text-indigo-500 rounded"><span class="ml-2 text-sm text-gray-700 dark:text-gray-200">👖 お腹スッキリ</span></label>
+                                <label class="flex items-center p-3 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600"><input type="checkbox" name="footLightness" class="w-5 h-5 text-indigo-500 rounded"><span class="ml-2 text-sm text-gray-700 dark:text-gray-200">🦶 足が軽い</span></label>
+                                <label class="flex items-center p-3 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600"><input type="checkbox" name="waterOk" class="w-5 h-5 text-blue-500 rounded"><span class="ml-2 text-sm text-gray-700 dark:text-gray-200">💧 水分とった</span></label>
+                                <label class="flex items-center p-3 bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600"><input type="checkbox" name="fiberOk" class="w-5 h-5 text-green-500 rounded"><span class="ml-2 text-sm text-gray-700 dark:text-gray-200">🥗 野菜食べた</span></label>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                         <label class="block text-xs font-bold text-gray-500 uppercase mb-1">体重 (kg)</label>
+                         <div class="flex items-center bg-white dark:bg-slate-700 rounded-xl border border-gray-200 dark:border-gray-600 px-4">
+                             <span class="text-2xl">⚖️</span>
+                             <input type="number" id="check-weight" step="0.1" placeholder="--" class="w-full py-3 px-4 text-2xl font-bold bg-transparent outline-none dark:text-white">
+                         </div>
+                    </div>
+                 </form>
+            </div>
+            <div class="p-4 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-slate-800 shrink-0 pb-safe">
+                <button id="check-submit-btn" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-500/30 active:scale-[0.98] transition-all">
+                    保存する
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal hidden fixed inset-0 z-[80] bg-slate-900 flex flex-col">
+        <header class="px-6 py-4 border-b border-gray-800 flex justify-between items-center bg-slate-900">
+            <h2 class="text-xl font-bold text-white">設定</h2>
+            <button class="modal-close text-slate-400 hover:text-white"><i class="ph ph-x text-2xl"></i></button>
+        </header>
+        <div class="flex-1 overflow-y-auto p-6 space-y-8 bg-slate-900 text-slate-300">
+            <section>
+                <h3 class="text-xs font-bold text-slate-500 uppercase mb-4">プロフィール</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs mb-1">身長 (cm)</label><input type="number" id="height-input" class="w-full bg-slate-800 border-slate-700 rounded-lg p-3 text-white"></div>
+                    <div><label class="block text-xs mb-1">体重 (kg)</label><input type="number" id="weight-input" class="w-full bg-slate-800 border-slate-700 rounded-lg p-3 text-white"></div>
+                    <div><label class="block text-xs mb-1">年齢</label><input type="number" id="age-input" class="w-full bg-slate-800 border-slate-700 rounded-lg p-3 text-white"></div>
+                    <div><label class="block text-xs mb-1">性別</label><select id="gender-input" class="w-full bg-slate-800 border-slate-700 rounded-lg p-3 text-white"><option value="male">男性</option><option value="female">女性</option></select></div>
+                </div>
+            </section>
+            <section>
+                 <h3 class="text-xs font-bold text-slate-500 uppercase mb-4">設定</h3>
+                 <div class="space-y-4">
+                     <div><label class="block text-xs mb-1">基本の運動 (1単位)</label><select id="setting-base-exercise" class="w-full bg-slate-800 border-slate-700 rounded-lg p-3 text-white"></select></div>
+                     <div><label class="block text-xs mb-1">デフォルト記録運動</label><select id="setting-default-record-exercise" class="w-full bg-slate-800 border-slate-700 rounded-lg p-3 text-white"></select></div>
+                     <div><label class="block text-xs mb-1">テーマ</label><select id="theme-input" class="w-full bg-slate-800 border-slate-700 rounded-lg p-3 text-white"><option value="dark">ダーク (推奨)</option><option value="light">ライト</option><option value="auto">システム設定に従う</option></select></div>
+                 </div>
+            </section>
+            <section>
+                 <h3 class="text-xs font-bold text-slate-500 uppercase mb-4">よく飲むスタイル</h3>
+                 <div class="grid grid-cols-2 gap-4">
+                     <div><label class="block text-xs mb-1">Mode 1 (Default)</label><select id="setting-mode-1" class="w-full bg-slate-800 border-slate-700 rounded-lg p-3 text-white"></select></div>
+                     <div><label class="block text-xs mb-1">Mode 2</label><select id="setting-mode-2" class="w-full bg-slate-800 border-slate-700 rounded-lg p-3 text-white"></select></div>
+                 </div>
+            </section>
+            <section class="pt-8 border-t border-gray-800">
+                <button id="btn-save-settings" class="w-full bg-brand-DEFAULT hover:bg-indigo-500 text-white font-bold py-4 rounded-xl">設定を保存</button>
+                <div class="mt-8 text-center"><button onclick="UI.openHelp()" class="text-sm text-slate-500 underline">ヘルプ・計算式について</button></div>
+            </section>
+        </div>
+    </div>
+
+    <div id="log-detail-modal" class="modal hidden fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden p-6 text-center">
+            <div id="detail-icon" class="text-5xl mb-4">🍺</div>
+            <h3 id="detail-title" class="text-xl font-bold text-gray-800 dark:text-white mb-2">Beer Name</h3>
+            <div id="detail-beer-info" class="text-sm text-gray-500 mb-2">
+                <span id="detail-style"></span> <span id="detail-size"></span> <br> <span id="detail-brand"></span>
+            </div>
+            <div id="detail-minutes" class="text-lg font-bold mb-4"></div>
+            
+            <div id="detail-memo-container" class="hidden bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg mb-4">
+                 <div id="detail-rating" class="text-yellow-500 mb-1"></div>
+                 <p id="detail-memo" class="text-sm italic"></p>
             </div>
             
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-text-mutedDark dark:text-text-muted mb-1.5 uppercase tracking-wide">Activity</label>
-                    <div class="relative"><select id="exercise-select" class="w-full appearance-none bg-base-50 dark:bg-base-700 border border-base-200 dark:border-base-600 text-text-dark dark:text-white rounded-xl py-3 px-4 pr-8 font-bold focus:ring-2 focus:ring-recovery outline-none"></select><i class="ph-bold ph-caret-down absolute right-3 top-3.5 text-text-mutedDark dark:text-text-muted"></i></div>
-                </div>
-                <div><label class="block text-xs font-bold text-text-mutedDark dark:text-text-muted mb-1.5 uppercase tracking-wide">Duration (min)</label><input type="number" id="manual-minutes" placeholder="30" class="w-full p-3 bg-base-50 dark:bg-base-700 border border-base-200 dark:border-base-600 rounded-xl focus:ring-2 focus:ring-recovery outline-none text-text-dark dark:text-white font-bold text-lg"></div>
-                <div><label class="block text-xs font-bold text-text-mutedDark dark:text-text-muted mb-1.5 uppercase tracking-wide">Date</label><input type="date" id="manual-date" class="w-full p-3 bg-base-50 dark:bg-base-700 border border-base-200 dark:border-base-600 rounded-xl focus:ring-2 focus:ring-recovery outline-none text-text-dark dark:text-white font-bold"></div>
-                <div class="flex items-center gap-2"><input type="checkbox" id="manual-apply-bonus" class="w-5 h-5 text-recovery rounded border-gray-300 focus:ring-recovery" checked><label for="manual-apply-bonus" class="text-sm font-bold text-text-mutedDark dark:text-text-muted">Apply Streak Bonus</label></div>
-                <button id="btn-submit-manual" class="w-full py-3 mt-2 rounded-xl bg-recovery text-black font-bold hover:bg-recovery-hover transition shadow-lg shadow-recovery/20">Record</button>
+            <div class="flex gap-2 justify-center">
+                <button id="btn-detail-edit" class="flex-1 bg-gray-100 dark:bg-slate-700 py-3 rounded-xl font-bold text-xs">編集</button>
+                <button id="btn-detail-copy" class="flex-1 bg-indigo-500 text-white py-3 rounded-xl font-bold text-xs">複製</button>
+                <button id="btn-detail-delete" class="flex-1 bg-red-100 dark:bg-red-900/30 text-red-600 font-bold py-3 rounded-xl hover:bg-red-200 transition text-xs">削除</button>
             </div>
+             <button class="modal-close mt-4 text-gray-400 underline text-xs">閉じる</button>
         </div>
     </div>
 
-    <!-- Check Modal (完全版) -->
-    <div id="check-modal" class="fixed inset-0 z-[70] bg-black/60 dark:bg-black/90 backdrop-blur-md hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="w-full max-w-sm glass-panel rounded-3xl p-6 transform scale-95 transition duration-300 bg-white dark:bg-base-800 flex flex-col max-h-[90vh]">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-bold text-text-dark dark:text-white flex items-center gap-2"><span class="text-2xl">🌿</span> Conditioning</h3>
-                <button onclick="toggleModal('check-modal', false)" class="text-text-mutedDark dark:text-text-muted hover:text-black dark:hover:text-white"><i class="ph ph-x text-2xl"></i></button>
+    <div id="help-modal" class="modal hidden fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-4">
+        <div class="w-full max-w-lg h-[85vh] bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-700 flex justify-between items-center bg-slate-900 shrink-0">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <span class="text-2xl">📖</span> 使い方ガイド
+                </h2>
+                <button class="modal-close p-2 hover:bg-white/10 rounded-full transition text-slate-400 hover:text-white">
+                    <i class="ph ph-x text-xl"></i>
+                </button>
             </div>
-            <form id="check-form" class="flex-1 overflow-y-auto no-scrollbar space-y-4">
-                <div><label class="block text-xs font-bold text-text-mutedDark dark:text-text-muted mb-1.5 uppercase tracking-wide">Date</label><input type="date" id="check-date" class="w-full p-3 bg-base-50 dark:bg-base-700 border border-base-200 dark:border-base-600 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-text-dark dark:text-white font-bold"></div>
-                <div class="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800 flex items-center justify-between">
-                    <div><span class="block text-sm font-bold text-indigo-900 dark:text-indigo-100">休肝日 (Dry Day)</span><span class="text-xs text-indigo-500 dark:text-indigo-400">Streak will continue</span></div>
-                    <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="is-dry-day" class="sr-only peer"><div class="w-14 h-8 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-indigo-500"></div></label>
-                </div>
-                <!-- Dynamic Items Container -->
-                <div id="dynamic-check-items"></div>
+            
+            <div class="flex-1 overflow-y-auto p-6 space-y-10 custom-scrollbar text-slate-300">
                 
-                <div><label class="block text-xs font-bold text-text-mutedDark dark:text-text-muted mb-1.5 uppercase tracking-wide">Weight (kg)</label><input type="number" id="check-weight" step="0.1" placeholder="Option" class="w-full p-3 bg-base-50 dark:bg-base-700 border border-base-200 dark:border-base-600 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-text-dark dark:text-white font-bold"></div>
-                <button type="submit" id="check-submit-btn" class="w-full py-3 mt-4 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-500/20">Complete Check</button>
-            </form>
-        </div>
-    </div>
+                <section class="text-center">
+                    <h4 class="text-xs font-bold text-brand-DEFAULT mb-3 tracking-widest uppercase">CONCEPT</h4>
+                    <p class="text-lg font-bold text-white mb-2">
+                        「飲んだら、動いて返す」
+                    </p>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        飲酒は<span class="font-bold text-accent">「借金」</span>、運動は<span class="font-bold text-recovery">「返済」</span>。<br>
+                        飲んだビールのカロリー分を、運動で消費して<br>
+                        <span class="font-bold text-white">「実質ゼロカロリー」</span>を目指すゲームです。
+                    </p>
+                </section>
+                
+                <section>
+                    <h4 class="text-xs font-bold text-brand-DEFAULT mb-4 tracking-widest uppercase text-center">HOW TO PLAY</h4>
+                    <div class="space-y-3">
+                        <div class="flex items-start gap-4 p-4 rounded-2xl glass-panel">
+                            <div class="text-2xl flex-shrink-0">⚙️</div>
+                            <div>
+                                <h5 class="font-bold text-white text-sm">STEP 1. まずは設定</h5>
+                                <p class="text-xs text-slate-400 mt-1">右上の歯車ボタンからプロフィール（身長・体重）を入力。これが正確なカロリー借金計算の鍵です！</p>
+                            </div>
+                        </div>
 
-    <!-- Log Detail Modal (完全版) -->
-    <div id="log-detail-modal" class="fixed inset-0 z-[70] bg-black/60 dark:bg-black/90 backdrop-blur-md hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="w-full max-w-sm glass-panel rounded-3xl p-6 transform scale-95 transition duration-300 bg-white dark:bg-base-800">
-            <div class="flex justify-between items-start mb-6">
-                <div class="flex items-center gap-4">
-                    <div id="detail-icon" class="w-14 h-14 rounded-full bg-base-100 dark:bg-base-700 flex items-center justify-center text-3xl">🍺</div>
-                    <div><h3 id="detail-title" class="text-xl font-black text-text-dark dark:text-white leading-tight">Beer Name</h3><p id="detail-date" class="text-xs text-text-mutedDark dark:text-text-muted font-bold mt-1">2024/01/01 19:00</p></div>
-                </div>
-                <button onclick="toggleModal('log-detail-modal', false)" class="text-text-mutedDark dark:text-text-muted hover:text-black dark:hover:text-white"><i class="ph ph-x text-2xl"></i></button>
-            </div>
-            <div class="space-y-4 mb-8">
-                <div class="flex justify-between items-center py-3 border-b border-gray-100 dark:border-gray-700"><span class="text-xs font-bold text-gray-400 uppercase">Balance</span><div id="detail-minutes" class="text-lg font-black">-120 min</div></div>
-                <div id="detail-beer-info" class="space-y-3">
-                    <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700"><span class="text-xs font-bold text-gray-400 uppercase">Style</span><span id="detail-style" class="font-bold text-sm">IPA</span></div>
-                    <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700"><span class="text-xs font-bold text-gray-400 uppercase">Size</span><span id="detail-size" class="font-bold text-sm">350ml</span></div>
-                    <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700"><span class="text-xs font-bold text-gray-400 uppercase">Brewery</span><span id="detail-brand" class="font-bold text-sm text-right">BrewDog</span></div>
-                </div>
-                <div id="detail-memo-container" class="bg-base-50 dark:bg-base-900/50 p-4 rounded-xl mt-4">
-                    <div id="detail-rating" class="text-yellow-500 text-sm mb-1"></div>
-                    <p id="detail-memo" class="text-sm text-text-dark dark:text-white italic"></p>
-                </div>
-            </div>
-            <div class="grid grid-cols-3 gap-3">
-                <button id="btn-detail-edit" class="flex flex-col items-center gap-1 p-3 rounded-xl hover:bg-base-100 dark:hover:bg-base-700 transition text-text-mutedDark dark:text-text-muted"><i class="ph-bold ph-pencil-simple text-xl"></i><span class="text-[10px] font-bold">Edit</span></button>
-                <button id="btn-detail-copy" class="flex flex-col items-center gap-1 p-3 rounded-xl hover:bg-base-100 dark:hover:bg-base-700 transition text-text-mutedDark dark:text-text-muted"><i class="ph-bold ph-copy text-xl"></i><span class="text-[10px] font-bold">Copy</span></button>
-                <button id="btn-detail-delete" class="flex flex-col items-center gap-1 p-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition text-red-400 hover:text-red-500"><i class="ph-bold ph-trash text-xl"></i><span class="text-[10px] font-bold">Delete</span></button>
-            </div>
-        </div>
-    </div>
+                        <div class="flex items-start gap-4 p-4 rounded-2xl glass-panel border-l-4 border-l-accent">
+                            <div class="text-2xl flex-shrink-0">🍺</div>
+                            <div>
+                                <h5 class="font-bold text-accent text-sm">STEP 2. 飲んだら記録（借金）</h5>
+                                <p class="text-xs text-slate-400 mt-1">「＋」ボタンからお酒を入力。オーブの液体（借金）が増え、運動ノルマが課せられます。</p>
+                            </div>
+                        </div>
 
-    <!-- Settings Modal -->
-    <div id="settings-modal" class="fixed inset-0 z-[70] bg-black/60 dark:bg-black/90 backdrop-blur-md hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="w-full max-w-sm glass-panel rounded-3xl p-6 transform scale-95 transition duration-300 bg-white dark:bg-base-800" id="settings-content">
-            <div class="flex justify-between items-center mb-6 border-b border-gray-200 dark:border-white/10 pb-4">
-                <h3 class="text-xl font-bold text-text-dark dark:text-white">Settings</h3>
-                <button onclick="closeSettings()" class="text-text-mutedDark dark:text-text-muted hover:text-black dark:hover:text-white"><i class="ph ph-x text-2xl"></i></button>
-            </div>
-            <div class="space-y-6">
-                <div>
-                    <h4 class="text-sm font-bold text-text-dark dark:text-white mb-3 flex items-center gap-2"><i class="ph-fill ph-paint-brush-broad text-accent"></i> Theme</h4>
-                    <div class="bg-base-100 dark:bg-base-900 p-1.5 rounded-xl flex gap-1 border border-base-200 dark:border-white/5">
-                        <button onclick="setTheme('dark')" id="theme-btn-dark" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 bg-base-800 text-white shadow-sm"><i class="ph-fill ph-moon"></i> Night Owl</button>
-                        <button onclick="setTheme('light')" id="theme-btn-light" class="flex-1 py-2.5 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 text-text-mutedDark dark:text-text-muted hover:bg-white dark:hover:bg-base-800"><i class="ph-fill ph-sun"></i> Daytime</button>
+                        <div class="flex items-start gap-4 p-4 rounded-2xl glass-panel border-l-4 border-l-recovery">
+                            <div class="text-2xl flex-shrink-0">🏃‍♂️</div>
+                            <div>
+                                <h5 class="font-bold text-recovery text-sm">STEP 3. 動いて返済</h5>
+                                <p class="text-xs text-slate-400 mt-1">ステッパーやウォーキングで運動。「Move」メニューからタイマー計測や手入力を行い、液体を空っぽにしましょう！</p>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div>
-                    <h4 class="text-sm font-bold text-text-dark dark:text-white mb-2 flex items-center gap-2"><i class="ph-fill ph-user text-recovery"></i> Profile</h4>
-                    <div class="glass-panel bg-base-50 dark:bg-base-900/50 p-3 rounded-xl border border-base-200 dark:border-white/5">
-                        <div class="flex justify-between items-center text-sm"><span class="text-text-mutedDark dark:text-text-muted">Height / Weight</span><span id="settings-profile-val" class="font-bold text-text-dark dark:text-white">-- / --</span></div>
+                </section>
+                
+                <section>
+                    <h4 class="text-xs font-bold text-brand-DEFAULT mb-3 tracking-widest uppercase text-center">RANK SYSTEM</h4>
+                    <div class="glass-panel p-4 rounded-2xl text-center">
+                        <p class="text-xs text-slate-300 mb-3">
+                            直近28日間の<span class="font-bold text-white">「休肝日率」</span>でランクが決まります。<br>
+                            休肝日を作ってランクアップを目指そう！
+                        </p>
+                        
+                        <div class="mb-4 bg-white/5 p-2 rounded-lg border border-white/10">
+                            <span class="text-[10px] font-bold bg-orange-500 text-white px-2 py-0.5 rounded-full">🔰 ルーキーモード</span>
+                            <p class="text-[10px] text-slate-400 mt-1">
+                                開始28日間は「日数」ではなく「成功率」で判定。<br>初心者でもすぐにSランクを目指せます！
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 text-left">
+                            <div class="bg-slate-800/50 p-2 rounded-lg border border-purple-500/30">
+                                <span class="block text-xl mb-1">👼</span>
+                                <span class="block text-xs font-bold text-purple-400">ランク S</span>
+                                <span class="block text-[10px] text-slate-500">週5日 休肝</span>
+                            </div>
+                            <div class="bg-slate-800/50 p-2 rounded-lg border border-indigo-500/30">
+                                <span class="block text-xl mb-1">🛡️</span>
+                                <span class="block text-xs font-bold text-indigo-400">ランク A</span>
+                                <span class="block text-[10px] text-slate-500">週3日 休肝</span>
+                            </div>
+                            <div class="bg-slate-800/50 p-2 rounded-lg border border-emerald-500/30">
+                                <span class="block text-xl mb-1">🌿</span>
+                                <span class="block text-xs font-bold text-emerald-400">ランク B</span>
+                                <span class="block text-[10px] text-slate-500">週2日 休肝</span>
+                            </div>
+                            <div class="bg-slate-800/50 p-2 rounded-lg border border-slate-600/30">
+                                <span class="block text-xl mb-1">⚠️</span>
+                                <span class="block text-xs font-bold text-slate-400">ランク C</span>
+                                <span class="block text-[10px] text-slate-500">がんばろう</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                </section>
+
+                <section>
+                    <h4 class="text-xs font-bold text-brand-DEFAULT mb-3 tracking-widest uppercase text-center">USEFUL TIPS</h4>
+                    <ul class="grid grid-cols-1 gap-2 text-xs text-slate-400">
+                        <li class="flex items-center gap-3 bg-white/5 p-3 rounded-lg">
+                            <span class="text-lg">👆</span>
+                            <span><strong>タブ切り替え:</strong> 下部のドックアイコン、または画面左右のスワイプで画面を切り替えられます。</span>
+                        </li>
+                        <li class="flex items-center gap-3 bg-white/5 p-3 rounded-lg">
+                            <span class="text-lg">🔥</span>
+                            <span><strong>連続記録ボーナス:</strong> 休肝日を続けると、運動時の「返済効率」がアップ！(最大1.2倍)</span>
+                        </li>
+                        <li class="flex items-center gap-3 bg-white/5 p-3 rounded-lg">
+                            <span class="text-lg">✅</span>
+                            <span><strong>デイリーチェック:</strong> 「＋」メニューから毎日のコンディションを記録できます。</span>
+                        </li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h4 class="text-xs font-bold text-brand-DEFAULT mb-3 tracking-widest uppercase text-center">OTHER DRINKS</h4>
+                    <p class="text-xs text-center text-slate-500 mb-3">ビール以外を飲むときは、以下のスタイルを参考に記録してください。</p>
+                    
+                    <div class="overflow-hidden rounded-xl border border-slate-700">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead class="bg-slate-800 text-slate-400">
+                                <tr>
+                                    <th class="p-3 font-bold">飲み物</th>
+                                    <th class="p-3 font-bold">おすすめ設定</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-700 bg-slate-800/50 text-slate-300">
+                                <tr>
+                                    <td class="p-3">🍷 ワイン / 日本酒</td>
+                                    <td class="p-3"><span class="font-bold text-white">ベルジャン・トリペル</span> (250ml)</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3">🥃 ハイボール (7%)</td>
+                                    <td class="p-3"><span class="font-bold text-white">アンバーエール</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3">🍋 レモンサワー</td>
+                                    <td class="p-3"><span class="font-bold text-white">ペールエール</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3">🥤 ストロング系 (9%)</td>
+                                    <td class="p-3"><span class="font-bold text-white">IPA (West Coast)</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3">🍵 焼酎ハイ/お茶割</td>
+                                    <td class="p-3"><span class="font-bold text-white">セッションIPA</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
             </div>
-            <div class="mt-8"><button onclick="closeSettings()" class="w-full bg-accent hover:bg-accent-hover text-black font-bold py-3 rounded-xl transition shadow-lg shadow-accent/20">Done</button></div>
+            
+            <div class="p-4 border-t border-slate-700 bg-slate-900 shrink-0">
+                <button class="modal-close w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition text-sm">閉じる</button>
+            </div>
         </div>
     </div>
 
-    <!-- Logic -->
-    <script type="module" src="./main.js"></script>
+    <div id="swipe-coach-mark" onclick="this.classList.add('hidden'); localStorage.setItem('nomutore_seen_swipe_hint', 'true');" 
+         class="hidden fixed inset-0 z-[110] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center transition-opacity duration-500 opacity-0 cursor-pointer">
+        <div class="flex gap-8 text-white/50 mb-4">
+            <i class="ph ph-caret-left text-4xl animate-pulse"></i>
+            <i class="ph ph-caret-right text-4xl animate-pulse"></i>
+        </div>
+        <div class="text-center space-y-4">
+            <div class="relative w-20 h-20 mx-auto">
+                <i class="ph-fill ph-hand-pointing text-6xl text-white absolute top-0 left-0 animate-[blob_2s_infinite]"></i>
+            </div>
+            <div>
+                <p class="text-2xl font-bold text-white mb-2">Swipe to Switch</p>
+                <p class="text-slate-300">左右にスワイプして<br>画面を切り替えられます</p>
+            </div>
+            <p class="text-xs text-slate-500 mt-8">(画面をタップして閉じる)</p>
+        </div>
+    </div>
+
+    <datalist id="brewery-list"></datalist>
+    <datalist id="brand-list"></datalist>
+
+    <script type="module" src="main.js"></script>
+    
+    <script>
+        // Inline script for Orb-Menu interaction
+        document.getElementById('action-trigger').addEventListener('click', () => {
+            const menu = document.getElementById('record-menu');
+            menu.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                menu.classList.remove('opacity-0');
+            });
+        });
+
+        document.getElementById('close-record-menu').addEventListener('click', () => {
+            const menu = document.getElementById('record-menu');
+            menu.classList.add('opacity-0');
+            setTimeout(() => {
+                menu.classList.add('hidden');
+            }, 300);
+        });
+
+        // Close modal handlers (Global)
+        document.querySelectorAll('.modal-close').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const modal = e.target.closest('.modal');
+                modal.classList.add('hidden');
+            });
+        });
+    </script>
 </body>
 </html>

@@ -1,19 +1,10 @@
 import { Calc } from '../logic.js';
-import { Store } from '../store.js'; // Storeを追加
 import { DOM, escapeHtml } from './dom.js';
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
-// デフォルト定義（modal.jsと重複するが、参照用として）
-const DEFAULT_SCHEMA = [
-    { id: 'waistEase', label: 'ウエストに余裕あり', icon: '👖' },
-    { id: 'footLightness', label: '足が軽い・むくみなし', icon: '🦶' },
-    { id: 'fiberOk', label: '飲酒前の食物繊維', icon: '🥗' },
-    { id: 'waterOk', label: '飲酒中/後の水分補給', icon: '💧' }
-];
-
 export function renderCheckStatus(checks, logs) {
     const status = DOM.elements['check-status'] || document.getElementById('check-status');
-    if(!status) return; 
+    if(!status) return; // ガード節
 
     const today = dayjs();
     const yest = today.subtract(1, 'day');
@@ -28,6 +19,7 @@ export function renderCheckStatus(checks, logs) {
         }
     }
 
+    // HTML生成部分は安全（静的コンテンツメイン）だが念のため
     if (type !== 'none') {
         const msg = getCheckMessage(targetCheck, logs);
         const title = type === 'today' ? "Today's Condition" : "Yesterday's Check";
@@ -37,6 +29,7 @@ export function renderCheckStatus(checks, logs) {
         
         let weightHtml = '';
         if(targetCheck.weight) {
+            // weightは数値だが一応
             weightHtml = `<span class="ml-2 text-[10px] bg-gray-100 dark:bg-gray-600 px-1.5 py-0.5 rounded text-gray-500 dark:text-gray-300 font-bold">${escapeHtml(targetCheck.weight)}kg</span>`;
         }
         const textColor = type === 'today' ? '' : 'text-gray-800 dark:text-gray-200';
@@ -50,33 +43,8 @@ export function renderCheckStatus(checks, logs) {
 
 export function getCheckMessage(check, logs) {
     const drank = Calc.hasAlcoholLog(logs, check.timestamp);
-    const schema = Store.getCheckSchema() || DEFAULT_SCHEMA;
-    
-    // スキーマに基づいてチェック数をカウント
-    let totalChecks = 0;
-    let checkedCount = 0;
-
-    // スキーマ項目をループ
-    schema.forEach(item => {
-        // 表示条件チェック
-        if (item.condition === 'drinking_only' && !drank) return; 
-        
-        totalChecks++;
-        
-        // 値の取得 (v4 custom または v3 互換フィールド)
-        const val = (check.custom && check.custom[item.id]) || check[item.id] || false;
-        
-        if (val) checkedCount++;
-    });
-
     if (drank || !check.isDryDay) {
-        if (checkedCount === totalChecks && totalChecks > 0) return '対策バッチリ！😆';
-        if (checkedCount >= 1) return `${checkedCount}/${totalChecks} 対策OK 😐`;
-        return '対策なし... 😰';
-    } else {
-        // 休肝日
-        // v3互換ロジックも加味
-        const isGood = checkedCount >= 2; // 2つ以上あればGoodとする簡易ロジック
-        return isGood ? '休肝日＋絶好調！✨' : '休肝日 (体調イマイチ)🍵'; 
-    }
+        let s = 0; if (check.waistEase) s++; if (check.footLightness) s++; if (check.fiberOk) s++; if (check.waterOk) s++;
+        if (s === 4) return '代謝絶好調！😆'; if (s >= 1) return `${s}/4 クリア 😐`; return '不調気味... 😰';
+    } else { return (check.waistEase && check.footLightness) ? '休肝日＋絶好調！✨' : '休肝日 (体調イマイチ)🍵'; }
 }

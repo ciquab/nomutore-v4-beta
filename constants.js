@@ -1,6 +1,5 @@
 export const APP = {
     STORAGE_KEYS: {
-        // v3 Existing Keys
         LOGS: 'hazy_payback_logs', 
         CHECKS: 'hazy_payback_checks', 
         WEIGHT: 'hazy_payback_weight', 
@@ -8,35 +7,19 @@ export const APP = {
         AGE: 'hazy_payback_age', 
         GENDER: 'hazy_payback_gender', 
         TIMER_START: 'hazy_payback_timer_start',
-        TIMER_ACCUMULATED: 'hazy_payback_timer_accumulated',
+        TIMER_ACCUMULATED: 'hazy_payback_timer_accumulated', // 【追加】一時停止用 
         MODE1: 'hazy_payback_mode_1', 
         MODE2: 'hazy_payback_mode_2',
         BASE_EXERCISE: 'hazy_payback_base_exercise',
         THEME: 'hazy_payback_theme',
-        DEFAULT_RECORD_EXERCISE: 'hazy_payback_default_record_exercise',
-
-        // v4 New Keys
-        PERIOD_MODE: 'hazy_payback_balance_mode',
-        PERIOD_START: 'hazy_payback_period_start',
-        CHECK_SCHEMA: 'hazy_payback_check_schema',
-        ORB_STYLE: 'hazy_payback_orb_style',
-        UNIT_MODE: 'hazy_payback_unit_mode',
-        PROFILE: 'hazy_payback_profile'
+        DEFAULT_RECORD_EXERCISE: 'hazy_payback_default_record_exercise' // 追加
     },
     DEFAULTS: { 
-        // v3 Defaults
         WEIGHT: 60, HEIGHT: 160, AGE: 30, GENDER: 'female', 
         MODE1: '国産ピルスナー', MODE2: 'Hazy IPA',
         BASE_EXERCISE: 'walking',
         THEME: 'system',
-        DEFAULT_RECORD_EXERCISE: 'walking',
-
-        // v4 Defaults
-        PERIOD_MODE: 'weekly',
-        PERIOD_START: 0,
-        ORB_STYLE: 'lager',
-        UNIT_MODE: 'kcal',
-        PROFILE: {} // JSON Object
+        DEFAULT_RECORD_EXERCISE: 'walking' // 追加
     },
     TANK_MAX_CANS: 3.0
 };

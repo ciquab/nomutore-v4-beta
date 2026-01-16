@@ -5,7 +5,7 @@ import { UI, updateBeerSelectOptions, refreshUI } from './ui/index.js';
 
 export const DataManager = {
     /**
-     * CSVエクスポート (既存機能維持)
+     * CSVエクスポート
      * @param {string} type - 'logs' | 'checks'
      */
     exportCSV: async (type) => { 
@@ -38,36 +38,21 @@ export const DataManager = {
 
     /**
      * 全データの取得（バックアップ用）
-     * v4対応: period_archives と 新規LocalStorageキーを含める
      */
     getAllData: async () => {
         const logs = await db.logs.toArray();
         const checks = await db.checks.toArray();
-        const archives = await db.period_archives.toArray(); // 【v4追加】
-        
         const settings = {};
         Object.values(APP.STORAGE_KEYS).forEach(key => {
             const val = localStorage.getItem(key);
             if (val !== null) settings[key] = val;
         });
-        
-        return { 
-            version: 4, // バックアップバージョン
-            exportedAt: Date.now(),
-            logs, 
-            checks, 
-            archives, // 【v4追加】
-            settings 
-        };
+        return { logs, checks, settings };
     },
 
-    /**
-     * JSONエクスポート (v4対応)
-     */
     exportJSON: async () => { 
         const data = await DataManager.getAllData();
-        const dateStr = new Date().toISOString().slice(0,10).replace(/-/g, '');
-        DataManager.download(JSON.stringify(data, null, 2), `nomutore_backup_${dateStr}.json`, 'application/json'); 
+        DataManager.download(JSON.stringify(data, null, 2), 'nomutore-backup.json', 'application/json'); 
     },
 
     copyToClipboard: async () => { 
@@ -77,10 +62,6 @@ export const DataManager = {
             .catch(() => UI.showMessage('コピーに失敗しました', 'error')); 
     },
 
-    /**
-     * JSONインポート (v4対応)
-     * settings, logs, checks, archives を復元する
-     */
     importJSON: (inputElement) => { 
         const f = inputElement.files[0]; 
         if(!f) return; 
@@ -89,35 +70,27 @@ export const DataManager = {
         r.onload = async (e) => { 
             try { 
                 const d = JSON.parse(e.target.result); 
-                
-                // バージョンチェックなどは厳密には行わないが、構造確認はする
-                if (!d.logs && !d.checks && !d.settings) {
-                    throw new Error('Invalid backup format');
-                }
-
                 if(confirm('データを復元しますか？\n※既存のデータと重複しないログのみ追加されます。\n※設定は上書きされます。')){ 
                     
-                    // 1. Settings (LocalStorage) Restore
                     if (d.settings) {
                         Object.entries(d.settings).forEach(([k, v]) => localStorage.setItem(k, v));
                     }
 
-                    // 2. Logs Restore
                     if (d.logs && Array.isArray(d.logs)) {
                         const existingLogs = await db.logs.toArray();
                         const existingTimestamps = new Set(existingLogs.map(l => l.timestamp));
 
-                        // 重複チェック (timestamp基準)
+                        // 重複チェック
                         const uniqueLogs = d.logs
                             .filter(l => !existingTimestamps.has(l.timestamp))
                             .map(l => {
-                                const { id, ...rest } = l; // ID除外 (Auto Incrementのため)
+                                const { id, ...rest } = l; // ID除外
                                 return rest;
                             });
                         
                         const profile = Store.getProfile();
 
-                        // インポート時のデータ補完 (v2以前のデータでkcalがない場合など)
+                        // インポート時のデータ補完 (kcalがない場合)
                         const migratedLogs = uniqueLogs.map(l => {
                             if (l.kcal === undefined && l.minutes !== undefined) {
                                 const stepperRate = Calc.burnRate(6.0, profile);
@@ -128,11 +101,10 @@ export const DataManager = {
 
                         if (migratedLogs.length > 0) {
                             await db.logs.bulkAdd(migratedLogs);
-                            console.log(`[Import] ${migratedLogs.length} logs added.`);
+                            console.log(`${migratedLogs.length}件のログを追加しました`);
                         }
                     }
 
-                    // 3. Checks Restore
                     if (d.checks && Array.isArray(d.checks)) {
                         const existingChecks = await db.checks.toArray();
                         const existingCheckTimestamps = new Set(existingChecks.map(c => c.timestamp));
@@ -144,39 +116,16 @@ export const DataManager = {
                             });
                         if (uniqueChecks.length > 0) {
                             await db.checks.bulkAdd(uniqueChecks);
-                            console.log(`[Import] ${uniqueChecks.length} checks added.`);
-                        }
-                    }
-
-                    // 4. Archives Restore (v4 New)
-                    if (d.archives && Array.isArray(d.archives)) {
-                        const existingArchives = await db.period_archives.toArray();
-                        // 開始日で重複チェック
-                        const existingArchiveStarts = new Set(existingArchives.map(a => a.startDate));
-                        
-                        const uniqueArchives = d.archives
-                            .filter(a => !existingArchiveStarts.has(a.startDate))
-                            .map(a => {
-                                const { id, ...rest } = a;
-                                return rest;
-                            });
-
-                        if (uniqueArchives.length > 0) {
-                            await db.period_archives.bulkAdd(uniqueArchives);
-                            console.log(`[Import] ${uniqueArchives.length} archives added.`);
                         }
                     }
 
                     // UI更新
-                    if (UI.updateModeSelector) UI.updateModeSelector();
-                    if (typeof updateBeerSelectOptions === 'function') updateBeerSelectOptions(); 
-                    
-                    const theme = localStorage.getItem(APP.STORAGE_KEYS.THEME) || 'system';
-                    if (UI.applyTheme) UI.applyTheme(theme);
-                    
+                    UI.updateModeSelector();
+                    updateBeerSelectOptions(); 
+                    UI.applyTheme(localStorage.getItem(APP.STORAGE_KEYS.THEME) || 'system');
                     await refreshUI(); 
                     
-                    UI.showMessage('復元しました','success'); 
+                    UI.showMessage('復元しました (重複はスキップ)','success'); 
                 } 
             } catch(err) { 
                 console.error(err);

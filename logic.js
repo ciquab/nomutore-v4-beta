@@ -3,41 +3,30 @@ import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
 export const Calc = {
     /**
-     * 【v4】プロフィールベースBMR計算 (ハリス・ベネディクト方程式)
-     * 計画書 3.2.2 準拠
+     * 基礎代謝計算
      */
-    calculateBMR: (profile) => {
+    getBMR: (profile) => {
         const weight = (profile && profile.weight) ? profile.weight : APP.DEFAULTS.WEIGHT;
         const height = (profile && profile.height) ? profile.height : APP.DEFAULTS.HEIGHT;
         const age = (profile && profile.age) ? profile.age : APP.DEFAULTS.AGE;
         const gender = (profile && profile.gender) ? profile.gender : APP.DEFAULTS.GENDER;
 
-        // ハリス・ベネディクト方程式 (kcal/day)
-        if (gender === 'male') {
-            return 66.47 + (13.75 * weight) + (5.003 * height) - (6.755 * age);
+        const k = 1000 / 4.186;
+        
+        if(gender === 'male') {
+            return ((0.0481 * weight) + (0.0234 * height) - (0.0138 * age) - 0.4235) * k;
         } else {
-            return 655.1 + (9.563 * weight) + (1.850 * height) - (4.676 * age);
+            return ((0.0481 * weight) + (0.0234 * height) - (0.0138 * age) - 0.9708) * k;
         }
-    },
-
-    /**
-     * 基礎代謝計算 (旧ロジック・互換性維持)
-     * ※可能な限り calculateBMR を使用すること
-     */
-    getBMR: (profile) => {
-        // 既存ロジックは残すが、新しい計算メソッドへ誘導
-        return Calc.calculateBMR(profile);
     },
     
     /**
      * 消費カロリーレート計算
-     * v4: calculateBMR を使用するように変更
      */
     burnRate: (mets, profile) => {
-        // 分単位のBMRに変換し、METs倍率を掛ける
-        const bmr = Calc.calculateBMR(profile);
+        const bmr = Calc.getBMR(profile);
         const netMets = Math.max(0, mets - 1);
-        const rate = (bmr / 1440) * netMets; // 計画書 3.2 準拠: BMR / 1440 * (METs - 1)
+        const rate = (bmr / 24 * netMets) / 60;
         return (rate && rate > 0.1) ? rate : 0.1;
     },
 
@@ -77,67 +66,6 @@ export const Calc = {
     },
     
     // ----------------------------------------------------------------------
-
-    /**
-     * 【v4】ビール帳集計 (計画書 3.2.1)
-     * 全ログデータからビールコレクション情報を生成する
-     * @param {Array} allLogs - 全期間のログ (フィルタリングされていないこと)
-     */
-    getBeerStats: (allLogs) => {
-        const statsMap = new Map(); // Key: "Brewery|Name"
-        const styleCount = {}; // For Chart
-
-        allLogs.filter(l => l.type === 'beer').forEach(log => {
-            // breweryとnameでユニークキーを作成
-            const brewery = log.brewery || 'Unknown';
-            const name = log.name || 'Unknown Beer';
-            const key = `${brewery}|${name}`;
-            
-            if (!statsMap.has(key)) {
-                statsMap.set(key, {
-                    brewery: log.brewery,
-                    name: log.name, // 記録時の名前を使用
-                    style: log.style,
-                    totalMl: 0,
-                    count: 0,
-                    ratings: [],
-                    lastDrank: 0,
-                    timestamps: [],
-                    abv: log.abv
-                });
-            }
-            
-            const entry = statsMap.get(key);
-            
-            // サイズ情報の解析 (sizeキーがあればそれを使用、なければ推測)
-            let ml = 350;
-            if (log.rawAmount) {
-                ml = log.rawAmount;
-            } else if (log.size) {
-                // SIZE_DATA定数がimportされていない場合は簡易判定
-                ml = parseInt(log.size) || 350;
-            }
-            
-            entry.totalMl += ml * (log.count || 1);
-            entry.count += 1;
-            
-            if (log.rating) entry.ratings.push(log.rating);
-            entry.lastDrank = Math.max(entry.lastDrank, log.timestamp);
-            entry.timestamps.push(log.timestamp);
-            
-            // Style集計
-            const style = log.style || 'Other';
-            styleCount[style] = (styleCount[style] || 0) + 1;
-        });
-
-        // 配列化とソート (飲んだ回数順)
-        const beerStats = Array.from(statsMap.values()).map(item => ({
-            ...item,
-            averageRating: item.ratings.length ? (item.ratings.reduce((a,b)=>a+b,0) / item.ratings.length) : 0
-        })).sort((a, b) => b.count - a.count);
-
-        return { beerStats, styleCount };
-    },
 
     getTankDisplayData: (currentKcal, currentMode, settings, profile) => {
         const modes = settings.modes || { mode1: APP.DEFAULTS.MODE1, mode2: APP.DEFAULTS.MODE2 };
@@ -189,6 +117,9 @@ export const Calc = {
      * @param {Array} checks - チェック配列
      * @param {Object} profile - プロフィール
      * @param {string|number|Date} referenceDate - 基準日 (省略時は今日)
+     * * v2ロジックの完全再現:
+     * 指定された基準日時点でのストリークを計算する。
+     * 基準日に活動(飲酒or運動or休肝チェック)があればそこから、なければ前日から遡る。
      */
     getCurrentStreak: (logs, checks, profile, referenceDate = null) => {
         const safeLogs = Array.isArray(logs) ? logs : [];
@@ -291,7 +222,7 @@ export const Calc = {
     /**
      * ランク判定ロジック
      */
-    getRecentGrade: (checks, logs, profile) => {
+getRecentGrade: (checks, logs, profile) => {
         const safeLogs = Array.isArray(logs) ? logs : [];
         const safeChecks = Array.isArray(checks) ? checks : [];
 
@@ -371,9 +302,11 @@ export const Calc = {
         const hasExercise = dayLogs.some(l => l.type === 'exercise');
         const isDryDay = dayCheck ? dayCheck.isDryDay : false;
 
-        // 収支計算
+        // 収支計算 (簡易: ログのkcalが正なら運動、負なら飲酒と想定されるが、ここでは単純にkcalを積算)
+        // 運動ログのkcalは正、飲酒ログのkcalは負で保存されている前提
         let balance = 0;
         dayLogs.forEach(l => {
+            // kcalが未定義の場合は簡易計算で補完
             const val = l.kcal !== undefined ? l.kcal : (l.type === 'exercise' ? (l.minutes * Calc.burnRate(6.0, profile)) : -150);
             balance += val;
         });
@@ -381,84 +314,12 @@ export const Calc = {
         if (isDryDay) return hasExercise ? 'rest_exercise' : 'rest';
         if (hasBeer) {
             if (hasExercise) {
+                // 飲んで運動して、収支がプラス（完済）なら success
                 return balance >= 0 ? 'drink_exercise_success' : 'drink_exercise';
             }
             return 'drink';
         }
         if (hasExercise) return 'exercise';
         return 'none';
-    },
-    
-    /**
-     * 【v4】アーカイブ作成用: 期間データの集計 (Service.recalcImpactedHistory等で使用)
-     * period_archives.result オブジェクトを生成する
-     */
-    getPeriodResult: (periodLogs, periodChecks, startDate, endDate, profile) => {
-        // 1. 収支合計 (balance)
-        let balance = 0;
-        periodLogs.forEach(l => {
-            balance += (l.kcal || 0);
-        });
-        
-        // 2. 日数集計
-        let drinkDays = 0;
-        let exerciseDays = 0;
-        const days = [];
-        
-        let currentDate = dayjs(startDate);
-        const endD = dayjs(endDate);
-        
-        // 合計集計用
-        let totalBeerMl = 0;
-        let totalExerciseMin = 0;
-        
-        // 期間内の日次ループ
-        while(currentDate.isBefore(endD) || currentDate.isSame(endD, 'day')) {
-            const dayTs = currentDate.valueOf();
-            
-            // その日のステータス判定
-            const status = Calc.getDayStatus(dayTs, periodLogs, periodChecks, profile);
-            days.push(status); // 'drink' | 'rest' | 'both' | ...
-            
-            // カウント
-            if (status.includes('drink')) drinkDays++;
-            if (status.includes('exercise')) exerciseDays++;
-            
-            currentDate = currentDate.add(1, 'day');
-        }
-        
-        // 詳細集計
-        periodLogs.forEach(l => {
-            if (l.type === 'beer') {
-                // サイズ情報の解析
-                let ml = 350;
-                if (l.rawAmount) ml = l.rawAmount;
-                else if (l.size) ml = parseInt(l.size) || 350;
-                totalBeerMl += ml * (l.count || 1);
-            }
-            if (l.type === 'exercise') {
-                totalExerciseMin += (l.minutes || 0);
-            }
-        });
-
-        // 3. ランク判定 (期間終了時点でのグレードを使用するのが適切だが、
-        // アーカイブとしては「その期間の成果」よりも「その人の状態」を記録するため、
-        // ここでは単純に getRecentGrade を呼ぶ。ただし logs/checks は期間内データのみ渡すため、
-        // 厳密な「過去28日」ではない可能性がある点に注意。
-        // ※仕様上、rankは直近28日データが必要だが、アーカイブ再計算時は期間内データしか渡せないケースがある。
-        // ここでは期間内データだけで判定する制約を受け入れる。
-        const grade = Calc.getRecentGrade(periodChecks, periodLogs, profile);
-
-        return {
-            balance: balance,
-            rank: grade.rank,
-            drinkDays: drinkDays,
-            exerciseDays: exerciseDays,
-            days: days,
-            summary: {
-                totalBeerMl: totalBeerMl,
-                totalExerciseMin: totalExerciseMin
-            }
-        };
     }
 };

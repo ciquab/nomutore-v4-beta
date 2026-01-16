@@ -36,145 +36,18 @@ export const Service = {
     },
 
     /**
-     * 【v4】期間のロールオーバーをチェックする
-     * アプリ起動時などに呼び出され、期間終了日を過ぎていればアーカイブ処理を行う
-     */
-    checkPeriodRollover: async () => {
-        const mode = Store.getPeriodMode();
-        let periodStart = Store.getPeriodStart();
-
-        // 1. 初回起動など、期間開始日が未設定の場合は今日から開始
-        if (!periodStart || periodStart === 0) {
-            const now = dayjs().startOf('day').valueOf();
-            localStorage.setItem(APP.STORAGE_KEYS.PERIOD_START, now);
-            console.log('[Rollover] Initialized period start:', dayjs(now).format('YYYY-MM-DD'));
-            return;
-        }
-
-        // Endlessモードは何もしない
-        if (mode === 'permanent') return;
-
-        // 2. 期間終了日の計算
-        const startD = dayjs(periodStart);
-        let endD;
-
-        if (mode === 'weekly') {
-            // 6日後 (合計7日間)
-            endD = startD.add(6, 'day').endOf('day');
-        } else if (mode === 'monthly') {
-            // その月の月末
-            endD = startD.endOf('month');
-        } else {
-            // Fallback (Weekly)
-            endD = startD.add(6, 'day').endOf('day');
-        }
-
-        const now = dayjs();
-
-        // 3. ロールオーバー判定 (現在時刻が終了日を過ぎているか)
-        if (now.isAfter(endD)) {
-            console.log(`[Rollover] Period ended (${startD.format('MM/DD')} - ${endD.format('MM/DD')}). Processing...`);
-            
-            try {
-                const profile = Store.getProfile();
-                
-                // --- A. アーカイブ作成 ---
-                // 期間内のデータを取得
-                const logs = await db.logs.where('timestamp').between(startD.valueOf(), endD.valueOf(), true, true).toArray();
-                const checks = await db.checks.where('timestamp').between(startD.valueOf(), endD.valueOf(), true, true).toArray();
-                
-                // 結果集計
-                const result = Calc.getPeriodResult(logs, checks, startD.valueOf(), endD.valueOf(), profile);
-                
-                // DB保存
-                await db.period_archives.add({
-                    startDate: startD.valueOf(),
-                    endDate: endD.valueOf(),
-                    mode: mode,
-                    result: result
-                });
-                
-                // --- B. 新期間の設定 ---
-                // 次の開始日は、旧終了日の翌日00:00
-                const nextStartD = endD.add(1, 'day').startOf('day');
-                localStorage.setItem(APP.STORAGE_KEYS.PERIOD_START, nextStartD.valueOf());
-                
-                // --- C. 借金繰越 (Carryover) ---
-                // 収支がマイナスの場合は、新しい期間の初めに繰越ログを作成
-                if (result.balance < 0) {
-                    await db.logs.add({
-                        timestamp: nextStartD.add(1, 'minute').valueOf(), // 開始直後
-                        type: 'rollover',
-                        name: '前期間からの繰越',
-                        kcal: result.balance, // 負の値
-                        minutes: 0,
-                        memo: `From: ${startD.format('MM/DD')}-${endD.format('MM/DD')}`,
-                        isSystem: true
-                    });
-                    
-                    UI.showMessage(`🔄 期間が更新されました。\n借金 ${Math.abs(Math.round(result.balance))}kcal が繰り越されます😱`, 'error');
-                } else {
-                    UI.showMessage(`🎉 期間更新！\n前期間は完済達成です！素晴らしい！`, 'success');
-                    UI.showConfetti();
-                }
-                
-                console.log('[Rollover] Complete. New period starts:', nextStartD.format('YYYY-MM-DD'));
-                
-                // UIリフレッシュ (アーカイブ追加等を反映)
-                await refreshUI();
-
-            } catch (e) {
-                console.error('[Rollover] Failed to process rollover:', e);
-                UI.showMessage('期間更新処理に失敗しました', 'error');
-            }
-        }
-    },
-
-    /**
-     * 【改修】履歴変更時の影響範囲再計算 (カスケード更新)
-     * 1. 過去の確定済みアーカイブ期間に含まれる場合、そのアーカイブを再計算して更新 (v4 A案)
-     * 2. 変更日以降の全期間のストリークとボーナスを再計算 (v3既存ロジック)
+     * 【新規実装】履歴変更時の影響範囲再計算 (カスケード更新)
+     * v2の `recalcDailyExercises` に相当。
+     * 過去のログを変更した際、その日以降のストリークボーナスを全て再計算してDBを更新する。
      * @param {number} changedTimestamp - 変更があったログの日付(ms)
      */
     recalcImpactedHistory: async (changedTimestamp) => {
         console.log('[Service] Recalculating history from:', dayjs(changedTimestamp).format('YYYY-MM-DD'));
         
-        const profile = Store.getProfile();
-
-        // --- A. アーカイブデータの遡及更新 (v4) ---
-        // 変更された日付が、過去のアーカイブ期間に含まれているかチェック
-        try {
-            // changedTimestamp を含む期間アーカイブを検索
-            const impactedArchive = await db.period_archives
-                .where('startDate').belowOrEqual(changedTimestamp)
-                .and(record => record.endDate >= changedTimestamp)
-                .first();
-
-            if (impactedArchive) {
-                console.log(`[Service] Updating impacted archive: ID ${impactedArchive.id} (${dayjs(impactedArchive.startDate).format('MM/DD')} - ${dayjs(impactedArchive.endDate).format('MM/DD')})`);
-                
-                // その期間の全データを取得して再集計
-                const periodLogs = await db.logs.where('timestamp').between(impactedArchive.startDate, impactedArchive.endDate, true, true).toArray();
-                const periodChecks = await db.checks.where('timestamp').between(impactedArchive.startDate, impactedArchive.endDate, true, true).toArray();
-                
-                // 結果オブジェクトを再生成 (Logic層に委譲)
-                const newResult = Calc.getPeriodResult(periodLogs, periodChecks, impactedArchive.startDate, impactedArchive.endDate, profile);
-                
-                // DB更新
-                await db.period_archives.update(impactedArchive.id, {
-                    result: newResult
-                });
-            }
-        } catch (e) {
-            console.error('[Service] Failed to update period archive:', e);
-        }
-
-        // --- B. ストリークとボーナスの再計算 (v3既存ロジック) ---
-        // ここからは「現在進行形」の影響を計算するため、全データをロードする必要がある
-        // (ストリークは期間を跨いで継続するため)
         const allLogs = await db.logs.toArray();
         const allChecks = await db.checks.toArray();
-        
+        const profile = Store.getProfile();
+
         // 変更日当日を含めて、今日までループ
         const startDate = dayjs(changedTimestamp).startOf('day');
         const today = dayjs().endOf('day');
@@ -188,13 +61,21 @@ export const Service = {
         while (currentDate.isBefore(today) || currentDate.isSame(today, 'day')) {
             if (safeGuard++ > 365) break;
 
+            const dateKey = currentDate.format('YYYY-MM-DD');
             const dayStart = currentDate.startOf('day').valueOf();
             const dayEnd = currentDate.endOf('day').valueOf();
 
             // 1. その日時点でのストリークを計算
+            // Calc.getCurrentStreak は referenceDate 時点での状況を返すように改修済み
             const streak = Calc.getCurrentStreak(allLogs, allChecks, profile, currentDate);
-            
+            const multiplier = Calc.getStreakMultiplier(streak);
+
             // 2. その日の「運動ログ」かつ「ボーナス適用あり(と推測される)」ものを探して更新
+            // ※ v2仕様では「ボーナス適用のチェックボックス」があったが、
+            // データ上は memo に "Bonus" が入っているか等で判定していた。
+            // ここではシンプルに「全ての運動ログ」に対して、現在の正しいmultiplierを適用する。
+            // (手動でOFFにした意図を汲むのは難しいが、整合性優先で再適用する)
+            
             const daysExerciseLogs = allLogs.filter(l => 
                 l.type === 'exercise' && 
                 l.timestamp >= dayStart && 
@@ -222,12 +103,6 @@ export const Service = {
                         kcal: creditInfo.kcal,
                         memo: newMemo
                     });
-                    
-                    // allLogs側のデータも更新しておかないと、次ループ以降のストリーク計算に影響が出る可能性がある
-                    // (今回はストリーク判定にkcalを使っていないので大丈夫だが、念のため)
-                    log.kcal = creditInfo.kcal;
-                    log.memo = newMemo;
-                    
                     updateCount++;
                 }
             }
@@ -355,6 +230,7 @@ export const Service = {
         }
 
         // ★追加: 運動ログの変更も、その後の整合性に影響する可能性があるため再計算
+        // (例: 運動したことでストリークが繋がった場合など)
         await Service.recalcImpactedHistory(ts);
 
         await refreshUI();
@@ -449,37 +325,18 @@ export const Service = {
     },
 
     /**
-     * 【改修】UI表示用のデータ取得
-     * v4: 全件ではなく「現在の期間」の logs のみを取得する。
-     * checks は Liver Rank (28日間) 計算用に必要な分を取得する。
+     * UI表示用の全データ取得
      */
     getAllDataForUI: async () => {
-        // 1. 現在の期間開始日を取得
-        const periodStart = parseInt(localStorage.getItem(APP.STORAGE_KEYS.PERIOD_START)) || 0;
-        
-        // 2. ログデータの取得 (期間フィルタリング)
-        // DexieのQuery機能を使用して高速化
-        const logs = await db.logs.where('timestamp').aboveOrEqual(periodStart).toArray();
-        
-        // 3. チェックデータの取得 (ランク計算用は直近28日分が必要)
-        // 期間モードに関わらず、Liver Rank計算のために過去28日分のデータは必須
-        const rankStart = dayjs().subtract(28, 'day').startOf('day').valueOf();
-        const checks = await db.checks.where('timestamp').aboveOrEqual(rankStart).toArray();
-        
+        const logs = await db.logs.toArray();
+        const checks = await db.checks.toArray();
         return { logs, checks };
     },
 
     /**
      * ログリスト用データ取得 (ページネーション)
-     * ※Cellar機能ではこのメソッドではなく、getAllDataForUIの結果やアーカイブデータを使用する可能性があるが
-     * 既存のLogList互換性のために残す（期間フィルタは考慮すべきだが、一旦既存のまま）
      */
     getLogsWithPagination: async (offset, limit) => {
-        // NOTE: v4では期間モードがあるため、このメソッドの扱いには注意が必要だが
-        // Phase 1 では「現在の期間のログ」を表示するUIが主となる。
-        // ここで期間フィルタを入れるかどうかはUI側の実装によるが、
-        // 今回は「期間データの取得」が目的の getAllDataForUI がメインになるため、
-        // こちらは既存動作を維持する（全件からのページネーション）。
         const totalCount = await db.logs.count();
         const logs = await db.logs
             .orderBy('timestamp')

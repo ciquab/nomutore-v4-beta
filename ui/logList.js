@@ -5,20 +5,17 @@ import { StateManager } from './state.js';
 import { DOM, escapeHtml } from './dom.js';
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
-// 内部で保持するハンドラ
 let _fetchLogsHandler = null;
 
 export const setFetchLogsHandler = (fn) => {
     _fetchLogsHandler = fn;
 };
 
-// ログリスト管理のメイン関数
+// ログリスト更新 (無限スクロール対応)
 export async function updateLogListView(isAppend = false) {
-    // v4: Log Listは #log-list (内部は #cellar-subview-logs 内)
     const listContainer = document.getElementById('log-list');
     if (!listContainer) return;
 
-    // 初回読み込み（リセット）の場合
     if (!isAppend) {
         StateManager.setLogLimit(50);
         listContainer.innerHTML = '';
@@ -29,10 +26,7 @@ export async function updateLogListView(isAppend = false) {
     StateManager.setLogLoading(true);
 
     try {
-        if (!_fetchLogsHandler) {
-            console.warn("fetchLogsHandler is not set. Skipping data load.");
-            return;
-        }
+        if (!_fetchLogsHandler) return;
 
         const currentLimit = StateManager.logLimit;
         const offset = isAppend ? currentLimit - 50 : 0; 
@@ -43,12 +37,6 @@ export async function updateLogListView(isAppend = false) {
         renderLogList(logs, isAppend);
         manageInfiniteScrollSentinel(totalCount > currentLimit);
 
-        // 総件数の更新 (Cellarタブヘッダー用)
-        const totalCountEl = document.getElementById('cellar-total-count');
-        if (totalCountEl) {
-            totalCountEl.textContent = `${totalCount} Logs`;
-        }
-
     } catch (e) {
         console.error("Log load error:", e);
     } finally {
@@ -56,7 +44,7 @@ export async function updateLogListView(isAppend = false) {
     }
 }
 
-// 監視要素(Sentinel)の管理
+// センチネル管理 (変更なし、クラスのみ微調整)
 export function manageInfiniteScrollSentinel(hasMore) {
     const listContainer = document.getElementById('log-list');
     let sentinel = document.getElementById('log-list-sentinel');
@@ -66,47 +54,45 @@ export function manageInfiniteScrollSentinel(hasMore) {
     if (hasMore) {
         sentinel = document.createElement('div');
         sentinel.id = 'log-list-sentinel';
-        sentinel.className = "py-8 text-center text-xs text-gray-400 font-bold animate-pulse";
-        sentinel.textContent = "Loading more...";
+        sentinel.className = "py-8 text-center text-xs text-slate-500 animate-pulse";
+        sentinel.textContent = "Loading history...";
         listContainer.appendChild(sentinel);
 
         if (window.logObserver) window.logObserver.disconnect();
-        
         window.logObserver = new IntersectionObserver((entries) => {
             if (entries[0].isIntersecting) {
                 StateManager.incrementLogLimit(50);
-                updateLogListView(true); 
+                updateLogListView(true);
             }
         }, { rootMargin: '200px' });
-
         window.logObserver.observe(sentinel);
     } else {
         if (listContainer.children.length > 0) {
             const endMsg = document.createElement('div');
-            endMsg.className = "py-8 text-center text-[10px] text-gray-300 font-bold uppercase tracking-widest";
-            endMsg.textContent = "- END OF PERIOD -";
+            endMsg.className = "py-12 text-center text-[10px] text-slate-600 font-bold uppercase tracking-widest";
+            endMsg.textContent = "- End of Cellar -";
             listContainer.appendChild(endMsg);
         }
     }
 }
 
-// ログリスト描画
+// リスト描画 (v4 Glass Design)
 export function renderLogList(logs, isAppend) {
-    const list = document.getElementById('log-list');
+    const list = DOM.elements['log-list'];
     if (!list) return;
 
+    // Empty State
     if (!isAppend && logs.length === 0) {
         list.innerHTML = `
-            <div class="text-center py-10 px-4">
-                <div class="text-6xl mb-4 opacity-80">🍻</div>
-                <h3 class="text-lg font-bold text-text-dark dark:text-white mb-2">No Records Yet</h3>
-                <p class="text-xs text-text-mutedDark dark:text-text-muted mb-6 leading-relaxed">
-                    この期間の記録はまだありません。<br>
-                    飲んだら記録して、借金を返済しましょう！
+            <div class="flex flex-col items-center justify-center py-16 px-4 text-center text-slate-400">
+                <div class="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center text-4xl mb-4 glass-panel">
+                    🍺
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2">Cellar is Empty</h3>
+                <p class="text-xs text-slate-500 mb-6 max-w-xs leading-relaxed">
+                    まだ記録がありません。<br>
+                    下の「＋」ボタンから、最初の一杯を記録しましょう。
                 </p>
-                <button data-action="trigger-beer-modal" class="bg-accent/10 text-accent font-bold py-3 px-6 rounded-xl text-sm border border-accent/20 hover:bg-accent/20 transition">
-                    👉 飲酒を記録する
-                </button>
             </div>
         `;
         return;
@@ -117,59 +103,81 @@ export function renderLogList(logs, isAppend) {
 
     const htmlItems = logs.map(log => {
         const kcal = log.kcal !== undefined ? log.kcal : (log.minutes * Calc.burnRate(6.0, userProfile));
-        const isDebt = kcal < 0; // 借金判定
+        const isDebt = kcal < 0;
         
-        // 運動による返済も、飲酒による借金も絶対値で分換算表示
         const displayMinutes = Calc.convertKcalToMinutes(Math.abs(kcal), baseEx, userProfile);
         
-        // v4 Design: Phosphor Icons & Glassmorphism List Item
-        // スタイル/運動種別に応じたアイコン取得
-        let iconChar = isDebt ? '🍺' : '🏃‍♀️';
-        let iconBg = isDebt ? 'bg-accent/10 text-accent' : 'bg-recovery/10 text-recovery';
+        // 色設定 (v4 Colors)
+        const signClass = isDebt 
+            ? 'text-red-400 bg-red-900/20 border border-red-900/50' 
+            : 'text-recovery bg-emerald-900/20 border border-emerald-900/50';
         
+        // アイコン
+        let iconChar = isDebt ? '🍺' : '🏃';
         if (isDebt && log.style && STYLE_METADATA[log.style]) {
             iconChar = STYLE_METADATA[log.style].icon;
-        } else if (!isDebt && log.exerciseKey && EXERCISE[log.exerciseKey]) {
-            iconChar = EXERCISE[log.exerciseKey].icon;
+        } else if (!isDebt) {
+             const exKey = log.exerciseKey;
+             if (exKey && EXERCISE[exKey]) {
+                 iconChar = EXERCISE[exKey].icon;
+             }
         }
 
         const date = dayjs(log.timestamp).format('MM/DD HH:mm');
         const safeName = escapeHtml(log.name);
-        
-        // 詳細情報（ブルワリーなど）
-        let subText = '';
+        const safeBrewery = escapeHtml(log.brewery);
+        const safeBrand = escapeHtml(log.brand);
+        const safeMemo = escapeHtml(log.memo);
+
+        // 詳細情報の構築
+        let detailHtml = '';
         if (log.brewery || log.brand) {
-            subText = `<span class="opacity-80">${escapeHtml(log.brewery||'')}</span> ${escapeHtml(log.brand||'')}`;
+            detailHtml += `<p class="text-xs text-slate-400 mt-0.5 truncate"><span class="font-bold text-slate-300">${safeBrewery||''}</span> ${safeBrand||''}</p>`;
+        }
+        
+        // バッジ (Rating/Memo)
+        let badgesHtml = '';
+        if (isDebt && log.rating > 0) {
+            const stars = '★'.repeat(log.rating);
+            badgesHtml += `<span class="text-accent text-[10px] mr-2">${stars}</span>`;
+        }
+        if (log.memo) {
+            badgesHtml += `<span class="text-[10px] text-slate-500 italic">"${safeMemo}"</span>`;
+        }
+        if (badgesHtml) {
+            detailHtml += `<div class="mt-1 flex items-center">${badgesHtml}</div>`;
         }
 
-        // Checkbox Logic
         const checkHidden = StateManager.isEditMode ? '' : 'hidden';
         const checkboxHtml = `
-            <div class="edit-checkbox-area ${checkHidden} mr-3 flex-shrink-0 transition-all duration-300">
-                <input type="checkbox" class="log-checkbox w-5 h-5 text-accent rounded border-base-300 dark:border-base-600 focus:ring-accent bg-base-100 dark:bg-base-700" value="${log.id}">
+            <div class="edit-checkbox-area ${checkHidden} mr-3 flex-shrink-0">
+                <input type="checkbox" class="log-checkbox w-5 h-5 rounded border-slate-600 bg-slate-800 text-accent focus:ring-accent" value="${log.id}">
             </div>`;
+        
+        const displaySign = isDebt ? '-' : '+';
 
-        // 符号と色
-        const valSign = isDebt ? '-' : '+';
-        const valColor = isDebt ? 'text-accent' : 'text-recovery';
-
+        // リストアイテムのHTML (Glass Panel Row)
         return `
-            <div class="log-item-row glass-panel rounded-xl p-3 flex items-center justify-between group transition hover:bg-base-50 dark:hover:bg-base-700/50 cursor-pointer mb-2 border border-transparent hover:border-base-200 dark:hover:border-base-600" data-id="${log.id}">
+            <div class="log-item-row group relative flex justify-between items-center p-4 mb-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/10 transition-all cursor-pointer" data-id="${log.id}">
                 <div class="flex items-center flex-grow min-w-0 pr-2">
                     ${checkboxHtml}
-                    <div class="w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0 mr-3 ${iconBg}">
+                    <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-xl mr-3 flex-shrink-0 shadow-inner">
                         ${iconChar}
                     </div>
                     <div class="min-w-0">
-                        <p class="font-bold text-sm text-text-dark dark:text-white truncate">${safeName}</p>
-                        ${subText ? `<p class="text-[10px] text-text-mutedDark dark:text-text-muted truncate">${subText}</p>` : ''}
-                        <p class="text-[10px] text-gray-400 mt-0.5">${date}</p>
+                        <p class="font-bold text-sm text-slate-200 truncate group-hover:text-white transition-colors">${safeName}</p>
+                        ${detailHtml}
+                        <p class="text-[10px] text-slate-600 mt-0.5 font-mono">${date}</p>
                     </div>
                 </div>
-                <div class="flex items-center space-x-2 flex-shrink-0">
-                    <span class="text-sm font-black ${valColor} whitespace-nowrap">${valSign}${displayMinutes} min</span>
-                    <button data-id="${log.id}" class="delete-log-btn opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 p-1 transition-opacity">
-                        <i class="ph-bold ph-trash"></i>
+                
+                <div class="flex items-center space-x-3 flex-shrink-0">
+                    <span class="px-2.5 py-1 rounded-lg text-xs font-bold font-mono ${signClass}">
+                        ${displaySign}${displayMinutes}<span class="text-[10px] opacity-70">m</span>
+                    </span>
+                    
+                    <button data-id="${log.id}" class="delete-log-btn opacity-0 group-hover:opacity-100 p-2 text-slate-500 hover:text-red-400 transition-opacity">
+                        <i class="ph ph-trash"></i>
                     </button>
                 </div>
             </div>`;
@@ -182,15 +190,31 @@ export function renderLogList(logs, isAppend) {
     }
 }
 
-// 編集モード等のユーティリティ (v3維持+CSSクラス調整)
+// 編集モード切り替え (スタイルの微調整)
 export const toggleEditMode = () => {
     const isEdit = StateManager.toggleEditMode();
-    const btn = document.getElementById('btn-toggle-edit-mode');
     
+    const btn = document.getElementById('btn-toggle-edit-mode');
     if (btn) {
-        btn.innerHTML = isEdit ? '<i class="ph-bold ph-check"></i>' : 'Edit';
-        btn.classList.toggle('bg-accent', isEdit);
-        btn.classList.toggle('text-black', isEdit);
+        btn.textContent = isEdit ? '完了' : '編集';
+        btn.className = isEdit 
+            ? "text-xs bg-accent text-black px-3 py-1.5 rounded-lg font-bold transition"
+            : "text-xs bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-700 transition";
+    }
+
+    const selectAllBtn = document.getElementById('btn-select-all');
+    if (selectAllBtn) {
+        if (isEdit) selectAllBtn.classList.remove('hidden');
+        else {
+            selectAllBtn.classList.add('hidden');
+            selectAllBtn.textContent = '全選択'; 
+        }
+    }
+
+    const bar = document.getElementById('bulk-action-bar');
+    if (bar) {
+        if (isEdit) bar.classList.remove('hidden');
+        else bar.classList.add('hidden');
     }
 
     const checkboxes = document.querySelectorAll('.edit-checkbox-area');
@@ -198,28 +222,43 @@ export const toggleEditMode = () => {
         if (isEdit) el.classList.remove('hidden');
         else el.classList.add('hidden');
     });
-    
-    const actionBar = document.getElementById('bulk-action-bar');
-    if (actionBar) {
-        if (isEdit) actionBar.classList.remove('hidden');
-        else actionBar.classList.add('hidden');
-    }
 
     if (!isEdit) {
-        document.querySelectorAll('.log-checkbox').forEach(i => i.checked = false);
+        // 解除時に選択リセット
+        const inputs = document.querySelectorAll('.log-checkbox');
+        inputs.forEach(i => i.checked = false);
         updateBulkCount(0);
     }
 };
 
 export const toggleSelectAll = () => {
-    // ... (DOM依存が少ないため省略可だが、v4に合わせて維持)
+    const btn = document.getElementById('btn-select-all');
     const inputs = document.querySelectorAll('.log-checkbox');
-    const allChecked = Array.from(inputs).every(i => i.checked);
-    inputs.forEach(i => i.checked = !allChecked);
-    updateBulkCount(inputs.length);
+    const isAllSelected = btn.textContent === '全解除';
+
+    if (isAllSelected) {
+        inputs.forEach(i => i.checked = false);
+        btn.textContent = '全選択';
+        updateBulkCount(0);
+    } else {
+        inputs.forEach(i => i.checked = true);
+        btn.textContent = '全解除';
+        updateBulkCount(inputs.length);
+    }
 };
 
 export const updateBulkCount = (count) => {
     const el = document.getElementById('bulk-selected-count');
     if (el) el.textContent = count;
+    
+    const btn = document.getElementById('btn-bulk-delete');
+    if (btn) {
+        if (count > 0) {
+            btn.removeAttribute('disabled');
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        } else {
+            btn.setAttribute('disabled', 'true');
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+    }
 };

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nomutore-v4.0.2'; // Major Update
+const CACHE_NAME = 'nomutore-v4'; // バージョンを更新
 
 // アプリケーションを構成する全ファイル
 // これらをキャッシュすることでオフライン起動が可能になります
@@ -13,38 +13,25 @@ const APP_SHELL = [
     './constants.js',
     './store.js',
     './logic.js',
-    './service.js',
-    './timer.js',
-    './dataManager.js',
-    './errorHandler.js',
+    './service.js',       // New
+    './timer.js',         // New
+    './dataManager.js',   // New
+    './errorHandler.js',  // New
 
     // UI Modules
     './ui/index.js',
     './ui/dom.js',
     './ui/state.js',
-    './ui/orb.js',           // Replaced beerTank.js
+    './ui/orb.js',
     './ui/liverRank.js',
     './ui/checkStatus.js',
     './ui/weekly.js',
     './ui/chart.js',
     './ui/logList.js',
     './ui/modal.js',
-    './ui/beerStats.js',     // New (Phase 3.1)
-    './ui/archiveManager.js',// New (Phase 3.2)
 
     // Assets
-    './icon-192.png',
-
-    // External Libraries (CDNs) - Offline Support
-    // ※外部リソースをキャッシュすることで、オフライン時でも見た目を維持します
-    'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+JP:wght@400;500;700&display=swap',
-    'https://unpkg.com/@phosphor-icons/web',
-    'https://cdn.tailwindcss.com',
-    'https://cdn.jsdelivr.net/npm/chart.js',
-    'https://unpkg.com/dexie@3.2.4/dist/dexie.js',
-    // ES Modules as external resources
-    'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm',
-    'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/+esm'
+    './icon-192.png' 
 ];
 
 // インストール処理
@@ -54,13 +41,7 @@ self.addEventListener('install', (event) => {
         caches.open(CACHE_NAME)
             .then((cache) => {
                 console.log('[ServiceWorker] Pre-caching app shell');
-                // 外部リソースを含むため、一部が失敗しても他をキャッシュするように
-                // Promise.allSettled のような挙動が理想ですが、
-                // 基本的には addAll で一括キャッシュを試みます。
-                // 失敗した場合は次回アクセス時に個別にキャッシュされます。
-                return cache.addAll(APP_SHELL).catch(err => {
-                    console.warn('[ServiceWorker] Some assets failed to cache:', err);
-                });
+                return cache.addAll(APP_SHELL);
             })
     );
 });
@@ -81,8 +62,13 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// リクエスト処理（Stale-While-Revalidate 戦略）
-// キャッシュがあれば即座に返し、裏でネットワークから最新を取得してキャッシュを更新する
+// リクエスト処理（ネットワーク優先 -> キャッシュフォールバック戦略）
+// ※重要なロジック変更を含むため、基本はネットワークを見に行き、
+//   オフライン時のみキャッシュを使う戦略の方が安全ですが、
+//   PWAとしての高速動作を優先し、ここでは「Stale-While-Revalidate」に近い戦略をとります。
+//   ただし、不整合を防ぐため、HTML以外の静的ファイルはキャッシュ優先でも構いません。
+//   ここでは既存のコードを踏襲しつつ、安全性重視で実装します。
+
 self.addEventListener('fetch', (event) => {
     // POSTメソッドやchrome-extensionスキームなどはキャッシュしない
     if (event.request.method !== 'GET') return;
@@ -91,43 +77,34 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
         caches.match(event.request)
             .then((cachedResponse) => {
-                // 1. キャッシュにあればそれを返す (高速表示)
+                // 1. キャッシュにあればそれを返す
                 if (cachedResponse) {
-                    // 裏でネットワークから最新を取得してキャッシュ更新 (次回起動用)
-                    event.waitUntil(
-                        fetch(event.request).then((networkResponse) => {
-                             if (networkResponse && networkResponse.status === 200) {
-                                 const responseToCache = networkResponse.clone();
-                                 caches.open(CACHE_NAME).then((cache) => {
-                                     cache.put(event.request, responseToCache);
-                                 });
-                             }
-                        }).catch(() => {
-                            // オフライン時は何もしない
-                        })
-                    );
+                    // キャッシュを返しつつ、裏でネットワークから最新を取得してキャッシュ更新（Stale-while-revalidate）
+                    // これにより次回起動時に最新になる
+                    fetch(event.request).then((networkResponse) => {
+                         if (networkResponse && networkResponse.status === 200) {
+                             const responseToCache = networkResponse.clone();
+                             caches.open(CACHE_NAME).then((cache) => {
+                                 cache.put(event.request, responseToCache);
+                             });
+                         }
+                    }).catch(() => {/* オフライン時は無視 */});
                     
                     return cachedResponse;
                 }
 
                 // 2. キャッシュになければネットワークに取りに行く
                 return fetch(event.request).then((networkResponse) => {
-                    // 有効なレスポンスでなければそのまま返す
                     if (!networkResponse || (networkResponse.status !== 200 && networkResponse.status !== 0)) {
                         return networkResponse;
                     }
 
-                    // 取得したリソースをキャッシュに保存
                     const responseToCache = networkResponse.clone();
                     caches.open(CACHE_NAME).then((cache) => {
                         cache.put(event.request, responseToCache);
                     });
 
                     return networkResponse;
-                }).catch((err) => {
-                    // オフラインかつキャッシュにもない場合
-                    console.error('[ServiceWorker] Fetch failed:', err);
-                    // 必要であればオフライン用のフォールバックページを返す処理をここに記述
                 });
             })
     );

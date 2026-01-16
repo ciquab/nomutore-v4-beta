@@ -1,150 +1,18 @@
-import { APP, EXERCISE, CALORIES } from './constants.js'; // 修正: ../ -> ./
-import { Calc } from './logic.js';      // 修正: ../ -> ./
-import { Store } from './store.js';     // 修正: ../ -> ./
-import { StateManager } from './ui/state.js'; // 修正: ./ -> ./ui/
-import { UI, toggleModal } from './ui/index.js'; // 修正: ./ -> ./ui/
-import { DOM, showConfetti, showMessage } from './ui/dom.js'; // 修正: ./ -> ./ui/
+import { APP, EXERCISE } from './constants.js';
+import { StateManager } from './ui/index.js'; // ui/index.js経由でStateを参照
+import { UI } from './ui/index.js';
 
-// 保存処理を実行するためのハンドラ
+// 保存処理を実行するためのハンドラ（外部から注入）
 let _saveExerciseHandler = null;
 
+// ハンドラ設定用関数
 export const setTimerSaveHandler = (fn) => {
     _saveExerciseHandler = fn;
 };
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-// 演出用: ビール1杯分のカロリー (標準的なラガー)
-const UNIT_KCAL = 140; 
-let lastBurnedKcal = 0; // 前回チェック時の消費カロリー
 
-// ----------------------------------------------------------------------
-// DOM Generation (Full Screen Modal)
-// ----------------------------------------------------------------------
-const renderTimerModal = () => {
-    if (document.getElementById('timer-modal')) return;
-
-    const modal = document.createElement('div');
-    modal.id = 'timer-modal';
-    modal.className = "fixed inset-0 z-[80] bg-base-900 text-white flex flex-col items-center justify-center hidden opacity-0 transition-opacity duration-300";
-    modal.innerHTML = `
-        <!-- Background Elements -->
-        <div class="absolute inset-0 overflow-hidden pointer-events-none">
-            <div class="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/20 rounded-full blur-[100px] animate-pulse"></div>
-            <div class="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-emerald-500/20 rounded-full blur-[100px] animate-pulse" style="animation-delay: 1s;"></div>
-        </div>
-
-        <!-- Header -->
-        <div class="absolute top-0 w-full p-6 flex justify-between items-center z-10">
-            <div class="flex items-center gap-2">
-                <span class="text-2xl">🏃‍♀️</span>
-                <span class="font-bold text-lg tracking-widest">WORKOUT</span>
-            </div>
-            <button id="btn-minimize-timer" class="p-2 rounded-full bg-white/10 hover:bg-white/20 transition">
-                <i class="ph-bold ph-caret-down"></i>
-            </button>
-        </div>
-
-        <!-- Main Timer Display -->
-        <div class="relative z-10 flex flex-col items-center mb-12">
-            <!-- Progress Ring (Decorative) -->
-            <div class="absolute inset-0 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full border-4 border-white/5 top-1/2 left-1/2 pointer-events-none"></div>
-            <div class="absolute inset-0 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full border-2 border-dashed border-white/10 top-1/2 left-1/2 pointer-events-none animate-[spin_10s_linear_infinite]"></div>
-
-            <div id="timer-status" class="text-emerald-400 font-bold tracking-[0.2em] mb-4 text-sm uppercase animate-pulse">READY</div>
-            
-            <div class="font-black text-8xl tracking-tighter tabular-nums mb-2 text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400" id="timer-display">
-                00:00
-            </div>
-            
-            <div class="flex items-center gap-4 text-sm text-gray-400">
-                <div class="flex flex-col items-center">
-                    <span class="text-xs font-bold uppercase tracking-wider mb-0.5">Burned</span>
-                    <span id="timer-kcal" class="font-mono text-white font-bold text-lg">0</span>
-                    <span class="text-[10px]">kcal</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Controls -->
-        <div class="relative z-10 flex items-center gap-6">
-            <button id="timer-btn-start" class="w-20 h-20 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black flex items-center justify-center transition transform hover:scale-105 shadow-[0_0_30px_rgba(16,185,129,0.4)]">
-                <i class="ph-fill ph-play text-3xl"></i>
-            </button>
-
-            <button id="timer-btn-pause" class="w-20 h-20 rounded-full bg-yellow-500 hover:bg-yellow-400 text-black flex items-center justify-center transition transform hover:scale-105 shadow-[0_0_30px_rgba(234,179,8,0.4)] hidden">
-                <i class="ph-fill ph-pause text-3xl"></i>
-            </button>
-            
-            <button id="timer-btn-resume" class="w-20 h-20 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black flex items-center justify-center transition transform hover:scale-105 shadow-[0_0_30px_rgba(16,185,129,0.4)] hidden">
-                <i class="ph-fill ph-play text-3xl"></i>
-            </button>
-
-            <button id="timer-btn-stop" class="w-16 h-16 rounded-full bg-white/10 hover:bg-red-500/80 text-white flex items-center justify-center transition hover:scale-105 backdrop-blur-md hidden">
-                <i class="ph-fill ph-stop text-2xl"></i>
-            </button>
-        </div>
-
-        <!-- Exercise Selector (Overlay style) -->
-        <div class="absolute bottom-10 w-full max-w-sm px-6 z-10">
-            <label class="block text-xs font-bold text-gray-500 mb-2 text-center uppercase tracking-widest">Activity Type</label>
-            <div class="relative">
-                <select id="timer-exercise-select" class="w-full bg-white/10 text-white border border-white/20 rounded-xl p-3 outline-none text-center font-bold appearance-none">
-                    <!-- Options injected via JS -->
-                </select>
-                <div class="absolute right-4 top-3.5 text-white/50 pointer-events-none">
-                    <i class="ph-bold ph-caret-down"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Toast Notification Area -->
-        <div id="timer-toast-area" class="absolute top-24 left-0 w-full flex flex-col items-center gap-2 pointer-events-none"></div>
-    `;
-    
-    document.body.appendChild(modal);
-
-    // Bind Events
-    document.getElementById('btn-minimize-timer').onclick = () => {
-        // バックグラウンド実行時はモーダルだけ隠す（タイマーは止まらない）
-        toggleModal('timer-modal', false);
-    };
-
-    document.getElementById('timer-btn-start').onclick = Timer.start;
-    document.getElementById('timer-btn-pause').onclick = Timer.pause;
-    document.getElementById('timer-btn-resume').onclick = Timer.resume;
-    document.getElementById('timer-btn-stop').onclick = Timer.stop;
-
-    // Populate Select
-    const sel = document.getElementById('timer-exercise-select');
-    if (sel) {
-        Object.keys(EXERCISE).forEach(k => {
-            const o = document.createElement('option');
-            o.value = k;
-            o.textContent = EXERCISE[k].label;
-            sel.appendChild(o);
-        });
-        // Default
-        const def = Store.getDefaultRecordExercise();
-        if (def) sel.value = def;
-    }
-};
-
-// ----------------------------------------------------------------------
-// Internal Logic
-// ----------------------------------------------------------------------
-
-const showTimerToast = (msg, icon = '🍺') => {
-    const area = document.getElementById('timer-toast-area');
-    if (!area) return;
-
-    const toast = document.createElement('div');
-    toast.className = "bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full flex items-center gap-2 animate-[float_1s_ease-out_forwards]";
-    toast.innerHTML = `<span class="text-xl">${icon}</span> <span class="font-bold text-sm text-white">${msg}</span>`;
-    
-    area.appendChild(toast);
-    setTimeout(() => toast.remove(), 2000);
-};
-
+// 内部関数: タイマー表示更新
 const updateTimeDisplay = () => { 
     const stStr = localStorage.getItem(APP.STORAGE_KEYS.TIMER_START);
     const accStr = localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
@@ -153,93 +21,51 @@ const updateTimeDisplay = () => {
     if (accStr) totalMs += parseInt(accStr, 10);
     if (stStr) totalMs += (Date.now() - parseInt(stStr, 10));
 
-    // Time Format
-    const totalSec = Math.floor(totalMs / 1000);
-    const mm = Math.floor(totalSec / 60).toString().padStart(2, '0');
-    const ss = (totalSec % 60).toString().padStart(2, '0');
+    const mm = Math.floor(totalMs / 60000).toString().padStart(2, '0');
+    const ss = Math.floor((totalMs % 60000) / 1000).toString().padStart(2, '0');
     
     const display = document.getElementById('timer-display');
     if(display) display.textContent = `${mm}:${ss}`;
-
-    // Kcal Calculation & Effect
-    const exKey = document.getElementById('timer-exercise-select')?.value || 'walking';
-    const mets = EXERCISE[exKey] ? EXERCISE[exKey].mets : 3.0;
-    const profile = Store.getProfile();
-    const ratePerMin = Calc.burnRate(mets, profile);
-    
-    const burned = Math.floor((totalMs / 60000) * ratePerMin);
-    
-    const kcalEl = document.getElementById('timer-kcal');
-    if (kcalEl) kcalEl.textContent = burned;
-
-    // Check Milestones (1 Beer unit)
-    if (burned > 0 && burned >= lastBurnedKcal + UNIT_KCAL) {
-        lastBurnedKcal = burned;
-        showTimerToast('Beer Earned!', '🍺');
-        showConfetti(); // 軽い紙吹雪
-    }
 };
 
+// 内部関数: ボタン表示更新
 const updateButtons = (state) => {
-    const startBtn = document.getElementById('timer-btn-start');
-    const pauseBtn = document.getElementById('timer-btn-pause');
-    const resumeBtn = document.getElementById('timer-btn-resume');
-    const stopBtn = document.getElementById('timer-btn-stop');
+    const startBtn = document.getElementById('start-stepper-btn');
+    const manualBtn = document.getElementById('manual-record-btn');
+    const pauseBtn = document.getElementById('pause-stepper-btn');
+    const resumeBtn = document.getElementById('resume-stepper-btn');
+    const stopBtn = document.getElementById('stop-stepper-btn');
     const statusText = document.getElementById('timer-status');
-    const sel = document.getElementById('timer-exercise-select');
     
-    [startBtn, pauseBtn, resumeBtn, stopBtn].forEach(el => el?.classList.add('hidden'));
+    [startBtn, manualBtn, pauseBtn, resumeBtn, stopBtn].forEach(el => el?.classList.add('hidden'));
 
     if (state === 'running') {
         pauseBtn?.classList.remove('hidden');
         stopBtn?.classList.remove('hidden');
-        if (sel) sel.disabled = true;
         if(statusText) { 
-            statusText.textContent = 'RUNNING'; 
-            statusText.className = 'text-emerald-400 font-bold tracking-[0.2em] mb-4 text-sm uppercase animate-pulse'; 
+            statusText.textContent = '計測中...'; 
+            statusText.className = 'text-xs text-green-600 font-bold mb-1 animate-pulse'; 
         }
     } else if (state === 'paused') {
         resumeBtn?.classList.remove('hidden');
         stopBtn?.classList.remove('hidden');
         if(statusText) { 
-            statusText.textContent = 'PAUSED'; 
-            statusText.className = 'text-yellow-400 font-bold tracking-[0.2em] mb-4 text-sm uppercase'; 
+            statusText.textContent = '一時停止中'; 
+            statusText.className = 'text-xs text-yellow-500 font-bold mb-1'; 
         }
     } else { 
         startBtn?.classList.remove('hidden');
-        if (sel) sel.disabled = false;
+        manualBtn?.classList.remove('hidden');
         if(statusText) { 
             statusText.textContent = 'READY'; 
-            statusText.className = 'text-gray-500 font-bold tracking-[0.2em] mb-4 text-sm uppercase'; 
+            statusText.className = 'text-xs text-gray-400 mt-1 font-medium'; 
         }
-        // Reset Kcal tracking
-        lastBurnedKcal = 0;
-        const k = document.getElementById('timer-kcal');
-        if(k) k.textContent = '0';
     }
 };
 
 export const Timer = {
-    init: () => {
-        renderTimerModal();
-        Timer.restoreState();
-    },
-
-    open: () => {
-        renderTimerModal();
-        toggleModal('timer-modal', true);
-    },
-
     start: () => {
         if (StateManager.timerId) return;
-        
-        lastBurnedKcal = 0; // Reset session tracking logic
-        const accStr = localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
-        if (accStr) {
-            // Calculate starting burned kcal if resuming
-            // (Strictly speaking, we should persist kcal, but approximate recalculation is fine for UI)
-        }
-
         localStorage.setItem(APP.STORAGE_KEYS.TIMER_START, Date.now());
         updateButtons('running');
         updateTimeDisplay();
@@ -273,7 +99,7 @@ export const Timer = {
     stop: async () => {
         Timer.pause();
         const totalMs = parseInt(localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED) || '0', 10);
-        const m = totalMs / 60000; // Float minutes
+        const m = Math.round(totalMs / 60000);
         
         localStorage.removeItem(APP.STORAGE_KEYS.TIMER_START);
         localStorage.removeItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
@@ -282,21 +108,17 @@ export const Timer = {
         const display = document.getElementById('timer-display');
         if (display) display.textContent = '00:00';
         
-        if (m >= 1.0) { // 1分以上で保存
+        if (m > 0) {
             if (_saveExerciseHandler) {
-                const type = document.getElementById('timer-exercise-select').value;
+                const type = document.getElementById('exercise-select').value;
                 await _saveExerciseHandler(type, m);
-                toggleModal('timer-modal', false);
             } else {
                 console.warn("Save handler not set for Timer.");
                 UI.showMessage('保存処理が設定されていません', 'error');
             }
         } else {
-            UI.showMessage('1分未満のため記録されませんでした', 'error');
-            toggleModal('timer-modal', false);
+            UI.showMessage('1分未満のため記録せず', 'error');
         }
-        
-        lastBurnedKcal = 0;
     },
 
     // アプリ起動時の状態復元
@@ -306,15 +128,14 @@ export const Timer = {
         
         if (st) {
             const elapsed = Date.now() - parseInt(st, 10);
+            // 24時間以上経過していたらリセット
             if (elapsed > ONE_DAY_MS) {
                 localStorage.removeItem(APP.STORAGE_KEYS.TIMER_START);
                 localStorage.removeItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
+                UI.showMessage('中断された古い計測をリセットしました', 'error');
                 return false;
             }
-            // 復元時は自動的にモーダルを開かない方が良いかもしれないが、
-            // 計測中であることがわかるようにバックグラウンドで状態同期
-            updateButtons('running');
-            StateManager.setTimerId(setInterval(updateTimeDisplay, 1000));
+            Timer.start();
             return true;
         } else if (acc) {
             updateButtons('paused');
