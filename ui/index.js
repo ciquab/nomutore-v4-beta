@@ -2,7 +2,7 @@ import { Calc } from '../logic.js';
 import { Store } from '../store.js';
 import { DOM, toggleModal, showConfetti, showMessage, applyTheme, toggleDryDay } from './dom.js';
 import { StateManager } from './state.js';
-import { APP } from '../constants.js';
+
 import { renderBeerTank } from './beerTank.js';
 import { renderLiverRank } from './liverRank.js';
 import { renderCheckStatus } from './checkStatus.js';
@@ -15,7 +15,7 @@ import { Timer } from './timer.js';
 
 import { 
     getBeerFormData, resetBeerForm, openBeerModal, switchBeerInputTab, 
-    openCheckModal, openManualInput, openSettings, openHelp, openLogDetail,
+    openCheckModal, openManualInput, renderSettings, openHelp, openLogDetail, // ★修正: openSettings -> renderSettings
     updateModeSelector, updateBeerSelectOptions, updateInputSuggestions, renderQuickButtons,
     closeModal, adjustBeerCount, searchUntappd,
     openTimer, closeTimer 
@@ -23,7 +23,7 @@ import {
 
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
-// ★追加: refreshUI の定義
+// refreshUI の定義
 export const refreshUI = async () => {
     if (!UI._fetchAllDataHandler) return;
     
@@ -34,7 +34,6 @@ export const refreshUI = async () => {
     const profile = Store.getProfile();
     let balance = 0;
     logs.forEach(l => {
-        // service.js/logic.js の計算結果(kcal)をそのまま加算
         balance += (l.kcal || 0);
     });
     
@@ -139,7 +138,13 @@ export const UI = {
 
     switchTab: (tabId) => {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        document.getElementById(`tab-${tabId}`).classList.add('active');
+        document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none'); 
+
+        const target = document.getElementById(`tab-${tabId}`);
+        if(target) {
+            target.style.display = 'block';
+            setTimeout(() => target.classList.add('active'), 10);
+        }
 
         document.querySelectorAll('.nav-item').forEach(el => {
             el.classList.remove('nav-pill-active');
@@ -156,6 +161,9 @@ export const UI = {
             UI.switchCellarView(StateManager.cellarViewMode || 'logs');
         } else if (tabId === 'home') {
             refreshUI();
+        } else if (tabId === 'settings') {
+            // ★修正: 設定タブに切り替わった時にレンダリング処理を呼ぶ
+            renderSettings();
         }
     },
 
@@ -202,7 +210,7 @@ export const UI = {
     openBeerModal: (e, d) => openBeerModal(e, d),
     openCheckModal: openCheckModal,
     openManualInput: openManualInput,
-    openSettings: openSettings,
+    renderSettings: renderSettings, // ★修正: openSettings -> renderSettings
     openHelp: openHelp,
     closeModal: closeModal,
     adjustBeerCount: adjustBeerCount,
@@ -214,7 +222,6 @@ export const UI = {
     openTimer: openTimer,
     closeTimer: closeTimer,
     
-    // ★追加: 外部からrefreshUIを呼べるように参照を持たせる
     refreshUI: refreshUI 
 };
 
@@ -227,6 +234,6 @@ export {
     updateLogListView, 
     updateModeSelector, 
     updateBeerSelectOptions,
-    StateManager,  // 追加
-    toggleModal    // 追加
+    StateManager,
+    toggleModal
 };
