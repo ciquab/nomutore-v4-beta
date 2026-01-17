@@ -114,6 +114,7 @@ export const openCheckModal = () => {
 
     container.innerHTML = '';
     
+    // 最新のスキーマを取得して表示
     let currentSchema = CHECK_SCHEMA;
     try {
         const stored = localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA);
@@ -133,15 +134,15 @@ export const openCheckModal = () => {
         container.appendChild(label);
     });
     
-    // ★修正: toggleDryDayの呼び出しを削除して操作不能バグを修正
+    // 休肝日連動 (バグ修正済み版)
     const isDryCheck = document.getElementById('check-is-dry');
     if (isDryCheck) {
         isDryCheck.checked = false;
-        // toggleDryDay(false); // 削除
+        // toggleDryDay(false); // 削除: 初期化時のグレーアウト不要
         
         isDryCheck.onchange = (e) => {
             const isDry = e.target.checked;
-            // toggleDryDay(isDry); // 削除
+            // toggleDryDay(isDry); // 削除: 操作不能になるのを防ぐ
             
             const items = document.querySelectorAll('.drinking-only');
             items.forEach(el => {
@@ -152,7 +153,6 @@ export const openCheckModal = () => {
                 }
             });
         };
-        // 初期状態の反映
         isDryCheck.dispatchEvent(new Event('change'));
     }
 
@@ -180,17 +180,23 @@ export const closeTimer = () => {
     toggleModal('timer-modal', false);
 };
 
+// --- 設定画面 & カスタムチェックエディタ ---
+
 export const openSettings = () => {
     const currentMode = localStorage.getItem(APP.STORAGE_KEYS.PERIOD_MODE) || 'weekly';
     const periodSel = document.getElementById('setting-period-mode');
     if (periodSel) periodSel.value = currentMode;
+    
+    // ★ここが重要: エディタを描画する
     renderCheckEditor();
+    
     toggleModal('settings-modal', true);
 };
 
+// チェック項目エディタのレンダリング
 const renderCheckEditor = () => {
     const container = document.getElementById('check-editor-list');
-    if (!container) return;
+    if (!container) return; 
 
     container.innerHTML = '';
     
@@ -223,13 +229,16 @@ const renderCheckEditor = () => {
     });
 };
 
+// グローバル関数として公開
 window.deleteCheckItem = (index) => {
     if(!confirm('この項目を削除しますか？')) return;
+    
     let schema = CHECK_SCHEMA;
     try {
         const stored = localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA);
         if (stored) schema = JSON.parse(stored);
     } catch(e) {}
+
     schema.splice(index, 1);
     localStorage.setItem(APP.STORAGE_KEYS.CHECK_SCHEMA, JSON.stringify(schema));
     renderCheckEditor();
