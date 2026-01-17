@@ -2,7 +2,7 @@ import { Calc } from '../logic.js';
 import { Store } from '../store.js';
 import { DOM, toggleModal, showConfetti, showMessage, applyTheme, toggleDryDay } from './dom.js';
 import { StateManager } from './state.js';
-
+import { APP } from '../constants.js';
 import { renderBeerTank } from './beerTank.js';
 import { renderLiverRank } from './liverRank.js';
 import { renderCheckStatus } from './checkStatus.js';

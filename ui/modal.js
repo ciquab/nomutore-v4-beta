@@ -4,7 +4,7 @@ import { Store, db } from '../store.js';
 import { StateManager } from './state.js';
 import { DOM, toggleModal, escapeHtml, toggleDryDay, showMessage } from './dom.js';
 import { Service } from '../service.js';
-import { Timer } from './timer.js'; // Timer追加
+import { Timer } from './timer.js'; 
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
 // UI.getTodayString() の代わり
@@ -17,7 +17,6 @@ export const getBeerFormData = () => {
     const rating = parseInt(document.getElementById('beer-rating').value) || 0;
     const memo = document.getElementById('beer-memo').value;
     
-    // v4: Untappdチェックボックスの状態を取得
     const untappdCheck = document.getElementById('untappd-check');
     const useUntappd = untappdCheck ? untappdCheck.checked : false;
 
@@ -36,7 +35,7 @@ export const getBeerFormData = () => {
     // Custom data
     const customAbv = parseFloat(document.getElementById('custom-abv').value) || 5.0;
     const customMl = parseInt(document.getElementById('custom-amount').value) || 350;
-    const customType = 'brew'; // Default
+    const customType = 'brew'; 
 
     return {
         timestamp: ts,
@@ -62,7 +61,6 @@ export const resetBeerForm = () => {
     if(untappdCheck) untappdCheck.checked = false;
 };
 
-// Untappd検索の実行
 export const searchUntappd = () => {
     const brewery = document.getElementById('beer-brewery').value;
     const brand = document.getElementById('beer-brand').value;
@@ -82,7 +80,6 @@ export const openBeerModal = (e, dateStr = null) => {
     if (dateStr) {
         document.getElementById('beer-date').value = dateStr;
     }
-    // セレクトボックスが空なら初期化 (復元)
     updateBeerSelectOptions();
     toggleModal('beer-modal', true);
 };
@@ -106,29 +103,25 @@ export const switchBeerInputTab = (mode) => {
     }
 };
 
-/**
- * 【改修】デイリーチェックモーダルを開く
- * - 動的チェック項目の生成
- */
 export const openCheckModal = () => {
     document.getElementById('check-date').value = getTodayString();
     
     const container = document.getElementById('check-items-container');
-    // コンテナがない場合（HTML更新漏れ等）のエラー回避
     if (!container) {
-        console.warn('#check-items-container not found. Check index.html');
-        // フォールバック: 既存の静的HTMLがあればそれを使う（エラーにしない）
         toggleModal('check-modal', true);
         return;
     }
 
     container.innerHTML = '';
     
-    CHECK_SCHEMA.forEach(item => {
-        // ラベル要素作成
+    let currentSchema = CHECK_SCHEMA;
+    try {
+        const stored = localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA);
+        if (stored) currentSchema = JSON.parse(stored);
+    } catch(e) { console.error(e); }
+
+    currentSchema.forEach(item => {
         const label = document.createElement('label');
-        // クラス定義: drinking_only の項目には識別クラスをつける
-        // hidden-check ではなく Tailwind標準の hidden を使用して安全性を高める
         const visibilityClass = item.drinking_only ? 'drinking-only hidden' : '';
         
         label.className = `check-item p-3 border rounded-xl flex flex-col items-center gap-2 cursor-pointer hover:bg-base-50 dark:hover:bg-base-800 transition ${visibilityClass}`;
@@ -140,29 +133,26 @@ export const openCheckModal = () => {
         container.appendChild(label);
     });
     
-    // 休肝日トグルとの連動初期化
+    // ★修正: toggleDryDayの呼び出しを削除して操作不能バグを修正
     const isDryCheck = document.getElementById('check-is-dry');
     if (isDryCheck) {
-        // Reset state
         isDryCheck.checked = false;
-        toggleDryDay(false); // dom.js function
+        // toggleDryDay(false); // 削除
         
-        // Re-bind to update dynamic items visibility
         isDryCheck.onchange = (e) => {
             const isDry = e.target.checked;
-            toggleDryDay(isDry);
+            // toggleDryDay(isDry); // 削除
             
-            // Custom Logic: Show/Hide items with drinking_only: true
             const items = document.querySelectorAll('.drinking-only');
             items.forEach(el => {
-                if (isDry) { // Is Dry Day -> Hide drinking items (add hidden)
+                if (isDry) { 
                     el.classList.add('hidden');
-                } else { // Drank -> Show drinking items (remove hidden)
+                } else { 
                     el.classList.remove('hidden');
                 }
             });
         };
-        // 初期状態の反映 (未チェック=飲んだ=表示)
+        // 初期状態の反映
         isDryCheck.dispatchEvent(new Event('change'));
     }
 
@@ -174,17 +164,14 @@ export const openManualInput = () => {
     toggleModal('exercise-modal', true);
 };
 
-// タイマー機能
 export const openTimer = () => {
     Timer.init();
     toggleModal('timer-modal', true);
 };
 
 export const closeTimer = () => {
-    // 実行中なら確認
     const acc = localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
     const start = localStorage.getItem(APP.STORAGE_KEYS.TIMER_START);
-    
     if (start || (acc && parseInt(acc) > 0)) {
         if (!confirm('タイマーをバックグラウンドで実行したまま閉じますか？\n(計測は止まりません)')) {
             return;
@@ -193,15 +180,85 @@ export const closeTimer = () => {
     toggleModal('timer-modal', false);
 };
 
-// 設定保存時に期間モード変更を処理
 export const openSettings = () => {
     const currentMode = localStorage.getItem(APP.STORAGE_KEYS.PERIOD_MODE) || 'weekly';
     const periodSel = document.getElementById('setting-period-mode');
     if (periodSel) periodSel.value = currentMode;
+    renderCheckEditor();
     toggleModal('settings-modal', true);
 };
 
-// 設定保存ロジック
+const renderCheckEditor = () => {
+    const container = document.getElementById('check-editor-list');
+    if (!container) return;
+
+    container.innerHTML = '';
+    
+    let schema = CHECK_SCHEMA;
+    try {
+        const stored = localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA);
+        if (stored) schema = JSON.parse(stored);
+    } catch(e) {}
+
+    schema.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = "flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mb-2";
+        
+        const isSystem = ['waistEase', 'footLightness', 'waterOk', 'fiberOk', 'noHangover'].includes(item.id);
+        const deleteBtn = isSystem 
+            ? `<span class="text-gray-300 text-xs"><i class="ph-fill ph-lock-key"></i></span>`
+            : `<button onclick="deleteCheckItem(${index})" class="text-red-500 hover:bg-red-100 p-1 rounded"><i class="ph-bold ph-trash"></i></button>`;
+
+        div.innerHTML = `
+            <div class="flex items-center gap-3">
+                <span class="text-xl">${item.icon}</span>
+                <div>
+                    <p class="text-xs font-bold text-gray-800 dark:text-gray-200">${item.label}</p>
+                    <p class="text-[10px] text-gray-400">${item.desc || ''} ${item.drinking_only ? '<span class="text-orange-500">(Drink Only)</span>' : ''}</p>
+                </div>
+            </div>
+            ${deleteBtn}
+        `;
+        container.appendChild(div);
+    });
+};
+
+window.deleteCheckItem = (index) => {
+    if(!confirm('この項目を削除しますか？')) return;
+    let schema = CHECK_SCHEMA;
+    try {
+        const stored = localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA);
+        if (stored) schema = JSON.parse(stored);
+    } catch(e) {}
+    schema.splice(index, 1);
+    localStorage.setItem(APP.STORAGE_KEYS.CHECK_SCHEMA, JSON.stringify(schema));
+    renderCheckEditor();
+};
+
+window.addNewCheckItem = () => {
+    const label = prompt('項目名を入力してください (例: 筋トレ)');
+    if(!label) return;
+    
+    const icon = prompt('アイコン絵文字を入力してください (例: 💪)', '💪');
+    const desc = prompt('説明を入力してください (例: 30分以上やった)', '');
+    const drinkingOnly = confirm('「お酒を飲んだ日」だけ表示しますか？\n(OK=はい / キャンセル=いいえ[毎日表示])');
+
+    const id = `custom_${Date.now()}`;
+    const newItem = {
+        id, label, icon: icon || '✅', type: 'boolean', desc, drinking_only: drinkingOnly
+    };
+
+    let schema = CHECK_SCHEMA;
+    try {
+        const stored = localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA);
+        if (stored) schema = JSON.parse(stored);
+    } catch(e) {}
+
+    schema.push(newItem);
+    localStorage.setItem(APP.STORAGE_KEYS.CHECK_SCHEMA, JSON.stringify(schema));
+    renderCheckEditor();
+};
+
 export const handleSaveSettings = async () => {
     const btn = document.getElementById('btn-save-settings');
     const originalText = btn.textContent;
@@ -239,7 +296,6 @@ export const handleSaveSettings = async () => {
         showMessage('設定を保存しました', 'success');
         toggleModal('settings-modal', false);
         
-        // 変更: 直接関数を呼ばず、イベントを発火してmain.jsに依頼する
         document.dispatchEvent(new CustomEvent('refresh-ui'));
 
     } catch(e) {
@@ -252,35 +308,13 @@ export const handleSaveSettings = async () => {
 };
 
 export const openHelp = () => toggleModal('help-modal', true);
+export const openLogDetail = (id) => { /* TODO */ };
 
-// 簡易詳細表示
-export const openLogDetail = async (id) => {
-    try {
-        const log = await db.logs.get(id);
-        if (!log) return;
-
-        const msg = `
-【ログ詳細】
-日時: ${dayjs(log.timestamp).format('YYYY/MM/DD HH:mm')}
-品目: ${log.name}
-サイズ: ${log.size || '-'}
-Kcal: ${Math.round(log.kcal)}
-メモ: ${log.memo || 'なし'}
-        `.trim();
-        alert(msg);
-    } catch(e) {
-        console.error(e);
-    }
-};
-
-export const updateModeSelector = () => { /* main.jsで処理するため空でOK */ };
-
-// 【重要】復元されたセレクトボックス生成ロジック (これを省略してはいけません)
+export const updateModeSelector = () => { /* ... */ };
 export const updateBeerSelectOptions = () => {
     const styleSel = document.getElementById('beer-select');
     const sizeSel = document.getElementById('beer-size');
     
-    // スタイル選択肢
     if (styleSel && styleSel.children.length === 0) {
         const source = (typeof STYLE_METADATA !== 'undefined') ? STYLE_METADATA : CALORIES.STYLES;
         const styles = Object.keys(source || {});
@@ -293,7 +327,6 @@ export const updateBeerSelectOptions = () => {
         });
     }
 
-    // サイズ選択肢
     if (sizeSel && sizeSel.children.length === 0) {
         Object.entries(SIZE_DATA).forEach(([key, val]) => {
             const opt = document.createElement('option');
@@ -305,9 +338,8 @@ export const updateBeerSelectOptions = () => {
     }
 };
 
-export const updateInputSuggestions = () => { /* Untappd優先のため無効化 */ };
-export const renderQuickButtons = () => { /* UI競合のため無効化 */ };
-
+export const updateInputSuggestions = () => { };
+export const renderQuickButtons = () => { };
 export const closeModal = (id) => toggleModal(id, false);
 export const adjustBeerCount = (delta) => {
     const el = document.getElementById('beer-count');

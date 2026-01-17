@@ -1,7 +1,8 @@
 import { db, Store } from './store.js';
 import { Calc } from './logic.js';
 import { APP, EXERCISE, STYLE_SPECS } from './constants.js';
-import { UI, refreshUI } from './ui/index.js';
+// ★修正: UIオブジェクト経由ではなく、直接DOM関数をインポートして循環参照を回避
+import { showMessage, showConfetti } from './ui/dom.js';
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
 export const Service = {
@@ -137,49 +138,27 @@ export const Service = {
             const archives = await db.period_archives.toArray();
             if (archives.length > 0) {
                 console.log(`[Service] Unarchiving ${archives.length} periods for Permanent mode...`);
-                // アーカイブに保存されているスナップショットデータ（現在はlogsテーブルに残っている前提だが、
-                // 将来的にlogsを消す実装にするならここで復元処理が必要）
-                // 現状の仕様では「logsをクリア」して「period_archives」にのみ残す形になるため、
-                // period_archives から logs への復元ロジックが必要だが、
-                // 今回のStep 3.3の実装では「logsをクリアする」処理が入るため、
-                // 復元ロジックは「期間ロールオーバー時にlogsを消去している場合」に必須となる。
-                
-                // ※重要: 今回のStep 3.3の実装では、ロールオーバー時にlogsを削除する仕様になっているため、
-                // ここで「period_archives内のデータ」ではなく「logsテーブル」に戻す必要があるが、
-                // Dexieのperiod_archivesスキーマには 'logs' そのものは含まれていない（summaryのみ）。
-                // ★ Plan補正: Step 3.3の実装では、logsを削除せず timestamp フィルタで制御するか、
-                // period_archives に full_logs を持たせる必要がある。
-                // Dexieは容量制限が厳しくないため、period_archives に `logs: [...]` を持たせるのが安全。
-                // ここでは、ロールオーバー時に logs を period_archives.logs に退避させ、
-                // Permanent変更時にそれを logs テーブルに書き戻すロジックとする。
                 
                 let restoredCount = 0;
                 for (const arch of archives) {
                     if (arch.logs && arch.logs.length > 0) {
-                        // IDの衝突を避けるため、IDを除外して追加
                         const logsToRestore = arch.logs.map(({id, ...rest}) => rest);
                         await db.logs.bulkAdd(logsToRestore);
                         restoredCount += logsToRestore.length;
                     }
                 }
                 
-                // アーカイブを空にする
                 await db.period_archives.clear();
-                
-                // PERIOD_START をリセット (全期間表示)
                 localStorage.setItem(APP.STORAGE_KEYS.PERIOD_START, 0);
                 
-                UI.showMessage(`${restoredCount}件の過去ログを復元しました`, 'success');
+                // ★修正: dom.jsから直接インポートした関数を使用
+                showMessage(`${restoredCount}件の過去ログを復元しました`, 'success');
             }
         } 
         // --- Weekly/Monthlyへの変更 ---
         else {
-            // 現在の期間を設定
             const start = Service.calculatePeriodStart(newMode);
             localStorage.setItem(APP.STORAGE_KEYS.PERIOD_START, start);
-            
-            // 注: 既存のlogsは消さない。
-            // 次回のロールオーバー時に、新しい期間設定に基づいてアーカイブされる。
         }
     },
 
@@ -189,7 +168,7 @@ export const Service = {
     calculatePeriodStart: (mode) => {
         const now = dayjs();
         if (mode === 'weekly') {
-            return now.startOf('week').valueOf(); // Sunday start? or Monday? dayjs defaults Sunday
+            return now.startOf('week').valueOf();
         } else if (mode === 'monthly') {
             return now.startOf('month').valueOf();
         }
@@ -207,7 +186,6 @@ export const Service = {
 
         const storedStart = parseInt(localStorage.getItem(APP.STORAGE_KEYS.PERIOD_START));
         
-        // 初回起動時などで設定がない場合は初期化して終了
         if (!storedStart) {
             const newStart = Service.calculatePeriodStart(mode);
             localStorage.setItem(APP.STORAGE_KEYS.PERIOD_START, newStart);
@@ -220,7 +198,6 @@ export const Service = {
         let nextStart = null;
 
         if (mode === 'weekly') {
-            // 週の開始が変わっているか (現在時刻の週開始 != 保存された週開始)
             const currentWeekStart = now.startOf('week');
             if (!currentWeekStart.isSame(startDate, 'day')) {
                 shouldRollover = true;
@@ -235,17 +212,11 @@ export const Service = {
         }
 
         if (shouldRollover) {
-            // UI側で確認モーダルを出すためにイベント発火、またはここで処理
-            // 自動処理する場合:
             console.log(`[Service] Rollover detected. Mode: ${mode}`);
             
-            // 1. アーカイブ対象データの取得 (古い期間のログ)
-            // 次の期間の開始(=今の期間の終了) より前のログ
             const logsToArchive = await db.logs.where('timestamp').below(nextStart).toArray();
             
             if (logsToArchive.length > 0) {
-                // 2. period_archives に保存
-                // 復元用に生ログも保存する (重要)
                 const totalBalance = logsToArchive.reduce((sum, l) => sum + (l.kcal || 0), 0);
                 
                 await db.period_archives.add({
@@ -253,27 +224,23 @@ export const Service = {
                     endDate: nextStart - 1,
                     mode: mode,
                     totalBalance: totalBalance,
-                    logs: logsToArchive, // 全データ退避
+                    logs: logsToArchive, 
                     createdAt: Date.now()
                 });
 
-                // 3. logs テーブルから削除
                 const idsToDelete = logsToArchive.map(l => l.id);
                 await db.logs.bulkDelete(idsToDelete);
                 
                 console.log(`[Service] Archived ${logsToArchive.length} logs.`);
             }
 
-            // 4. 新しい期間開始日を保存
             localStorage.setItem(APP.STORAGE_KEYS.PERIOD_START, nextStart);
-            
-            return true; // ロールオーバーが発生したことを通知
+            return true; 
         }
 
         return false;
     },
 
-    // --- 既存メソッド (変更なし) ---
     saveBeerLog: async (data, id = null) => {
         let name, kcal, abv, carb;
         if (data.isCustom) {
@@ -310,13 +277,16 @@ export const Service = {
         };
         if (id) {
             await db.logs.update(parseInt(id), logData);
-            UI.showMessage('📝 記録を更新しました', 'success');
+            // ★修正
+            showMessage('📝 記録を更新しました', 'success');
         } else {
             await db.logs.add(logData);
             if (Math.abs(kcal) > 500) {
-                UI.showMessage(`🍺 記録完了！ ${Math.round(Math.abs(kcal))}kcalの借金です😱`, 'error');
+                // ★修正
+                showMessage(`🍺 記録完了！ ${Math.round(Math.abs(kcal))}kcalの借金です😱`, 'error');
             } else {
-                UI.showMessage('🍺 記録しました！', 'success');
+                // ★修正
+                showMessage('🍺 記録しました！', 'success');
             }
             if (data.useUntappd && data.brewery && data.brand) {
                 const query = encodeURIComponent(`${data.brewery} ${data.brand}`);
@@ -324,7 +294,8 @@ export const Service = {
             }
         }
         await Service.recalcImpactedHistory(data.timestamp);
-        await refreshUI();
+        // ★修正: イベント発火
+        document.dispatchEvent(new CustomEvent('refresh-ui'));
     },
 
     saveExerciseLog: async (exerciseKey, minutes, dateVal, applyBonus, id = null) => {
@@ -357,15 +328,19 @@ export const Service = {
         };
         if (id) {
             await db.logs.update(parseInt(id), logData);
-            UI.showMessage('📝 運動記録を更新しました', 'success');
+            // ★修正
+            showMessage('📝 運動記録を更新しました', 'success');
         } else {
             await db.logs.add(logData);
             const savedMin = Math.round(minutes);
-            UI.showMessage(`🏃‍♀️ ${savedMin}分の運動を記録しました！`, 'success');
-            UI.showConfetti();
+            // ★修正
+            showMessage(`🏃‍♀️ ${savedMin}分の運動を記録しました！`, 'success');
+            // ★修正
+            showConfetti();
         }
         await Service.recalcImpactedHistory(ts);
-        await refreshUI();
+        // ★修正: イベント発火
+        document.dispatchEvent(new CustomEvent('refresh-ui'));
     },
 
     deleteLog: async (id) => {
@@ -374,12 +349,15 @@ export const Service = {
             const log = await db.logs.get(parseInt(id));
             const ts = log ? log.timestamp : Date.now();
             await db.logs.delete(parseInt(id));
-            UI.showMessage('削除しました', 'success');
+            // ★修正
+            showMessage('削除しました', 'success');
             await Service.recalcImpactedHistory(ts);
-            await refreshUI();
+            // ★修正: イベント発火
+            document.dispatchEvent(new CustomEvent('refresh-ui'));
         } catch (e) {
             console.error(e);
-            UI.showMessage('削除に失敗しました', 'error');
+            // ★修正
+            showMessage('削除に失敗しました', 'error');
         }
     },
 
@@ -392,13 +370,18 @@ export const Service = {
                 if (log && log.timestamp < oldestTs) oldestTs = log.timestamp;
             }
             await db.logs.bulkDelete(ids);
-            UI.showMessage(`${ids.length}件削除しました`, 'success');
+            // ★修正
+            showMessage(`${ids.length}件削除しました`, 'success');
             await Service.recalcImpactedHistory(oldestTs);
-            await refreshUI();
-            UI.toggleSelectAll(); 
+            // ★修正: イベント発火
+            document.dispatchEvent(new CustomEvent('refresh-ui'));
+            
+            // Note: UI.toggleSelectAll() の呼び出しはService層の責務外かつ循環参照の元になるため削除しました。
+            // refresh-ui イベントによる再描画でチェックボックスの状態はリセット(再生成)されます。
         } catch (e) {
             console.error(e);
-            UI.showMessage('一括削除に失敗しました', 'error');
+            // ★修正
+            showMessage('一括削除に失敗しました', 'error');
         }
     },
 
@@ -418,17 +401,21 @@ export const Service = {
         };
         if (existing) {
             await db.checks.update(existing.id, data);
-            UI.showMessage('✅ デイリーチェックを更新しました', 'success');
+            // ★修正
+            showMessage('✅ デイリーチェックを更新しました', 'success');
         } else {
             await db.checks.add(data);
-            UI.showMessage('✅ デイリーチェックを記録しました', 'success');
-            UI.showConfetti();
+            // ★修正
+            showMessage('✅ デイリーチェックを記録しました', 'success');
+            // ★修正
+            showConfetti();
         }
         if (formData.weight) {
             localStorage.setItem(APP.STORAGE_KEYS.WEIGHT, formData.weight);
         }
         await Service.recalcImpactedHistory(ts);
-        await refreshUI();
+        // ★修正: イベント発火
+        document.dispatchEvent(new CustomEvent('refresh-ui'));
     },
 
     getAllDataForUI: async () => {

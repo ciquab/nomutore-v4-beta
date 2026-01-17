@@ -23,11 +23,11 @@ export function renderBeerTank(currentBalanceKcal) {
 
     const liquidFront = DOM.elements['tank-liquid'] || document.getElementById('orb-liquid-front');
     const liquidBack = DOM.elements['tank-liquid-back'] || document.getElementById('orb-liquid-back');
-    const emptyIcon = DOM.elements['tank-empty-icon'] || document.getElementById('tank-empty-icon');
+    
     const cansText = DOM.elements['tank-cans'] || document.getElementById('tank-cans');
     const minText = DOM.elements['tank-minutes'] || document.getElementById('tank-minutes');
     const msgContainer = DOM.elements['tank-message'] || document.getElementById('tank-message');
-    const orbContainer = document.querySelector('.orb-container'); // Need explicit select
+    const orbContainer = document.querySelector('.orb-container');
     
     if (!liquidFront || !liquidBack || !cansText || !minText || !msgContainer) return;
     
@@ -50,21 +50,21 @@ export function renderBeerTank(currentBalanceKcal) {
             liquidBack.style.filter = 'opacity(0.6)';
         }
 
-        // --- Zen Mode Check (Positive Balance) ---
-        if (orbContainer) {
-            if (currentBalanceKcal >= 0) {
-                orbContainer.classList.add('zen-mode');
-            } else {
-                orbContainer.classList.remove('zen-mode');
-            }
-        }
-
         let fillRatio = 0;
 
-        if (currentBalanceKcal > 0) {
-            emptyIcon.classList.add('hidden');
+        // ★修正: v4ロジック (借金 = 液体 / 完済 = 光)
+        if (currentBalanceKcal >= 0) {
+            // --- Zen Mode (完済) ---
+            // 液体は消える
+            liquidFront.style.opacity = '0';
+            liquidBack.style.opacity = '0';
+            
+            if (orbContainer) orbContainer.classList.add('zen-mode');
+
+            // テキスト表示 (貯金)
             const rawRatio = (canCount / APP.TANK_MAX_CANS) * 100;
-            fillRatio = Math.max(5, Math.min(100, rawRatio));
+            // 貯金があっても液体は増やさない（光の強さなどで表現も可能だが今回は消す）
+            fillRatio = 0; 
 
             cansText.textContent = `+${canCount.toFixed(1)}`;
             cansText.className = "text-4xl font-black text-emerald-600 dark:text-emerald-400 drop-shadow-sm";
@@ -73,20 +73,30 @@ export function renderBeerTank(currentBalanceKcal) {
             minText.innerHTML = `+${Math.round(displayMinutes)} min <span class="text-[10px] font-normal opacity-70">(${safeIcon})</span>`;
             minText.className = 'text-sm font-bold text-emerald-600 dark:text-emerald-400';
 
+            // メッセージ
             if (canCount < 0.5) {
-                msgText.textContent = 'Good start! Keep going! 👍';
+                msgText.textContent = 'Perfect Balance!';
                 msgText.className = 'text-sm font-bold text-emerald-600 dark:text-emerald-400';
             } else if (canCount < 2.0) {
-                msgText.textContent = 'Great Condition! 🌿';
+                msgText.textContent = 'Great Condition!';
                 msgText.className = 'text-sm font-bold text-emerald-600 dark:text-emerald-400 animate-pulse';
             } else {
-                msgText.textContent = 'Perfect! You are GOD! 👼';
+                msgText.textContent = 'You are GOD!';
                 msgText.className = 'text-sm font-bold text-purple-600 dark:text-purple-400 animate-bounce';
             }
 
-        } else if (currentBalanceKcal < 0) {
-            emptyIcon.classList.remove('hidden');
-            fillRatio = 10; 
+        } else {
+            // --- Debt Mode (借金) ---
+            // 液体が出現
+            liquidFront.style.opacity = '1';
+            liquidBack.style.opacity = '0.5'; // Back layer opacity defaults
+            
+            if (orbContainer) orbContainer.classList.remove('zen-mode');
+
+            // 借金量に応じて液体が増える (最大3本分で100%)
+            const debtCans = Math.abs(canCount);
+            const rawRatio = (debtCans / APP.TANK_MAX_CANS) * 100;
+            fillRatio = Math.max(10, Math.min(100, rawRatio)); // 最低10%は表示
 
             cansText.textContent = canCount.toFixed(1);
             cansText.className = "text-4xl font-black text-red-500 dark:text-red-400 drop-shadow-sm";
@@ -95,25 +105,16 @@ export function renderBeerTank(currentBalanceKcal) {
             minText.innerHTML = `${Math.round(Math.abs(displayMinutes))} min <span class="text-[10px] font-normal opacity-70">to burn</span>`;
             minText.className = 'text-sm font-bold text-red-500 dark:text-red-400';
             
-            const debtCansVal = Math.abs(canCount);
-            if (debtCansVal > 1.5) {
-                msgText.textContent = 'Heavy Debt... Move now! 😱';
+            if (debtCans > 2.5) {
+                msgText.textContent = 'Heavy Debt... Move now!';
                 msgText.className = 'text-sm font-bold text-red-600 dark:text-red-400 animate-pulse';
-            } else {
-                msgText.textContent = `Recovery Needed... (${debtCansVal.toFixed(1)} cans) 💦`;
+            } else if (debtCans > 1.0) {
+                msgText.textContent = `Recovery Needed...`;
                 msgText.className = 'text-sm font-bold text-orange-500 dark:text-orange-400';
+            } else {
+                msgText.textContent = 'Light Debt.';
+                msgText.className = 'text-sm font-bold text-gray-500 dark:text-gray-400';
             }
-
-        } else {
-            emptyIcon.classList.add('hidden');
-            fillRatio = 50; 
-
-            cansText.textContent = "0.0";
-            cansText.className = "text-4xl font-black text-base-800 dark:text-white drop-shadow-sm";
-            minText.textContent = "Perfect Balance";
-            minText.className = "text-sm font-bold text-gray-400 dark:text-gray-500";
-            msgText.textContent = "Ready for a drink? 🍺";
-            msgText.className = "text-sm font-bold text-gray-400 dark:text-gray-500";
         }
 
         const topVal = 100 - fillRatio;
