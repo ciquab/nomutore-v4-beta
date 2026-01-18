@@ -37,10 +37,12 @@ export const APP = {
 // 【新規】デイリーチェック項目の定義 (v4 Schema)
 // drinking_only: true の項目は「休肝日OFF」の時のみ表示される
 export const CHECK_SCHEMA = [
-    { id: 'waistEase', label: 'Waist Ease', icon: '👖', type: 'boolean', desc: 'お腹周りスッキリ' },
-    { id: 'footLightness', label: 'Foot Light', icon: '🦶', type: 'boolean', desc: '下半身のむくみなし' },
-    { id: 'waterOk', label: 'Water OK', icon: '💧', type: 'boolean', drinking_only: true, desc: '飲酒中に水分をとった' },
-    { id: 'fiberOk', label: 'Fiber OK', icon: '🥗', type: 'boolean', drinking_only: true, desc: '飲酒前に食物繊維をとった' };
+    { id: 'waistEase', label: '腹周りの余裕', icon: '👖', type: 'boolean', desc: 'ベルトが緩い' },
+    { id: 'footLightness', label: '足取りが軽い', icon: '🦶', type: 'boolean', desc: '階段が楽' },
+    // 以下は飲酒時のみ推奨
+    { id: 'waterOk', label: 'チェイサー', icon: '💧', type: 'boolean', desc: 'お酒と同量の水', drinking_only: true },
+    { id: 'fiberOk', label: '野菜摂取', icon: '🥗', type: 'boolean', desc: '食物繊維をとった', drinking_only: true }
+];
 
 export const CALORIES = { 
     STYLES: { 
