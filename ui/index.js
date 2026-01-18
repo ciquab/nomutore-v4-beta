@@ -214,6 +214,27 @@ export const UI = {
              openActionMenu(null); 
         });
 
+        bind('btn-reset-all', 'click', async () => {
+            if (confirm('【警告】\nすべてのデータを削除して初期化しますか？\nこの操作は取り消せません。')) {
+                if (confirm('本当に削除しますか？\n(復元用のバックアップがない場合、データは永遠に失われます)')) {
+                    try {
+                        // DBクリア
+                        await db.logs.clear();
+                        await db.checks.clear();
+                        await db.archives.clear();
+                        // ローカルストレージ（設定）クリア
+                        localStorage.clear();
+                        
+                        alert('データを削除しました。アプリを再読み込みします。');
+                        window.location.reload();
+                    } catch (e) {
+                        console.error(e);
+                        alert('削除中にエラーが発生しました。');
+                    }
+                }
+            }
+        });
+
         applyTheme(Store.getTheme());
     },
 
@@ -335,7 +356,9 @@ export const UI = {
     handleActionSelect: handleActionSelect,
     
     // ★追加: これがないとDataManagerからの呼び出しでエラーになる
-    updateModeSelector: updateModeSelector 
+    updateModeSelector: updateModeSelector,
+    applyTheme: applyTheme 
+
 };
 
 export { 
