@@ -97,14 +97,23 @@ export const getBeerFormData = () => {
     };
 };
 
-export const resetBeerForm = () => {
-    document.getElementById('beer-date').value = getTodayString();
+export const resetBeerForm = (keepDate = false) => {
+    // keepDateがtrueなら、現在入力されている日付を維持する
+    if (!keepDate) {
+        document.getElementById('beer-date').value = getTodayString();
+    }
+    
     document.getElementById('beer-count').value = 1;
     document.getElementById('beer-brewery').value = '';
     document.getElementById('beer-brand').value = '';
-    document.getElementById('beer-rating').value = '';
+    
+    const ratingEl = document.getElementById('beer-rating');
+    if(ratingEl) ratingEl.value = '0';
+    
     document.getElementById('beer-memo').value = '';
     
+    // Untappdチェックは連続記録時に便利なので維持しても良いが、
+    // 基本はリセットとし、必要ならユーザーが再チェックする方針とする
     const untappdCheck = document.getElementById('untappd-check');
     if(untappdCheck) untappdCheck.checked = false;
 };
@@ -123,13 +132,44 @@ export const searchUntappd = () => {
     window.open(url, '_blank');
 };
 
-export const openBeerModal = (e, dateStr = null) => {
+export const openBeerModal = (e, dateStr = null, log = null) => {
     resetBeerForm();
-    // ★修正: 引数で日付が渡されたらそれをセット
+    
+    // 日付セット
     if (dateStr) {
         document.getElementById('beer-date').value = dateStr;
+    } else if (log) {
+        document.getElementById('beer-date').value = dayjs(log.timestamp).format('YYYY-MM-DD');
     }
+
     updateBeerSelectOptions();
+
+    // ★追加: 編集モードの場合、データをフォームに流し込む
+    if (log) {
+        // 基本情報
+        document.getElementById('beer-count').value = log.count || 1;
+        document.getElementById('beer-brewery').value = log.brewery || '';
+        document.getElementById('beer-brand').value = log.brand || log.name || ''; // nameの場合もあるのでフォールバック
+        document.getElementById('beer-rating').value = log.rating || 0;
+        document.getElementById('beer-memo').value = log.memo || '';
+        
+        // プリセットかカスタムか判定
+        if (log.type === 'brew') {
+            // カスタム入力だった場合
+            switchBeerInputTab('custom');
+            document.getElementById('custom-abv').value = log.abv || 5.0;
+            document.getElementById('custom-amount').value = log.rawAmount || log.ml || 350;
+        } else {
+            // プリセットの場合
+            switchBeerInputTab('preset');
+            const styleSel = document.getElementById('beer-select');
+            const sizeSel = document.getElementById('beer-size');
+            
+            if (log.style) styleSel.value = log.style;
+            if (log.size) sizeSel.value = log.size;
+        }
+    }
+
     toggleModal('beer-modal', true);
 };
 

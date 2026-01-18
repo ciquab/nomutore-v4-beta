@@ -90,6 +90,25 @@ export const UI = {
             document.dispatchEvent(event);
             toggleModal('beer-modal', false);
         });
+
+        // ★追加: 「保存して次へ」
+        bind('btn-save-beer-next', 'click', () => {
+            const data = getBeerFormData();
+            
+            // 保存イベント発火
+            const event = new CustomEvent('save-beer', { detail: data });
+            document.dispatchEvent(event);
+            
+            // 完了メッセージ
+            showMessage('Saved! Ready for next.', 'success');
+            
+            // フォームリセット (日付は維持する = true)
+            resetBeerForm(true);
+            
+            // フォームの一番上までスクロールを戻す
+            const container = document.querySelector('#beer-modal .overflow-y-auto');
+            if(container) container.scrollTop = 0;
+        });
         
         bind('btn-search-untappd', 'click', searchUntappd);
 
@@ -237,7 +256,6 @@ export const UI = {
     
     deleteLog: (id) => Service.deleteLog(id),
     editLog: async (id) => {
-        // ★修正: 編集モード中はクリックを無視
         if (StateManager.isEditMode) return;
 
         const log = await db.logs.get(id);
@@ -245,9 +263,11 @@ export const UI = {
         
         if(confirm('記録を複製して編集モードに入りますか？\n(古い記録は削除されません)')) {
             if(log.type === 'beer') {
-                openBeerModal(null, dayjs(log.timestamp).format('YYYY-MM-DD'));
+                // ★修正: 第3引数に log を渡す
+                openBeerModal(null, dayjs(log.timestamp).format('YYYY-MM-DD'), log);
             } else if(log.type === 'exercise') {
-                openManualInput();
+                // Exercise側も同様に対応が必要なら引数を追加する (今回はBeerのみ対応)
+                openManualInput(dayjs(log.timestamp).format('YYYY-MM-DD'));
             }
         }
     },
