@@ -226,12 +226,11 @@ export const openCheckModal = async (dateStr) => {
     const dateInput = document.getElementById('check-date');
     if(dateInput) dateInput.value = dateVal;
 
-    // 2. ★追加: チェック項目の生成 (ここが不足していました)
+    // 2. チェック項目の生成
     const container = document.getElementById('check-items-container');
     if (container) {
         container.innerHTML = '';
         
-        // 保存されたスキーマ、なければデフォルトを使用
         let schema = CHECK_SCHEMA;
         try {
             const stored = localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA);
@@ -239,9 +238,11 @@ export const openCheckModal = async (dateStr) => {
         } catch(e) {}
 
         schema.forEach(item => {
-            // HTML生成
             const div = document.createElement('div');
-            // チェックボックスには "check-{item.id}" というIDを付与して後で値を取得できるようにする
+            // ★修正: drinking_only項目に識別用クラスを付与
+            const visibilityClass = item.drinking_only ? 'drinking-only' : '';
+            if (visibilityClass) div.className = visibilityClass;
+
             div.innerHTML = `
                 <label class="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl cursor-pointer border border-transparent hover:border-indigo-200 dark:hover:border-indigo-700 transition h-full">
                     <input type="checkbox" id="check-${item.id}" class="rounded text-indigo-600 focus:ring-indigo-500 w-5 h-5 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
@@ -257,47 +258,61 @@ export const openCheckModal = async (dateStr) => {
         });
     }
 
-    // 3. フォームリセット (初期値: false / 空)
+    // 3. 表示制御用ヘルパー関数
+    const syncDryDayUI = (isDry) => {
+        // 項目の表示・非表示切り替え
+        const items = document.querySelectorAll('.drinking-only');
+        items.forEach(el => {
+            if (isDry) el.classList.add('hidden');
+            else el.classList.remove('hidden');
+        });
+        // UIの色変更 (dom.jsのtoggleDryDayを呼び出す)
+        if (typeof toggleDryDay === 'function') {
+            toggleDryDay(isDry);
+        }
+    };
+
+    // トグルのイベント設定
+    const isDryCheck = document.getElementById('check-is-dry');
+    if (isDryCheck) {
+        isDryCheck.onchange = (e) => syncDryDayUI(e.target.checked);
+    }
+
+    // 4. フォームリセットと初期状態の設定
     const setCheck = (id, val) => {
         const el = document.getElementById(id);
         if(el) el.checked = !!val;
     };
     
     setCheck('check-is-dry', false);
-    
-    // 生成したチェック項目のリセット
-    let schema = CHECK_SCHEMA;
-    try {
-        const stored = localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA);
-        if (stored) schema = JSON.parse(stored);
-    } catch(e) {}
-    
-    schema.forEach(item => {
-        setCheck(`check-${item.id}`, false);
-    });
+    syncDryDayUI(false); // 初期状態は飲酒モード(オレンジ)
     
     const wEl = document.getElementById('check-weight');
     if(wEl) wEl.value = '';
 
-    // 4. データ復元 (DBから検索)
+    // 5. データ復元 (DBから検索)
     try {
         const start = d.startOf('day').valueOf();
         const end = d.endOf('day').valueOf();
-        
         const existingLogs = await db.checks.where('timestamp').between(start, end, true, true).toArray();
         const existing = existingLogs.length > 0 ? existingLogs[0] : null;
 
         if (existing) {
             setCheck('check-is-dry', existing.isDryDay);
+            // ★重要: 復元した値に基づいてUI（色と表示項目）を同期
+            syncDryDayUI(existing.isDryDay);
             
-            // 動的項目の値をセット
+            let schema = CHECK_SCHEMA;
+            try {
+                const s = localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA);
+                if (s) schema = JSON.parse(s);
+            } catch(e) {}
+
             schema.forEach(item => {
-                // DBに保存されたキー(item.id)の値があればセット
                 if (existing[item.id] !== undefined) {
                     setCheck(`check-${item.id}`, existing[item.id]);
                 }
             });
-            
             if(wEl) wEl.value = existing.weight || '';
         }
     } catch (e) {
