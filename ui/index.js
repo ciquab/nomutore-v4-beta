@@ -251,14 +251,15 @@ export const UI = {
     },
 
     switchTab: (tabId) => {
-        // ★修正1: タブ切り替え時に必ずページ最上部へスクロール
-        window.scrollTo({ top: 0, behavior: 'instant' }); 
-
-        // ★修正2: Cellar以外のタブへ行くときは、編集モードを強制解除する
+        // 1. Cellar以外のタブへ行くときは、編集モードを強制解除してUIを隠す
         if (tabId !== 'cellar') {
             StateManager.setIsEditMode(false);
+            // ★追加: 削除ボタンを即座に隠す（チラつき防止）
+            const deleteBtn = document.getElementById('btn-delete-selected');
+            if (deleteBtn) deleteBtn.classList.add('translate-y-20', 'opacity-0');
         }
 
+        // 2. 表示の切り替え
         document.querySelectorAll('.tab-content').forEach(el => {
             el.classList.remove('active');
             el.style.display = 'none'; 
@@ -267,7 +268,14 @@ export const UI = {
         const target = document.getElementById(`tab-${tabId}`);
         if(target) {
             target.style.display = 'block';
-            setTimeout(() => target.classList.add('active'), 10);
+            
+            // ★修正: 10ミリ秒だけ待ってからスクロールすることで、確実に最上部に戻ります
+            setTimeout(() => {
+                window.scrollTo(0, 0);
+                document.documentElement.scrollTop = 0;
+                document.body.scrollTop = 0;
+                target.classList.add('active');
+            }, 10);
         }
 
         document.querySelectorAll('.nav-item').forEach(el => {

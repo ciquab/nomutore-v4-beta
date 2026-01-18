@@ -74,10 +74,12 @@ export const deleteSelectedLogs = async () => {
     
     try {
         await db.logs.bulkDelete(ids);
+
+        // ★修正: await を追加して、リストの再描画完了を待つ
+        await updateLogListView(false);
         
         // ★修正: 削除後に編集モードを強制終了し、UIをリセットする
         StateManager.setIsEditMode(false); 
-        updateLogListView(false);
         updateBulkActionUI(); // これによりカウントが0になりボタンが隠れる
         
     } catch (e) {
