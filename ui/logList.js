@@ -74,10 +74,12 @@ export const deleteSelectedLogs = async () => {
     
     try {
         await db.logs.bulkDelete(ids);
-        // 削除後リフレッシュ
+        
+        // ★修正: 削除後に編集モードを強制終了し、UIをリセットする
+        StateManager.setIsEditMode(false); 
         updateLogListView(false);
-        // 削除完了後は編集モードを維持するか抜けるか（ここでは維持）
-        updateBulkActionUI();
+        updateBulkActionUI(); // これによりカウントが0になりボタンが隠れる
+        
     } catch (e) {
         console.error(e);
         alert('Failed to delete logs.');

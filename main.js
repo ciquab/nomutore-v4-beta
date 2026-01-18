@@ -166,6 +166,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // ★追加: マニュアル入力の保存ボタンに機能を紐付け
+    const btnSaveExerciseManual = document.getElementById('btn-save-exercise');
+    if (btnSaveExerciseManual) {
+        btnSaveExerciseManual.onclick = () => {
+            import('./ui/modal.js').then(m => m.handleSaveManualExercise());
+        };
+    }
+
     document.addEventListener('bulk-delete', async () => {
         const checkboxes = document.querySelectorAll('.log-checkbox:checked');
         const ids = Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));
@@ -274,3 +282,32 @@ const showSwipeCoachMark = () => {
         localStorage.setItem(KEY, 'true');
     }, 3000);
 };
+
+// main.js
+
+/* ==========================================================================
+   Swipe Navigation (v3 Spec Restored)
+   ========================================================================== */
+let touchStartX = 0;
+let touchEndX = 0;
+
+const handleSwipe = () => {
+    const swipeThreshold = 100; // スワイプと判定する距離(px)
+    const diff = touchStartX - touchEndX;
+    const tabs = ['home', 'record', 'cellar', 'settings'];
+    const currentTab = document.querySelector('.nav-pill-active')?.id.replace('nav-tab-', '');
+    const currentIndex = tabs.indexOf(currentTab);
+
+    if (Math.abs(diff) > swipeThreshold) {
+        if (diff > 0 && currentIndex < tabs.length - 1) {
+            // 左スワイプ -> 次のタブへ
+            UI.switchTab(tabs[currentIndex + 1]);
+        } else if (diff < 0 && currentIndex > 0) {
+            // 右スワイプ -> 前のタブへ
+            UI.switchTab(tabs[currentIndex - 1]);
+        }
+    }
+};
+
+document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, false);
+document.addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; handleSwipe(); }, false);

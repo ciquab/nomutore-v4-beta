@@ -251,6 +251,14 @@ export const UI = {
     },
 
     switchTab: (tabId) => {
+        // ★修正1: タブ切り替え時に必ずページ最上部へスクロール
+        window.scrollTo({ top: 0, behavior: 'instant' }); 
+
+        // ★修正2: Cellar以外のタブへ行くときは、編集モードを強制解除する
+        if (tabId !== 'cellar') {
+            StateManager.setIsEditMode(false);
+        }
+
         document.querySelectorAll('.tab-content').forEach(el => {
             el.classList.remove('active');
             el.style.display = 'none'; 

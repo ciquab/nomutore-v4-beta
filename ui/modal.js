@@ -327,42 +327,55 @@ export const openCheckModal = async (dateStr) => {
 // ★修正: dateStrを受け取れるように変更
 export const openManualInput = (dateStr = null, log = null) => {
     // フォームリセット
-    document.getElementById('editing-exercise-id').value = '';
-    document.getElementById('manual-minutes').value = '';
+    const idField = document.getElementById('editing-exercise-id');
+    const minField = document.getElementById('manual-minutes');
+    if(idField) idField.value = '';
+    if(minField) minField.value = '';
     
     // 日付セット
-    if (dateStr) {
-        document.getElementById('manual-date').value = dateStr;
-    } else if (log) {
-        document.getElementById('manual-date').value = dayjs(log.timestamp).format('YYYY-MM-DD');
-    } else {
-        document.getElementById('manual-date').value = dayjs().format('YYYY-MM-DD');
-    }
+    const targetDate = dateStr || (log ? dayjs(log.timestamp).format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'));
+    document.getElementById('manual-date').value = targetDate;
 
-    // 編集モードの場合、データをセット
+    // 編集モードの場合、既存データをセット
     if (log) {
-        document.getElementById('editing-exercise-id').value = log.id;
-        document.getElementById('manual-minutes').value = log.minutes || 30;
+        if(idField) idField.value = log.id;
+        if(minField) minField.value = log.minutes || 30;
         
         const typeSel = document.getElementById('exercise-select');
         if (typeSel && log.exerciseKey) {
             typeSel.value = log.exerciseKey;
         }
-        
-        // フォームがある場所（Recordタブ）へスクロール
-        const recordTab = document.getElementById('nav-tab-record');
-        if (recordTab) recordTab.click();
-        
-        // 少し待ってからスクロール
-        setTimeout(() => {
-            const formEl = document.getElementById('manual-date');
-            if(formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
-    } else {
-        // 新規の場合はタブ切り替えだけ（任意）
-        const recordTab = document.getElementById('nav-tab-record');
-        if (recordTab) recordTab.click();
     }
+
+    // モーダルを表示
+    toggleModal('exercise-modal', true);
+};
+
+/**
+ * マニュアル入力保存ボタンのハンドラ
+ */
+export const handleSaveManualExercise = () => {
+    const id = document.getElementById('editing-exercise-id').value;
+    const exerciseKey = document.getElementById('exercise-select').value;
+    const minutes = parseInt(document.getElementById('manual-minutes').value);
+    const date = document.getElementById('manual-date').value;
+    const applyBonus = document.getElementById('manual-bonus').checked;
+
+    if (!minutes || minutes <= 0) {
+        alert('時間を入力してください');
+        return;
+    }
+
+    // イベントを発火 (main.js がこれを受け取って Service を呼ぶ)
+    document.dispatchEvent(new CustomEvent('save-exercise', {
+        detail: {
+            exerciseKey,
+            minutes,
+            date,
+            applyBonus,
+            id: id ? parseInt(id) : null
+        }
+    }));
 };
 
 export const openTimer = () => {
