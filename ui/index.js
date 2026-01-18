@@ -27,36 +27,50 @@ import {
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
 export const refreshUI = async () => {
-    if (!UI._fetchAllDataHandler) return;
-    const { logs, checks } = await UI._fetchAllDataHandler();
-    
-    // データ整合性チェック等のために少し待つケースも考慮
-    const profile = Store.getProfile();
-    let balance = 0;
-    logs.forEach(l => {
-        balance += (l.kcal || 0);
-    });
-    
-    // 各コンポーネント再描画
-    renderBeerTank(balance);
-    renderLiverRank(checks, logs);
-    renderCheckStatus(checks, logs);
-    
-    await renderWeeklyAndHeatUp(logs, checks);
+    try {
+        if (!DOM.isInitialized) DOM.init();
 
-    renderChart(logs, checks);
-    
-    const cellarMode = StateManager.cellarViewMode;
-    if (cellarMode === 'logs') {
-        updateLogListView();
-    } else if (cellarMode === 'stats') {
-        renderBeerStats(logs);
-    } else if (cellarMode === 'archives') {
-        renderArchives();
+        // ★修正1: 常に全データを取得する (UIパーツの計算用)
+        // ここでページネーション用の handler は使いません
+        const { logs, checks } = await Service.getAllDataForUI();
+        
+        // バランス計算 (全ログ対象)
+        const profile = Store.getProfile();
+        let balance = 0;
+        logs.forEach(l => {
+            // カロリーが記録されていればそれを使い、なければ計算
+            const val = l.kcal !== undefined ? l.kcal : (l.type === 'exercise' ? (l.minutes * Calc.burnRate(6.0, profile)) : 0);
+            balance += val;
+        });
+        
+        // 各コンポーネント再描画 (全データを渡す)
+        renderBeerTank(balance);
+        renderLiverRank(checks, logs);
+        renderCheckStatus(checks, logs);
+        
+        // カレンダーとヒートマップ (アーカイブ結合等の処理を含む)
+        await renderWeeklyAndHeatUp(logs, checks);
+
+        renderChart(logs, checks);
+        
+        // ★修正2: タブごとの個別更新処理
+        // リストの表示内容は logList.js 自身がデータを取得するので、ここでは更新関数を呼ぶだけでOK
+        const cellarMode = StateManager.cellarViewMode;
+        if (cellarMode === 'logs') {
+            if (typeof updateLogListView === 'function') {
+                updateLogListView(); 
+            }
+        } else if (cellarMode === 'stats') {
+            renderBeerStats(logs);
+        } else if (cellarMode === 'archives') {
+            renderArchives();
+        }
+
+        updateModeSelector(); 
+
+    } catch (e) {
+        console.error('UI Refresh Error:', e);
     }
-
-    // ★追加: ヘッダーのモード選択プルダウンも更新
-    updateModeSelector(); 
 };
 
 export const UI = {
