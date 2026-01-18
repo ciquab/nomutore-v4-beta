@@ -1,6 +1,6 @@
 import { Calc } from '../logic.js';
-import { Store, db } from '../store.js'; // db追加
-import { Service } from '../service.js'; // Service追加
+import { Store, db } from '../store.js';
+import { Service } from '../service.js';
 import { DOM, toggleModal, showConfetti, showMessage, applyTheme, toggleDryDay } from './dom.js';
 import { StateManager } from './state.js';
 
@@ -9,7 +9,6 @@ import { renderLiverRank } from './liverRank.js';
 import { renderCheckStatus } from './checkStatus.js';
 import { renderWeeklyAndHeatUp, renderHeatmap } from './weekly.js';
 import { renderChart } from './chart.js';
-// updateBulkCount を追加インポート
 import { updateLogListView, toggleEditMode, toggleSelectAll, updateBulkCount, setFetchLogsHandler } from './logList.js';
 import { renderBeerStats } from './beerStats.js';
 import { renderArchives } from './archiveManager.js';
@@ -17,7 +16,7 @@ import { Timer } from './timer.js';
 
 import { 
     getBeerFormData, resetBeerForm, openBeerModal, switchBeerInputTab, 
-    openCheckModal, openManualInput, openSettings, openHelp, openLogDetail,
+    openCheckModal, openManualInput, renderSettings, openHelp, openLogDetail, 
     updateModeSelector, updateBeerSelectOptions, updateInputSuggestions, renderQuickButtons,
     closeModal, adjustBeerCount, searchUntappd,
     openTimer, closeTimer 
@@ -76,10 +75,10 @@ export const UI = {
         bind('nav-tab-cellar', 'click', () => UI.switchTab('cellar'));
         bind('nav-tab-settings', 'click', () => UI.switchTab('settings'));
 
-        // Home Mode Select (★追加)
+        // Home Mode Select
         bind('home-mode-select', 'change', (e) => {
             StateManager.setBeerMode(e.target.value);
-            refreshUI(); // 再描画してオーブの色を更新
+            refreshUI();
         });
 
         // Modals
@@ -175,8 +174,7 @@ export const UI = {
         } else if (tabId === 'home') {
             refreshUI();
         } else if (tabId === 'settings') {
-            // renderSettings(); 
-            // settingsはmodal.js内なので一旦保留
+            renderSettings(); 
         }
     },
 
@@ -223,7 +221,6 @@ export const UI = {
     // --- Public Methods for HTML onclick ---
     deleteLog: (id) => Service.deleteLog(id),
     editLog: async (id) => {
-        // 簡易編集: 複製して入力
         const log = await db.logs.get(id);
         if(!log) return;
         
@@ -241,7 +238,7 @@ export const UI = {
     openBeerModal: (e, d) => openBeerModal(e, d),
     openCheckModal: openCheckModal,
     openManualInput: openManualInput,
-    openSettings: openSettings,
+    renderSettings: renderSettings, 
     openHelp: openHelp,
     closeModal: closeModal,
     adjustBeerCount: adjustBeerCount,
@@ -252,7 +249,11 @@ export const UI = {
     // Timer
     openTimer: openTimer,
     closeTimer: closeTimer,
-    refreshUI: refreshUI 
+    refreshUI: refreshUI,
+    
+    // ★追加: ポップアップで使うために公開
+    showConfetti: showConfetti,
+    showMessage: showMessage
 };
 
 export { 

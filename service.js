@@ -1,9 +1,13 @@
 import { db, Store } from './store.js';
 import { Calc } from './logic.js';
 import { APP, EXERCISE, STYLE_SPECS } from './constants.js';
-// ★修正: UIオブジェクト経由ではなく、直接DOM関数をインポートして循環参照を回避
 import { showMessage, showConfetti } from './ui/dom.js';
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
+// ★追加: 日本語ロケール(月曜始まり)を読み込む
+import 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/locale/ja.js';
+
+// ★追加: ロケールを適用
+dayjs.locale('ja');
 
 export const Service = {
     /**
@@ -151,7 +155,6 @@ export const Service = {
                 await db.period_archives.clear();
                 localStorage.setItem(APP.STORAGE_KEYS.PERIOD_START, 0);
                 
-                // ★修正: dom.jsから直接インポートした関数を使用
                 showMessage(`${restoredCount}件の過去ログを復元しました`, 'success');
             }
         } 
@@ -277,15 +280,12 @@ export const Service = {
         };
         if (id) {
             await db.logs.update(parseInt(id), logData);
-            // ★修正
             showMessage('📝 記録を更新しました', 'success');
         } else {
             await db.logs.add(logData);
             if (Math.abs(kcal) > 500) {
-                // ★修正
                 showMessage(`🍺 記録完了！ ${Math.round(Math.abs(kcal))}kcalの借金です😱`, 'error');
             } else {
-                // ★修正
                 showMessage('🍺 記録しました！', 'success');
             }
             if (data.useUntappd && data.brewery && data.brand) {
@@ -294,7 +294,6 @@ export const Service = {
             }
         }
         await Service.recalcImpactedHistory(data.timestamp);
-        // ★修正: イベント発火
         document.dispatchEvent(new CustomEvent('refresh-ui'));
     },
 
@@ -328,18 +327,14 @@ export const Service = {
         };
         if (id) {
             await db.logs.update(parseInt(id), logData);
-            // ★修正
             showMessage('📝 運動記録を更新しました', 'success');
         } else {
             await db.logs.add(logData);
             const savedMin = Math.round(minutes);
-            // ★修正
             showMessage(`🏃‍♀️ ${savedMin}分の運動を記録しました！`, 'success');
-            // ★修正
             showConfetti();
         }
         await Service.recalcImpactedHistory(ts);
-        // ★修正: イベント発火
         document.dispatchEvent(new CustomEvent('refresh-ui'));
     },
 
@@ -349,14 +344,11 @@ export const Service = {
             const log = await db.logs.get(parseInt(id));
             const ts = log ? log.timestamp : Date.now();
             await db.logs.delete(parseInt(id));
-            // ★修正
             showMessage('削除しました', 'success');
             await Service.recalcImpactedHistory(ts);
-            // ★修正: イベント発火
             document.dispatchEvent(new CustomEvent('refresh-ui'));
         } catch (e) {
             console.error(e);
-            // ★修正
             showMessage('削除に失敗しました', 'error');
         }
     },
@@ -370,17 +362,11 @@ export const Service = {
                 if (log && log.timestamp < oldestTs) oldestTs = log.timestamp;
             }
             await db.logs.bulkDelete(ids);
-            // ★修正
             showMessage(`${ids.length}件削除しました`, 'success');
             await Service.recalcImpactedHistory(oldestTs);
-            // ★修正: イベント発火
             document.dispatchEvent(new CustomEvent('refresh-ui'));
-            
-            // Note: UI.toggleSelectAll() の呼び出しはService層の責務外かつ循環参照の元になるため削除しました。
-            // refresh-ui イベントによる再描画でチェックボックスの状態はリセット(再生成)されます。
         } catch (e) {
             console.error(e);
-            // ★修正
             showMessage('一括削除に失敗しました', 'error');
         }
     },
@@ -401,20 +387,16 @@ export const Service = {
         };
         if (existing) {
             await db.checks.update(existing.id, data);
-            // ★修正
             showMessage('✅ デイリーチェックを更新しました', 'success');
         } else {
             await db.checks.add(data);
-            // ★修正
             showMessage('✅ デイリーチェックを記録しました', 'success');
-            // ★修正
             showConfetti();
         }
         if (formData.weight) {
             localStorage.setItem(APP.STORAGE_KEYS.WEIGHT, formData.weight);
         }
         await Service.recalcImpactedHistory(ts);
-        // ★修正: イベント発火
         document.dispatchEvent(new CustomEvent('refresh-ui'));
     },
 
