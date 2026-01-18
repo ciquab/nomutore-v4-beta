@@ -39,7 +39,7 @@ export const APP = {
 export const CHECK_SCHEMA = [
     { id: 'waistEase', label: 'Waist Ease', icon: '👖', type: 'boolean', desc: 'お腹周りスッキリ' },
     { id: 'footLightness', label: 'Foot Light', icon: '🦶', type: 'boolean', desc: '下半身のむくみなし' },
-    { id: 'waterOk', label: 'Water OK', icon: '💧', type: 'boolean', drinking_only: true desc: '飲酒中に水分をとった' },
+    { id: 'waterOk', label: 'Water OK', icon: '💧', type: 'boolean', drinking_only: true, desc: '飲酒中に水分をとった' },
     { id: 'fiberOk', label: 'Fiber OK', icon: '🥗', type: 'boolean', drinking_only: true, desc: '飲酒前に食物繊維をとった' };
 
 export const CALORIES = { 
