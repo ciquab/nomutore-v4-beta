@@ -21,6 +21,12 @@ export function renderChart(logs, checks) {
     }
 
     try {
+        // ★修正: StateManagerに頼らず、Canvasに紐付いている既存チャートを確実に破棄する
+        const existingChart = Chart.getChart(ctxCanvas);
+        if (existingChart) {
+            existingChart.destroy();
+        }
+
         const now = dayjs();
         let cutoffDate = StateManager.chartRange === '1w' ? now.subtract(7, 'day').valueOf() :
                          StateManager.chartRange === '1m' ? now.subtract(1, 'month').valueOf() :
@@ -32,7 +38,6 @@ export function renderChart(logs, checks) {
         // --- データセット準備 ---
         const dateMap = new Map();
         
-        // 1. 日付ごとの枠を作成
         let current = dayjs(cutoffDate);
         const end = dayjs();
         while(current.isBefore(end) || current.isSame(end, 'day')) {
@@ -41,20 +46,16 @@ export function renderChart(logs, checks) {
             current = current.add(1, 'day');
         }
 
-        // 2. ログデータの集計 (Balance)
         logs.forEach(l => {
             if (l.timestamp >= cutoffDate) {
                 const dStr = dayjs(l.timestamp).format('MM/DD');
                 if (dateMap.has(dStr)) {
-                    // kcalがあれば優先、なければminutesから計算
                     const val = l.kcal !== undefined ? l.kcal : (l.minutes * Calc.burnRate(6.0, profile));
                     dateMap.get(dStr).balance += val;
                 }
             }
         });
 
-        // 3. チェックデータの集計 (Weight)
-        // 同じ日に複数記録がある場合は最新を採用
         checks.forEach(c => {
             if (c.timestamp >= cutoffDate && c.weight) {
                 const dStr = dayjs(c.timestamp).format('MM/DD');
@@ -65,10 +66,8 @@ export function renderChart(logs, checks) {
             }
         });
 
-        // 4. 配列化 & 体重データの補間 (nullだと線が切れるため、前日データで埋めるオプションも考えられるが、Chart.jsのspanGapsを使う)
         const dataArray = Array.from(dateMap.values());
 
-        // 体重グラフのY軸範囲調整 (見やすくするため)
         const weights = dataArray.filter(d => d.hasWeight).map(d => d.weight);
         let weightMin = 40, weightMax = 100;
         if (weights.length > 0) {
@@ -76,10 +75,6 @@ export function renderChart(logs, checks) {
             weightMax = Math.max(...weights) + 2.0;
         }
 
-        // Chart生成
-        if (StateManager.chart) StateManager.chart.destroy();
-
-        // Dark mode detection for Chart.js colors
         const isDark = document.documentElement.classList.contains('dark');
         const textColor = isDark ? '#9CA3AF' : '#6B7280';
         const gridColor = isDark ? 'rgba(75, 85, 99, 0.2)' : 'rgba(229, 231, 235, 0.5)';
@@ -90,7 +85,6 @@ export function renderChart(logs, checks) {
                 labels: dataArray.map(d => d.date),
                 datasets: [
                     { 
-                        // 運動 (プラス)
                         label: 'Earned', 
                         data: dataArray.map(d => d.balance > 0 ? Math.round(Calc.convertKcalToMinutes(d.balance, baseEx, profile)) : 0), 
                         backgroundColor: '#10B981', 
@@ -100,7 +94,6 @@ export function renderChart(logs, checks) {
                         yAxisID: 'y'
                     },
                     { 
-                        // 飲酒 (マイナス) - グラフ上はプラス方向に表示した方が見やすい場合もあるが、収支通りマイナスに出す
                         label: 'Consumed', 
                         data: dataArray.map(d => d.balance < 0 ? Math.round(Calc.convertKcalToMinutes(d.balance, baseEx, profile)) : 0), 
                         backgroundColor: '#EF4444', 
@@ -110,18 +103,17 @@ export function renderChart(logs, checks) {
                         yAxisID: 'y'
                     },
                     {
-                        // 体重 (折れ線) - 右軸
                         type: 'line',
                         label: 'Weight',
-                        data: dataArray.map(d => d.weight), // nullが含まれるとspanGaps: trueが必要
-                        borderColor: '#6366F1', // Indigo
+                        data: dataArray.map(d => d.weight),
+                        borderColor: '#6366F1',
                         backgroundColor: '#6366F1',
                         borderWidth: 2,
                         pointRadius: 3,
                         tension: 0.3,
                         yAxisID: 'y1',
                         order: 1,
-                        spanGaps: true // データ欠損時も線をつなぐ
+                        spanGaps: true
                     }
                 ] 
             },
@@ -135,21 +127,19 @@ export function renderChart(logs, checks) {
                         grid: { display: false }
                     }, 
                     y: { 
-                        // 左軸: カロリー(分)
                         beginAtZero: true,
                         position: 'left',
-                        title: { display: false }, // スペース節約
+                        title: { display: false },
                         ticks: { color: textColor, font: { size: 10 } },
                         grid: { color: gridColor }
                     },
                     y1: {
-                        // 右軸: 体重
                         type: 'linear',
                         display: true,
                         position: 'right',
                         min: weightMin,
                         max: weightMax,
-                        grid: { drawOnChartArea: false }, // グリッド線は左軸に合わせる
+                        grid: { drawOnChartArea: false },
                         ticks: { color: '#6366F1', font: { size: 10, weight: 'bold' } }
                     }
                 }, 
@@ -167,7 +157,10 @@ export function renderChart(logs, checks) {
             }
         });
         
-        StateManager.setChart(newChart);
+        // StateManagerへの保存は行うが、破棄ロジックは上記 Chart.getChart に任せる
+        if (StateManager.setChart) {
+            StateManager.setChart(newChart);
+        }
 
     } catch(e) { console.error('Chart Error', e); }
 }

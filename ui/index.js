@@ -1,6 +1,8 @@
 import { Calc } from '../logic.js';
 import { Store, db } from '../store.js';
 import { Service } from '../service.js';
+// ★修正: APP を追加インポート
+import { APP } from '../constants.js';
 import { DOM, toggleModal, showConfetti, showMessage, applyTheme, toggleDryDay } from './dom.js';
 import { StateManager } from './state.js';
 
@@ -24,28 +26,23 @@ import {
 
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
-// refreshUI の定義
 export const refreshUI = async () => {
     if (!UI._fetchAllDataHandler) return;
     
-    // ロード開始
     const { logs, checks } = await UI._fetchAllDataHandler();
     
-    // 今の期間の収支計算 (簡易)
     const profile = Store.getProfile();
     let balance = 0;
     logs.forEach(l => {
         balance += (l.kcal || 0);
     });
     
-    // 各コンポーネントの描画
     renderBeerTank(balance);
     renderLiverRank(checks, logs);
     renderCheckStatus(checks, logs);
     renderWeeklyAndHeatUp(logs, checks);
     renderChart(logs, checks);
     
-    // Cellar View Update
     const cellarMode = StateManager.cellarViewMode;
     if (cellarMode === 'logs') {
         updateLogListView();
@@ -81,7 +78,16 @@ export const UI = {
             refreshUI();
         });
 
-        // Modals
+        // ★追加: ホーム画面のプルダウンのラベルを、設定されたビール名と同期させる
+        const modes = Store.getModes();
+        const homeSel = document.getElementById('home-mode-select');
+        if(homeSel && modes) {
+            homeSel.options[0].text = modes.mode1 || 'Lager';
+            homeSel.options[1].text = modes.mode2 || 'Ale';
+            homeSel.value = StateManager.beerMode;
+        }
+
+        // Modals & Other Bindings
         bind('btn-save-beer', 'click', () => {
             const data = getBeerFormData();
             const event = new CustomEvent('save-beer', { detail: data });
@@ -95,12 +101,10 @@ export const UI = {
             const date = document.getElementById('check-date').value;
             const isDryDay = !document.getElementById('check-is-dry').checked;
             const weight = document.getElementById('check-weight').value;
-            
             const waistEase = document.getElementById('check-waistEase')?.checked || false;
             const footLightness = document.getElementById('check-footLightness')?.checked || false;
             const waterOk = document.getElementById('check-waterOk')?.checked || false;
             const fiberOk = document.getElementById('check-fiberOk')?.checked || false;
-
             const detail = { date, isDryDay, weight, waistEase, footLightness, waterOk, fiberOk };
             document.dispatchEvent(new CustomEvent('save-check', { detail }));
             toggleModal('check-modal', false);
@@ -115,7 +119,6 @@ export const UI = {
             applyTheme(e.target.value);
         });
 
-        // Heatmap Nav
         bind('heatmap-prev', 'click', () => {
             StateManager.setHeatmapOffset(StateManager.heatmapOffset + 1);
             refreshUI();
@@ -137,15 +140,10 @@ export const UI = {
             });
         }
         
-        // Timer Controls
         bind('btn-timer-toggle', 'click', Timer.toggle);
         bind('btn-timer-finish', 'click', Timer.finish);
 
         applyTheme(Store.getTheme());
-        
-        // ホームモード選択の初期値を反映
-        const homeSel = document.getElementById('home-mode-select');
-        if(homeSel) homeSel.value = StateManager.beerMode;
     },
 
     switchTab: (tabId) => {
@@ -218,7 +216,6 @@ export const UI = {
         applyTheme(next);
     },
     
-    // --- Public Methods for HTML onclick ---
     deleteLog: (id) => Service.deleteLog(id),
     editLog: async (id) => {
         const log = await db.logs.get(id);
@@ -246,12 +243,10 @@ export const UI = {
     toggleSelectAll: toggleSelectAll,
     switchCellarViewHTML: (mode) => UI.switchCellarView(mode),
     
-    // Timer
     openTimer: openTimer,
     closeTimer: closeTimer,
     refreshUI: refreshUI,
     
-    // ★追加: ポップアップで使うために公開
     showConfetti: showConfetti,
     showMessage: showMessage
 };

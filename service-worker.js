@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nomutore-v4.0.9'; // Updated Version
+const CACHE_NAME = 'nomutore-v4.0.10'; // Updated Version
 
 // アプリケーションを構成する全ファイル
 const APP_SHELL = [

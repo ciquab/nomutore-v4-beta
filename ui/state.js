@@ -1,30 +1,45 @@
 // ui/state.js
 import { APP } from '../constants.js';
 
-const _state = {
-    cellarViewMode: 'logs', // 'logs' | 'stats' | 'archives'
-    heatmapOffset: 0,       // 0 = current week
-    chartRange: '1w',       // '1w', '1m', '3m'
-    beerMode: localStorage.getItem('nomutore_home_beer_mode') || 'mode1' // 'mode1' or 'mode2'
+// 内部状態（直接アクセス禁止）
+const _state = { 
+    beerMode: localStorage.getItem('nomutore_home_beer_mode') || 'mode1', 
+    chart: null, 
+    timerId: null,
+    chartRange: '1w',
+    isEditMode: false,
+    heatmapOffset: 0,
+    logLimit: 50,
+    isLoadingLogs: false,
+    cellarViewMode: 'logs' 
 };
 
+// 状態マネージャー
 export const StateManager = {
-    // Cellar View
-    get cellarViewMode() { return _state.cellarViewMode; },
-    setCellarViewMode(mode) { _state.cellarViewMode = mode; },
-
-    // Heatmap
-    get heatmapOffset() { return _state.heatmapOffset; },
-    setHeatmapOffset(offset) { _state.heatmapOffset = offset; },
-
-    // Chart
-    get chartRange() { return _state.chartRange; },
-    setChartRange(range) { _state.chartRange = range; },
-
-    // Home Beer Mode
     get beerMode() { return _state.beerMode; },
-    setBeerMode(mode) {
-        _state.beerMode = mode;
-        localStorage.setItem('nomutore_home_beer_mode', mode);
-    }
+    get chart() { return _state.chart; },
+    get timerId() { return _state.timerId; },
+    get chartRange() { return _state.chartRange; },
+    get isEditMode() { return _state.isEditMode; },
+    get heatmapOffset() { return _state.heatmapOffset; },
+    get logLimit() { return _state.logLimit; },
+    get isLoadingLogs() { return _state.isLoadingLogs; },
+    get cellarViewMode() { return _state.cellarViewMode; }, 
+
+    setBeerMode: (v) => { 
+        _state.beerMode = v; 
+        localStorage.setItem('nomutore_home_beer_mode', v);
+    },
+    // ここで setChart を定義しています
+    setChart: (v) => { _state.chart = v; },
+    setTimerId: (v) => { _state.timerId = v; },
+    setChartRange: (v) => { _state.chartRange = v; },
+    setIsEditMode: (v) => { _state.isEditMode = v; }, 
+    setHeatmapOffset: (v) => { _state.heatmapOffset = v; },
+    
+    incrementLogLimit: (amount) => { _state.logLimit += amount; },
+    setLogLimit: (v) => { _state.logLimit = v; },
+    setLogLoading: (v) => { _state.isLoadingLogs = v; },
+    
+    setCellarViewMode: (v) => { _state.cellarViewMode = v; } 
 };
