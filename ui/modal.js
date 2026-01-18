@@ -218,7 +218,6 @@ export const switchBeerInputTab = (mode) => {
     }
 };
 
-// ★修正: dateStrを受け取れるように変更
 export const openCheckModal = async (dateStr) => {
     const d = dateStr ? dayjs(dateStr) : dayjs();
     const dateVal = d.format('YYYY-MM-DD');
@@ -227,41 +226,77 @@ export const openCheckModal = async (dateStr) => {
     const dateInput = document.getElementById('check-date');
     if(dateInput) dateInput.value = dateVal;
 
-    // 2. フォームリセット (初期値: false / 空)
+    // 2. ★追加: チェック項目の生成 (ここが不足していました)
+    const container = document.getElementById('check-items-container');
+    if (container) {
+        container.innerHTML = '';
+        
+        // 保存されたスキーマ、なければデフォルトを使用
+        let schema = CHECK_SCHEMA;
+        try {
+            const stored = localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA);
+            if (stored) schema = JSON.parse(stored);
+        } catch(e) {}
+
+        schema.forEach(item => {
+            // HTML生成
+            const div = document.createElement('div');
+            // チェックボックスには "check-{item.id}" というIDを付与して後で値を取得できるようにする
+            div.innerHTML = `
+                <label class="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl cursor-pointer border border-transparent hover:border-indigo-200 dark:hover:border-indigo-700 transition h-full">
+                    <input type="checkbox" id="check-${item.id}" class="rounded text-indigo-600 focus:ring-indigo-500 w-5 h-5 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center gap-1">
+                            <span>${item.icon}</span> ${item.label}
+                        </span>
+                        ${item.desc ? `<span class="text-[9px] text-gray-400">${item.desc}</span>` : ''}
+                    </div>
+                </label>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // 3. フォームリセット (初期値: false / 空)
     const setCheck = (id, val) => {
         const el = document.getElementById(id);
         if(el) el.checked = !!val;
     };
     
     setCheck('check-is-dry', false);
-    setCheck('check-waistEase', false);
-    setCheck('check-footLightness', false);
-    setCheck('check-waterOk', false);
-    setCheck('check-fiberOk', false);
-    setCheck('check-noHangover', false);
+    
+    // 生成したチェック項目のリセット
+    let schema = CHECK_SCHEMA;
+    try {
+        const stored = localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA);
+        if (stored) schema = JSON.parse(stored);
+    } catch(e) {}
+    
+    schema.forEach(item => {
+        setCheck(`check-${item.id}`, false);
+    });
     
     const wEl = document.getElementById('check-weight');
     if(wEl) wEl.value = '';
 
-    // 3. データ復元 (DBから検索)
+    // 4. データ復元 (DBから検索)
     try {
         const start = d.startOf('day').valueOf();
         const end = d.endOf('day').valueOf();
         
-        // その日のCheckデータを取得
         const existingLogs = await db.checks.where('timestamp').between(start, end, true, true).toArray();
         const existing = existingLogs.length > 0 ? existingLogs[0] : null;
 
         if (existing) {
-            // データがあれば反映
-            // index.jsの修正により、isDryDay: true が「休肝日」扱い
             setCheck('check-is-dry', existing.isDryDay);
             
-            setCheck('check-waistEase', existing.waistEase);
-            setCheck('check-footLightness', existing.footLightness);
-            setCheck('check-waterOk', existing.waterOk);
-            setCheck('check-fiberOk', existing.fiberOk);
-            setCheck('check-noHangover', existing.noHangover);
+            // 動的項目の値をセット
+            schema.forEach(item => {
+                // DBに保存されたキー(item.id)の値があればセット
+                if (existing[item.id] !== undefined) {
+                    setCheck(`check-${item.id}`, existing[item.id]);
+                }
+            });
             
             if(wEl) wEl.value = existing.weight || '';
         }

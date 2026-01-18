@@ -150,13 +150,23 @@ export const UI = {
             const date = document.getElementById('check-date').value;
             const isDryDay = document.getElementById('check-is-dry').checked;
             const weight = document.getElementById('check-weight').value;
-            const waistEase = document.getElementById('check-waistEase')?.checked || false;
-            const footLightness = document.getElementById('check-footLightness')?.checked || false;
-            const waterOk = document.getElementById('check-waterOk')?.checked || false;
-            const fiberOk = document.getElementById('check-fiberOk')?.checked || false;
-            const noHangover = document.getElementById('check-noHangover')?.checked || false;
+            
+            // ★追加: 動的スキーマから値を取得
+            let schema = CHECK_SCHEMA;
+            try {
+                const stored = localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA);
+                if (stored) schema = JSON.parse(stored);
+            } catch(e) {}
 
-            const detail = { date, isDryDay, weight, waistEase, footLightness, waterOk, fiberOk, noHangover };
+            // 基本データ
+            const detail = { date, isDryDay, weight };
+
+            // 動的データの収集
+            schema.forEach(item => {
+                const el = document.getElementById(`check-${item.id}`);
+                detail[item.id] = el ? el.checked : false;
+            });
+
             document.dispatchEvent(new CustomEvent('save-check', { detail }));
             toggleModal('check-modal', false);
         });

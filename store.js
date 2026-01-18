@@ -25,7 +25,7 @@ db.version(3).stores({
 db.version(4).stores({
     logs: '++id, timestamp, type, name, kcal, memo, untappd_query, isCustom, exerciseKey',
     checks: '++id, timestamp, isDryDay',
-    archives: '++id, startDate, endDate, mode, totalDays, dryDays' // period_archives -> archives
+    period_archives: '++id, startDate, endDate, mode, totalDays, dryDays' // period_archives -> archives
 }).upgrade(tx => {
     // v3の period_archives データがあれば archives に移行（必要なら）
     // 今回は全削除前提ならスキーマ定義だけでOKですが、念のため構造を整えます
