@@ -1,13 +1,18 @@
 import { db, Store } from './store.js';
 import { Calc } from './logic.js';
 import { APP, EXERCISE, STYLE_SPECS } from './constants.js';
+// UIオブジェクトではなく、機能を直接インポート
 import { showMessage, showConfetti } from './ui/dom.js';
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
-// ★追加: 日本語ロケール(月曜始まり)を読み込む
-import 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/locale/ja.js';
 
-// ★追加: ロケールを適用
-dayjs.locale('ja');
+// ロケールファイルはエラーの原因になるため削除し、手動計算で対応します
+
+// ヘルパー: 月曜始まりの週頭を取得
+const getStartOfWeek = (date = undefined) => {
+    const d = dayjs(date);
+    const day = d.day() || 7; // Sun(0)を7に変換 (Mon=1 ... Sun=7)
+    return d.subtract(day - 1, 'day').startOf('day');
+};
 
 export const Service = {
     /**
@@ -166,12 +171,12 @@ export const Service = {
     },
 
     /**
-     * 期間開始日の計算
+     * 期間開始日の計算 (月曜始まり対応)
      */
     calculatePeriodStart: (mode) => {
         const now = dayjs();
         if (mode === 'weekly') {
-            return now.startOf('week').valueOf();
+            return getStartOfWeek(now).valueOf(); // 月曜始まり
         } else if (mode === 'monthly') {
             return now.startOf('month').valueOf();
         }
@@ -201,7 +206,7 @@ export const Service = {
         let nextStart = null;
 
         if (mode === 'weekly') {
-            const currentWeekStart = now.startOf('week');
+            const currentWeekStart = getStartOfWeek(now); // 月曜始まりで計算
             if (!currentWeekStart.isSame(startDate, 'day')) {
                 shouldRollover = true;
                 nextStart = currentWeekStart.valueOf();
@@ -217,6 +222,7 @@ export const Service = {
         if (shouldRollover) {
             console.log(`[Service] Rollover detected. Mode: ${mode}`);
             
+            // 次の期間の開始前までのログをアーカイブ
             const logsToArchive = await db.logs.where('timestamp').below(nextStart).toArray();
             
             if (logsToArchive.length > 0) {
