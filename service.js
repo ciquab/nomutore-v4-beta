@@ -15,6 +15,60 @@ const getStartOfWeek = (date = undefined) => {
 };
 
 export const Service = {
+
+/**
+     * ★修正済み: UI表示用にデータを取得する
+     * Permanentモードなら全期間、それ以外なら期間開始日以降のデータを返す
+     */
+    getAllDataForUI: async () => {
+        const mode = localStorage.getItem(APP.STORAGE_KEYS.PERIOD_MODE) || 'weekly';
+        
+        // Permanentモードなら、無条件で全データを返す
+        if (mode === 'permanent') {
+            const logs = await db.logs.toArray();
+            const checks = await db.checks.toArray();
+            return { logs, checks };
+        }
+
+        // Weekly/Monthlyなら、期間開始日以降のみ返す
+        const startStr = localStorage.getItem(APP.STORAGE_KEYS.PERIOD_START);
+        const start = startStr ? parseInt(startStr) : 0;
+
+        const logs = await db.logs.where('timestamp').aboveOrEqual(start).toArray();
+        const checks = await db.checks.where('timestamp').aboveOrEqual(start).toArray();
+        
+        return { logs, checks };
+    },
+
+    /**
+     * ページネーション用（リスト表示など）
+     * Permanentモード対応を追加
+     */
+    getLogsWithPagination: async (offset, limit) => {
+        const mode = localStorage.getItem(APP.STORAGE_KEYS.PERIOD_MODE) || 'weekly';
+        let logs, totalCount;
+
+        if (mode === 'permanent') {
+            totalCount = await db.logs.count();
+            logs = await db.logs
+                .orderBy('timestamp') // 全期間対象
+                .reverse()
+                .offset(offset)
+                .limit(limit)
+                .toArray();
+        } else {
+            const periodStart = parseInt(localStorage.getItem(APP.STORAGE_KEYS.PERIOD_START)) || 0;
+            totalCount = await db.logs.where('timestamp').aboveOrEqual(periodStart).count();
+            logs = await db.logs
+                .where('timestamp').aboveOrEqual(periodStart)
+                .reverse()
+                .offset(offset)
+                .limit(limit)
+                .toArray();
+        }
+        return { logs, totalCount };
+    },
+
     /**
      * 起動時に今日の空チェックインレコードが存在するか確認し、なければ作成する
      */
@@ -314,6 +368,7 @@ export const Service = {
         let finalKcal = baseBurnKcal;
         let memo = '';
         const ts = dayjs(dateVal).startOf('day').add(12, 'hour').valueOf();
+        
         if (applyBonus) {
             const logs = await db.logs.toArray();
             const checks = await db.checks.toArray();
@@ -340,8 +395,7 @@ export const Service = {
             showMessage('📝 運動記録を更新しました', 'success');
         } else {
             await db.logs.add(logData);
-            const savedMin = Math.round(minutes);
-            showMessage(`🏃‍♀️ ${savedMin}分の運動を記録しました！`, 'success');
+            showMessage(`🏃‍♀️ ${Math.round(minutes)}分の運動を記録しました！`, 'success');
             showConfetti();
         }
         await Service.recalcImpactedHistory(ts);
@@ -408,24 +462,5 @@ export const Service = {
         }
         await Service.recalcImpactedHistory(ts);
         document.dispatchEvent(new CustomEvent('refresh-ui'));
-    },
-
-    getAllDataForUI: async () => {
-        const periodStart = parseInt(localStorage.getItem(APP.STORAGE_KEYS.PERIOD_START)) || 0;
-        const logs = await db.logs.where('timestamp').aboveOrEqual(periodStart).toArray();
-        const checks = await db.checks.toArray();
-        return { logs, checks };
-    },
-
-    getLogsWithPagination: async (offset, limit) => {
-        const periodStart = parseInt(localStorage.getItem(APP.STORAGE_KEYS.PERIOD_START)) || 0;
-        const totalCount = await db.logs.where('timestamp').aboveOrEqual(periodStart).count();
-        const logs = await db.logs
-            .where('timestamp').aboveOrEqual(periodStart)
-            .reverse()
-            .offset(offset)
-            .limit(limit)
-            .toArray();
-        return { logs, totalCount };
     }
 };
