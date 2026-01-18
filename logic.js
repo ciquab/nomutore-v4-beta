@@ -118,11 +118,8 @@ export const Calc = {
         return (kcal / safeUnit).toFixed(1);
     },
 
-    /**
-     * ストリーク計算 (v4改修版)
-     */
-    /**
-     * ストリーク計算 (修正版)
+/**
+     * ストリーク計算 (修正版: チェック内容を最優先する)
      */
     getCurrentStreak: (logs, checks, profile, referenceDate = null) => {
         const safeLogs = Array.isArray(logs) ? logs : [];
@@ -132,7 +129,6 @@ export const Calc = {
             return 0;
         }
 
-        // 記録がある最古の日付を探す
         let minTs = Number.MAX_SAFE_INTEGER;
         let found = false;
 
@@ -146,19 +142,15 @@ export const Calc = {
         }
 
         const firstDate = found ? dayjs(minTs).startOf('day') : dayjs();
-        // 基準日（通常は今日）
         const targetDate = referenceDate ? dayjs(referenceDate) : dayjs();
         
-        // 今日（基準日）に記録があるかチェック
         const hasLogOnTarget = safeLogs.some(l => dayjs(l.timestamp).isSame(targetDate, 'day'));
         const hasCheckOnTarget = safeChecks.some(c => dayjs(c.timestamp).isSame(targetDate, 'day'));
 
-        // 今日の記録があれば今日から判定、なければ昨日から判定
         let checkDate = (hasLogOnTarget || hasCheckOnTarget) ? targetDate : targetDate.subtract(1, 'day');
         
         let streak = 0;
 
-        // 高速化用マップ作成
         const logMap = new Map();
         const checkMap = new Map();
         
@@ -174,7 +166,6 @@ export const Calc = {
             checkMap.set(d, c.isDryDay);
         });
 
-        // 過去へ遡るループ
         while (true) {
             if (checkDate.isBefore(firstDate, 'day')) {
                 break;
@@ -183,29 +174,27 @@ export const Calc = {
             const dateStr = checkDate.format('YYYY-MM-DD');
             const dayLogs = logMap.get(dateStr) || { hasBeer: false, hasExercise: false };
             
-            // ★修正ポイント: チェック記録の判定を厳密化
-            let isExplicitlyWet = false; // 「飲んだ」と明言しているか
-            let isExplicitlyDry = false; // 「休肝日」と明言しているか
+            // ★修正: map.get() ではなく、データが存在するか(.has)を確認してから判定
+            const hasCheck = checkMap.has(dateStr);
+            const isDryCheckValue = checkMap.get(dateStr); // true:休肝日, false:飲酒
 
-            if (checkMap.has(dateStr)) {
-                const checkVal = checkMap.get(dateStr);
-                if (checkVal === false) isExplicitlyWet = true; // isDryDay: false
-                else isExplicitlyDry = true; // isDryDay: true
-            }
+            // --- 判定ロジック (優先順位順) ---
 
-            // 判定ロジック:
-            // 1. ビール記録がある -> OUT
-            // 2. チェックで「飲んだ」となっている -> OUT
-            // 3. それ以外 -> SAFE (休肝日)
-            
-            if (dayLogs.hasBeer || isExplicitlyWet) {
-                // 飲酒日なのでストリーク終了
+            // 1. 明確な「ビール記録」がある場合 -> 飲酒日 (Streak終了)
+            if (dayLogs.hasBeer) {
                 break;
-            } else {
-                // 休肝日 (明示的 または 記録なしのみなし休肝日)
-                streak++;
-                checkDate = checkDate.subtract(1, 'day');
             }
+
+            // 2. 明確な「健康チェック」があり、かつ「飲んだ(false)」の場合 -> 飲酒日 (Streak終了)
+            // ※ここが以前のコードと違う点です。
+            if (hasCheck && isDryCheckValue === false) {
+                break;
+            }
+
+            // 3. 上記に該当しない場合は「休肝日」としてカウント
+            // (ビール記録なし AND (チェック記録なし OR チェック記録が休肝日))
+            streak++;
+            checkDate = checkDate.subtract(1, 'day');
             
             if (streak > 3650) break; // 無限ループ防止
         }
@@ -369,3 +358,4 @@ export const Calc = {
     }
 
 };
+
