@@ -10,6 +10,7 @@ import { handleSaveSettings } from './ui/modal.js';
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
 window.UI = UI;
+window.DataManager = DataManager;
 
 /* ==========================================================================
    Initialization & Global State

@@ -285,10 +285,15 @@
             <button onclick="DataManager.exportCSV('logs')" class="w-full mb-3 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 font-bold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition">
                 Export Logs (CSV)
             </button>
+            
+            <button onclick="DataManager.exportJSON()" class="w-full mb-3 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 font-bold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                Export Backup (JSON)
+            </button>
+
             <div class="relative">
-                <input type="file" id="import-file" class="hidden" onchange="DataManager.importData(this)">
+                <input type="file" id="import-file" class="hidden" onchange="DataManager.importJSON(this)">
                 <button onclick="document.getElementById('import-file').click()" class="w-full py-3 rounded-xl bg-gray-100 dark:bg-gray-800 font-bold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-                    Import Data (JSON)
+                    Import Backup (JSON)
                 </button>
             </div>
         </div>
