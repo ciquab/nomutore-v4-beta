@@ -9,6 +9,7 @@ import { initErrorHandler } from './errorHandler.js';
 import { handleSaveSettings } from './ui/modal.js'; 
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
+// HTMLからonclickで呼ぶためにwindowオブジェクトに登録
 window.UI = UI;
 window.DataManager = DataManager;
 
@@ -42,8 +43,8 @@ const setupLifecycleListeners = () => {
                 await initApp(); 
                 isResuming = false;
             } else {
-                if (Timer.restoreState) { // Updated to check if function exists or is needed, though logic is inside timer.js checkResume
-                     Timer.checkResume(); // Explicitly check resume state if needed
+                if (Timer.checkResume) { 
+                     Timer.checkResume(); 
                 }
             }
         }
@@ -57,12 +58,12 @@ const setupLifecycleListeners = () => {
 const initApp = async () => {
     console.log('App Initializing...');
     
-    // 【追加】v4 データ移行処理 (UI初期化前に実行)
+    // ★修正: 初回起動かどうか判定を受け取る
+    let isFirstRun = false;
     if (Store.migrateV3ToV4) {
-        await Store.migrateV3ToV4();
+        isFirstRun = await Store.migrateV3ToV4();
     }
 
-    // UI初期化
     UI.init();
 
     await Service.ensureTodayCheckRecord();
@@ -79,8 +80,6 @@ const initApp = async () => {
     UI.setFetchLogsHandler(async (offset, limit) => {
         return await Service.getLogsWithPagination(offset, limit);
     });
-
-    // REMOVED: setTimerSaveHandler logic since Timer handles it internally via Service import
     
     generateSettingsOptions();
 
@@ -89,6 +88,15 @@ const initApp = async () => {
     if (!isResuming) setupLifecycleListeners();
     
     showSwipeCoachMark();
+    
+    // ★追加: 初回起動時は設定タブを開く
+    if (isFirstRun) {
+        console.log('First run detected. Opening settings...');
+        setTimeout(() => {
+            UI.switchTab('settings');
+            UI.showMessage('Welcome! Please configure your settings.', 'success');
+        }, 300);
+    }
 };
 
 /* ==========================================================================
@@ -122,7 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
         UI.showConfetti();
     });
     
-    // Listen for UI refresh request from modal settings save
     document.addEventListener('refresh-ui', async () => {
          await refreshUI();
     });

@@ -31,8 +31,9 @@ export const Store = {
     getDefaultRecordExercise: () => localStorage.getItem(APP.STORAGE_KEYS.DEFAULT_RECORD_EXERCISE) || APP.DEFAULTS.DEFAULT_RECORD_EXERCISE,
 
     migrateV3ToV4: async () => {
+        // すでに移行済み（v4起動済み）なら何もしない
         if (localStorage.getItem('v4_migration_complete')) {
-            return;
+            return false; // ★修正: 初回ではないので false を返す
         }
 
         console.log('[Migration] Starting v3 to v4 migration...');
@@ -41,11 +42,10 @@ export const Store = {
             localStorage.setItem(APP.STORAGE_KEYS.PERIOD_MODE, APP.DEFAULTS.PERIOD_MODE);
         }
 
-        // ★修正: Service.jsと同じ「月曜始まり」ロジックで初期値を計算する
+        // 月曜始まりロジックで初期期間を設定
         if (!localStorage.getItem(APP.STORAGE_KEYS.PERIOD_START)) {
             const now = dayjs();
             const day = now.day() || 7; // Sun(0) -> 7, Mon(1) -> 1
-            // 今週の月曜日（または今日が月曜なら今日）を算出
             const startOfWeek = now.subtract(day - 1, 'day').startOf('day').valueOf();
             
             localStorage.setItem(APP.STORAGE_KEYS.PERIOD_START, startOfWeek);
@@ -62,6 +62,8 @@ export const Store = {
 
         localStorage.setItem('v4_migration_complete', 'true');
         console.log('[Migration] v4 migration completed successfully.');
+        
+        return true; // ★修正: 初回起動なので true を返す
     }
 };
 
