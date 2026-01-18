@@ -275,7 +275,9 @@ export const openCheckModal = async (dateStr) => {
     // トグルのイベント設定
     const isDryCheck = document.getElementById('check-is-dry');
     if (isDryCheck) {
-        isDryCheck.onchange = (e) => syncDryDayUI(e.target.checked);
+        // インラインの onchange (UI.toggleDryDay) を優先し、
+        // ここでは追加の同期処理だけをイベントリスナーとして登録する
+        isDryCheck.addEventListener('change', (e) => syncDryDayUI(e.target.checked));
     }
 
     // 4. フォームリセットと初期状態の設定

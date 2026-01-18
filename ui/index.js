@@ -1,7 +1,7 @@
 import { Calc } from '../logic.js';
 import { Store, db } from '../store.js';
 import { Service } from '../service.js';
-import { APP } from '../constants.js';
+import { APP, CHECK_SCHEMA } from '../constants.js';
 import { DOM, toggleModal, showConfetti, showMessage, applyTheme, toggleDryDay } from './dom.js';
 import { StateManager } from './state.js';
 

@@ -119,12 +119,33 @@ export const showMessage = (text, type = 'info') => {
 };
 
 export const toggleDryDay = (isDry) => {
-    const sec = DOM.elements['drinking-section'] || document.getElementById('drinking-section');
-    if (!sec) return;
+    const section = document.getElementById('drinking-section');
+    if (!section) return;
+
+    const label = section.querySelector('span');
+    const hint = section.querySelector('p');
+
+    // 以前の状態をリセット
+    section.classList.remove('bg-orange-50', 'border-orange-100', 'bg-emerald-50', 'border-emerald-100');
+    if (label) label.classList.remove('text-orange-800', 'text-emerald-800');
+    if (hint) hint.classList.remove('text-orange-600/70', 'text-emerald-600/70');
+
     if (isDry) {
-        sec.classList.add('opacity-50', 'pointer-events-none', 'grayscale');
+        // --- 休肝日モード (Green) ---
+        section.classList.add('bg-emerald-50', 'border-emerald-100');
+        if (label) label.classList.add('text-emerald-800');
+        if (hint) {
+            hint.classList.add('text-emerald-600/70');
+            hint.textContent = "Great! Keeping your liver healthy. ✨";
+        }
     } else {
-        sec.classList.remove('opacity-50', 'pointer-events-none', 'grayscale');
+        // --- 飲酒モード (Orange) ---
+        section.classList.add('bg-orange-50', 'border-orange-100');
+        if (label) label.classList.add('text-orange-800');
+        if (hint) {
+            hint.classList.add('text-orange-600/70');
+            hint.textContent = "Switch ON if you didn't drink alcohol.";
+        }
     }
 };
 
