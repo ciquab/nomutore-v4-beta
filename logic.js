@@ -88,9 +88,9 @@ export const Calc = {
         const baseExData = EXERCISE[baseEx] || EXERCISE['stepper'];
         
         const colorKey = STYLE_COLOR_MAP[targetStyle] || 'gold';
-        const liquidColor = (currentMode === 'mode2' && BEER_COLORS[colorKey]) 
-            ? BEER_COLORS[colorKey] 
-            : BEER_COLORS['gold']; 
+        
+        // ★修正: モードに関係なく、スタイルに対応した色を適用する
+        const liquidColor = BEER_COLORS[colorKey] || BEER_COLORS['gold']; 
             
         const isHazy = colorKey === 'hazy';
 
@@ -119,18 +119,16 @@ export const Calc = {
     },
 
     /**
-     * ストリーク計算 (v4改修版: みなし休肝ロジック修正済み)
+     * ストリーク計算 (v4改修版)
      */
     getCurrentStreak: (logs, checks, profile, referenceDate = null) => {
         const safeLogs = Array.isArray(logs) ? logs : [];
         const safeChecks = Array.isArray(checks) ? checks : [];
 
-        // 全くデータがない場合は0
         if (safeLogs.length === 0 && safeChecks.length === 0) {
             return 0;
         }
 
-        // 最古の記録日を探す
         let minTs = Number.MAX_SAFE_INTEGER;
         let found = false;
 
@@ -146,16 +144,13 @@ export const Calc = {
         const firstDate = found ? dayjs(minTs).startOf('day') : dayjs();
         const targetDate = referenceDate ? dayjs(referenceDate) : dayjs();
         
-        // 基準日「そのもの」に活動があるかチェック
         const hasLogOnTarget = safeLogs.some(l => dayjs(l.timestamp).isSame(targetDate, 'day'));
         const hasCheckOnTarget = safeChecks.some(c => dayjs(c.timestamp).isSame(targetDate, 'day'));
 
-        // 基準日に活動があればそこからスタート、なければ前日からスタート
         let checkDate = (hasLogOnTarget || hasCheckOnTarget) ? targetDate : targetDate.subtract(1, 'day');
         
         let streak = 0;
 
-        // 高速化のためMap化
         const logMap = new Map();
         const checkMap = new Map();
         
@@ -172,7 +167,6 @@ export const Calc = {
         });
 
         while (true) {
-            // 最古の記録日より前になったら終了
             if (checkDate.isBefore(firstDate, 'day')) {
                 break;
             }
@@ -180,22 +174,14 @@ export const Calc = {
             const dateStr = checkDate.format('YYYY-MM-DD');
             
             const dayLogs = logMap.get(dateStr) || { hasBeer: false, hasExercise: false };
-            const isDryCheck = checkMap.get(dateStr) || false; // 明示的な休肝チェック
+            const isDryCheck = checkMap.get(dateStr) || false; 
 
             const isToday = checkDate.isSame(dayjs(), 'day');
             
-            // 【修正】みなし休肝ロジック (Passive Dry)
-            // 今日以外で、かつ「ビールを飲んだ記録」がない日は、
-            // 運動記録の有無や明示的チェックの有無に関わらず「休肝日」とみなす。
             let isPassiveDry = false;
             if (!isToday && !dayLogs.hasBeer) {
                 isPassiveDry = true;
             }
-            
-            // ストリーク継続条件:
-            // 1. 明示的に休肝チェックしている (isDryCheck)
-            // 2. 黙って休肝している (isPassiveDry)
-            // 3. 飲んだけど運動している (dayLogs.hasExercise) ※v3仕様準拠: 飲んで運動してもストリークは繋がる
             
             const isDry = isDryCheck || isPassiveDry;
             const workedOut = dayLogs.hasExercise;
@@ -204,11 +190,10 @@ export const Calc = {
                 streak++;
                 checkDate = checkDate.subtract(1, 'day');
             } else {
-                // ビール記録があり、かつ運動記録がない場合のみここに来る
                 break; 
             }
             
-            if (streak > 3650) break; // 安全装置
+            if (streak > 3650) break; 
         }
 
         return streak;
@@ -306,10 +291,6 @@ export const Calc = {
         return 'none';
     },
 
-    /**
-     * 【新規実装】ビール帳集計ロジック
-     * 期間制限を受けない全ログから集計を行う
-     */
     getBeerStats: (allLogs) => {
         const beerLogs = allLogs.filter(l => l.type === 'beer');
         
@@ -323,7 +304,6 @@ export const Calc = {
             styleCounts[s] = (styleCounts[s] || 0) + (l.count || 1);
         });
 
-        // 銘柄コレクション
         const uniqueBeers = new Set();
         beerLogs.forEach(l => {
             if (l.brewery && l.brand) {
@@ -331,7 +311,6 @@ export const Calc = {
             }
         });
 
-        // ソート済みの人気スタイル
         const topStyles = Object.entries(styleCounts)
             .sort((a, b) => b[1] - a[1])
             .map(([style, count]) => ({ style, count }));
