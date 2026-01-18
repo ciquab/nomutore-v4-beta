@@ -121,6 +121,9 @@ export const Calc = {
     /**
      * ストリーク計算 (v4改修版)
      */
+    /**
+     * ストリーク計算 (修正版)
+     */
     getCurrentStreak: (logs, checks, profile, referenceDate = null) => {
         const safeLogs = Array.isArray(logs) ? logs : [];
         const safeChecks = Array.isArray(checks) ? checks : [];
@@ -129,6 +132,7 @@ export const Calc = {
             return 0;
         }
 
+        // 記録がある最古の日付を探す
         let minTs = Number.MAX_SAFE_INTEGER;
         let found = false;
 
@@ -142,15 +146,19 @@ export const Calc = {
         }
 
         const firstDate = found ? dayjs(minTs).startOf('day') : dayjs();
+        // 基準日（通常は今日）
         const targetDate = referenceDate ? dayjs(referenceDate) : dayjs();
         
+        // 今日（基準日）に記録があるかチェック
         const hasLogOnTarget = safeLogs.some(l => dayjs(l.timestamp).isSame(targetDate, 'day'));
         const hasCheckOnTarget = safeChecks.some(c => dayjs(c.timestamp).isSame(targetDate, 'day'));
 
+        // 今日の記録があれば今日から判定、なければ昨日から判定
         let checkDate = (hasLogOnTarget || hasCheckOnTarget) ? targetDate : targetDate.subtract(1, 'day');
         
         let streak = 0;
 
+        // 高速化用マップ作成
         const logMap = new Map();
         const checkMap = new Map();
         
@@ -166,34 +174,40 @@ export const Calc = {
             checkMap.set(d, c.isDryDay);
         });
 
+        // 過去へ遡るループ
         while (true) {
             if (checkDate.isBefore(firstDate, 'day')) {
                 break;
             }
 
             const dateStr = checkDate.format('YYYY-MM-DD');
-            
             const dayLogs = logMap.get(dateStr) || { hasBeer: false, hasExercise: false };
-            const isDryCheck = checkMap.get(dateStr) || false; 
-
-            const isToday = checkDate.isSame(dayjs(), 'day');
             
-            let isPassiveDry = false;
-            if (!isToday && !dayLogs.hasBeer) {
-                isPassiveDry = true;
+            // ★修正ポイント: チェック記録の判定を厳密化
+            let isExplicitlyWet = false; // 「飲んだ」と明言しているか
+            let isExplicitlyDry = false; // 「休肝日」と明言しているか
+
+            if (checkMap.has(dateStr)) {
+                const checkVal = checkMap.get(dateStr);
+                if (checkVal === false) isExplicitlyWet = true; // isDryDay: false
+                else isExplicitlyDry = true; // isDryDay: true
             }
-            
-            const isDry = isDryCheck || isPassiveDry;
-            const workedOut = dayLogs.hasExercise;
 
-            if (isDry || workedOut) {
+            // 判定ロジック:
+            // 1. ビール記録がある -> OUT
+            // 2. チェックで「飲んだ」となっている -> OUT
+            // 3. それ以外 -> SAFE (休肝日)
+            
+            if (dayLogs.hasBeer || isExplicitlyWet) {
+                // 飲酒日なのでストリーク終了
+                break;
+            } else {
+                // 休肝日 (明示的 または 記録なしのみなし休肝日)
                 streak++;
                 checkDate = checkDate.subtract(1, 'day');
-            } else {
-                break; 
             }
             
-            if (streak > 3650) break; 
+            if (streak > 3650) break; // 無限ループ防止
         }
 
         return streak;
@@ -353,4 +367,5 @@ export const Calc = {
             beerStats: beerStats // ★これを返すように修正
         };
     }
+
 };
