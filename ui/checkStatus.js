@@ -8,15 +8,22 @@ export function renderCheckStatus(checks, logs) {
 
     const today = dayjs();
     const yest = today.subtract(1, 'day');
-    let targetCheck = null; let type = 'none';
+    
+    // ★修正: 優先順位を明確にしてレコードを特定する
+    // リスト全体から今日の日付を探す
+    const todayCheck = checks.find(c => dayjs(c.timestamp).isSame(today, 'day'));
+    // リスト全体から昨日の日付を探す
+    const yestCheck = checks.find(c => dayjs(c.timestamp).isSame(yest, 'day'));
 
-    if (checks.length > 0) {
-        for(let i=checks.length-1; i>=0; i--) {
-            const c = checks[i];
-            const checkDay = dayjs(c.timestamp);
-            if (checkDay.isSame(today, 'day')) { targetCheck = c; type = 'today'; break; }
-            if (checkDay.isSame(yest, 'day')) { targetCheck = c; type = 'yesterday'; break; }
-        }
+    let targetCheck = null;
+    let type = 'none';
+
+    if (todayCheck) {
+        targetCheck = todayCheck;
+        type = 'today';
+    } else if (yestCheck) {
+        targetCheck = yestCheck;
+        type = 'yesterday';
     }
 
     // テーマとテキストの決定
