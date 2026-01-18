@@ -1,5 +1,6 @@
 import { Calc } from '../logic.js';
-import { Store } from '../store.js';
+import { Store, db } from '../store.js'; // db追加
+import { Service } from '../service.js'; // Service追加
 import { DOM, toggleModal, showConfetti, showMessage, applyTheme, toggleDryDay } from './dom.js';
 import { StateManager } from './state.js';
 
@@ -8,6 +9,7 @@ import { renderLiverRank } from './liverRank.js';
 import { renderCheckStatus } from './checkStatus.js';
 import { renderWeeklyAndHeatUp, renderHeatmap } from './weekly.js';
 import { renderChart } from './chart.js';
+// updateBulkCount を追加インポート
 import { updateLogListView, toggleEditMode, toggleSelectAll, updateBulkCount, setFetchLogsHandler } from './logList.js';
 import { renderBeerStats } from './beerStats.js';
 import { renderArchives } from './archiveManager.js';
@@ -15,7 +17,7 @@ import { Timer } from './timer.js';
 
 import { 
     getBeerFormData, resetBeerForm, openBeerModal, switchBeerInputTab, 
-    openCheckModal, openManualInput, renderSettings, openHelp, openLogDetail, // ★修正: openSettings -> renderSettings
+    openCheckModal, openManualInput, openSettings, openHelp, openLogDetail,
     updateModeSelector, updateBeerSelectOptions, updateInputSuggestions, renderQuickButtons,
     closeModal, adjustBeerCount, searchUntappd,
     openTimer, closeTimer 
@@ -74,6 +76,12 @@ export const UI = {
         bind('nav-tab-cellar', 'click', () => UI.switchTab('cellar'));
         bind('nav-tab-settings', 'click', () => UI.switchTab('settings'));
 
+        // Home Mode Select (★追加)
+        bind('home-mode-select', 'change', (e) => {
+            StateManager.setBeerMode(e.target.value);
+            refreshUI(); // 再描画してオーブの色を更新
+        });
+
         // Modals
         bind('btn-save-beer', 'click', () => {
             const data = getBeerFormData();
@@ -108,6 +116,7 @@ export const UI = {
             applyTheme(e.target.value);
         });
 
+        // Heatmap Nav
         bind('heatmap-prev', 'click', () => {
             StateManager.setHeatmapOffset(StateManager.heatmapOffset + 1);
             refreshUI();
@@ -134,6 +143,10 @@ export const UI = {
         bind('btn-timer-finish', 'click', Timer.finish);
 
         applyTheme(Store.getTheme());
+        
+        // ホームモード選択の初期値を反映
+        const homeSel = document.getElementById('home-mode-select');
+        if(homeSel) homeSel.value = StateManager.beerMode;
     },
 
     switchTab: (tabId) => {
@@ -162,8 +175,8 @@ export const UI = {
         } else if (tabId === 'home') {
             refreshUI();
         } else if (tabId === 'settings') {
-            // ★修正: 設定タブに切り替わった時にレンダリング処理を呼ぶ
-            renderSettings();
+            // renderSettings(); 
+            // settingsはmodal.js内なので一旦保留
         }
     },
 
@@ -207,10 +220,28 @@ export const UI = {
         applyTheme(next);
     },
     
+    // --- Public Methods for HTML onclick ---
+    deleteLog: (id) => Service.deleteLog(id),
+    editLog: async (id) => {
+        // 簡易編集: 複製して入力
+        const log = await db.logs.get(id);
+        if(!log) return;
+        
+        if(confirm('記録を複製して編集モードに入りますか？\n(古い記録は削除されません)')) {
+            if(log.type === 'beer') {
+                openBeerModal(null, dayjs(log.timestamp).format('YYYY-MM-DD'));
+            } else if(log.type === 'exercise') {
+                openManualInput();
+            }
+        }
+    },
+
+    updateBulkCount: updateBulkCount,
+    
     openBeerModal: (e, d) => openBeerModal(e, d),
     openCheckModal: openCheckModal,
     openManualInput: openManualInput,
-    renderSettings: renderSettings, // ★修正: openSettings -> renderSettings
+    openSettings: openSettings,
     openHelp: openHelp,
     closeModal: closeModal,
     adjustBeerCount: adjustBeerCount,
@@ -221,7 +252,6 @@ export const UI = {
     // Timer
     openTimer: openTimer,
     closeTimer: closeTimer,
-    
     refreshUI: refreshUI 
 };
 

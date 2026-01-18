@@ -500,11 +500,14 @@
 
             <!-- Controls -->
             <div class="space-y-6">
-                <!-- Activity Selector -->
-                <div class="bg-white/10 rounded-2xl p-1 inline-flex w-full">
-                    <select id="timer-exercise-select" class="w-full bg-transparent text-white font-bold text-center appearance-none p-3 outline-none cursor-pointer">
-                        <!-- Options injected by JS -->
-                    </select>
+                <div class="relative w-full">
+                    <div class="bg-white/10 rounded-2xl flex items-center w-full overflow-hidden border border-white/10">
+                        <select id="timer-exercise-select" class="w-full bg-transparent text-white font-bold text-center appearance-none p-3 outline-none cursor-pointer z-10 relative">
+                            </select>
+                        <div class="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-white/50">
+                            <i class="ph-bold ph-caret-down"></i>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="flex justify-center gap-6 items-center">
