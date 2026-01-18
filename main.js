@@ -106,8 +106,22 @@ const initApp = async () => {
 document.addEventListener('DOMContentLoaded', () => {
     
     document.addEventListener('save-beer', async (e) => {
-        await Service.saveBeerLog(e.detail, editingLogId);
+        const data = e.detail;
+        
+        // 保存処理
+        await Service.saveBeerLog(data, editingLogId);
         editingLogId = null; 
+
+        // ★追加: Untappd連携 (v3仕様の復活)
+        if (data.useUntappd) {
+            const query = encodeURIComponent(`${data.brewery || ''} ${data.brand || ''}`.trim());
+            if(query) {
+                // ポップアップブロック回避のため、少し遅延させるか、ユーザーアクション内であることを期待
+                setTimeout(() => {
+                    window.open(`https://untappd.com/search?q=${query}`, '_blank');
+                }, 100);
+            }
+        }
     });
 
     document.addEventListener('save-check', async (e) => {
