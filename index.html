@@ -37,27 +37,27 @@
     <header class="fixed top-0 w-full z-40 bg-white/80 dark:bg-base-900/80 backdrop-blur-md border-b border-base-200 dark:border-base-800 transition-colors">
         <div class="container mx-auto max-w-md h-14 flex items-center justify-between px-4">
             
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-shrink-0">
                 <i class="ph-fill ph-beer-bottle text-indigo-500 text-xl"></i>
                 <h1 class="text-lg font-black tracking-tight text-base-900 dark:text-white">NOMUTORE <span class="text-[10px] text-gray-400 font-normal ml-0.5">v4</span></h1>
             </div>
             
-            <div class="flex items-center gap-1">
-                <div class="relative group">
-                    <select id="header-mode-select" class="text-xs font-bold bg-transparent border-none py-1 pr-4 pl-0 text-gray-600 dark:text-gray-300 focus:ring-0 cursor-pointer outline-none text-right appearance-none">
+            <div class="flex items-center gap-1 flex-shrink min-w-0 ml-2">
+                <div class="relative group max-w-[100px] sm:max-w-[140px]">
+                    <select id="header-mode-select" class="w-full text-xs font-bold bg-transparent border-none py-1 pr-4 pl-0 text-gray-600 dark:text-gray-300 focus:ring-0 cursor-pointer outline-none text-right appearance-none truncate">
                         <option value="mode1">Lager</option>
                         <option value="mode2">Ale</option>
                     </select>
                     <div class="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-[8px]">▼</div>
                 </div>
 
-                <div class="w-px h-3 bg-gray-300 dark:bg-gray-700 mx-2"></div>
+                <div class="w-px h-3 bg-gray-300 dark:bg-gray-700 mx-2 flex-shrink-0"></div>
 
-                <button onclick="UI.openHelp()" class="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-indigo-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                <button onclick="UI.openHelp()" class="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-indigo-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition flex-shrink-0">
                     <i class="ph-bold ph-question text-lg"></i>
                 </button>
 
-                <button onclick="UI.toggleTheme()" class="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-yellow-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                <button onclick="UI.toggleTheme()" class="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-yellow-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition flex-shrink-0">
                     <i class="ph-fill ph-moon-stars text-lg"></i>
                 </button>
             </div>
