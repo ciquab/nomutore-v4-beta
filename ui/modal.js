@@ -52,6 +52,8 @@ export const handleActionSelect = (type) => {
         openManualInput(dateStr);
     } else if (type === 'check') {
         openCheckModal(dateStr);
+    } else if (type === 'timer') { // ★追加
+        openTimer();
     }
 };
 

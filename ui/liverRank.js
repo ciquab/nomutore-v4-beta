@@ -7,12 +7,9 @@ export function renderLiverRank(checks, logs) {
     const gradeData = Calc.getRecentGrade(checks, logs, profile);
     
     const card = DOM.elements['liver-rank-card'] || document.getElementById('liver-rank-card');
-    // 中身を全書き換えするため、ID取得はcardのみでOK（内部要素はinnerHTMLで生成）
-    
     if(!card) return;
 
     // Rankに応じたカラーパレット定義
-    // [bg-light, bg-dark-opacity, text-light, text-dark, icon-color]
     let theme = {
         bg: "bg-gray-50", darkBg: "dark:bg-gray-800/50",
         text: "text-gray-800", darkText: "dark:text-white",
@@ -24,36 +21,31 @@ export function renderLiverRank(checks, logs) {
         theme = { 
             bg: "bg-purple-50", darkBg: "dark:bg-purple-900/20",
             text: "text-purple-900", darkText: "dark:text-purple-100",
-            icon: "text-purple-500",
-            bar: "bg-purple-500"
+            icon: "text-purple-500", bar: "bg-purple-500"
         };
     } else if (gradeData.rank.includes('A')) {
         theme = { 
             bg: "bg-indigo-50", darkBg: "dark:bg-indigo-900/20",
             text: "text-indigo-900", darkText: "dark:text-indigo-100",
-            icon: "text-indigo-500",
-            bar: "bg-indigo-500"
+            icon: "text-indigo-500", bar: "bg-indigo-500"
         };
     } else if (gradeData.rank.includes('B')) {
         theme = { 
             bg: "bg-emerald-50", darkBg: "dark:bg-emerald-900/20",
             text: "text-emerald-900", darkText: "dark:text-emerald-100",
-            icon: "text-emerald-500",
-            bar: "bg-emerald-500"
+            icon: "text-emerald-500", bar: "bg-emerald-500"
         };
     } else if (gradeData.rank.includes('C')) {
         theme = { 
             bg: "bg-red-50", darkBg: "dark:bg-red-900/20",
             text: "text-red-900", darkText: "dark:text-red-100",
-            icon: "text-red-500",
-            bar: "bg-red-500"
+            icon: "text-red-500", bar: "bg-red-500"
         };
     } else if (gradeData.isRookie) {
         theme = {
             bg: "bg-orange-50", darkBg: "dark:bg-orange-900/20",
             text: "text-orange-900", darkText: "dark:text-orange-100",
-            icon: "text-orange-500",
-            bar: "bg-orange-500"
+            icon: "text-orange-500", bar: "bg-orange-500"
         };
     }
 
@@ -64,17 +56,15 @@ export function renderLiverRank(checks, logs) {
     if (gradeData.next) {
         if (gradeData.isRookie) {
             progressPercent = (gradeData.rawRate / gradeData.targetRate) * 100;
-            nextText = `Next: +${(gradeData.targetRate - gradeData.rawRate).toFixed(2) * 100}% rate`;
+            nextText = `Next: +${Math.round((gradeData.targetRate - gradeData.rawRate) * 100)}%`;
         } else {
-            // 通常ランクの進捗: (現在ストリーク - 現在ランクの必要日数) / (次ランク日数 - 現在ランク日数)
-            // 簡易的に 現在 / 次 で計算
             progressPercent = Math.min(100, (gradeData.current / gradeData.next) * 100);
             const remaining = gradeData.next - gradeData.current;
             nextText = `Next: ${remaining} days`;
         }
     }
 
-    // HTML生成 (v4 Glass Card Structure)
+    // HTML生成
     card.className = `glass-panel p-4 rounded-2xl relative overflow-hidden group cursor-pointer transition hover:border-opacity-50 ${theme.bg} ${theme.darkBg}`;
     
     card.innerHTML = `
@@ -88,9 +78,9 @@ export function renderLiverRank(checks, logs) {
                     <span class="text-[10px] font-bold uppercase tracking-widest opacity-60 ${theme.text} ${theme.darkText}">Liver Rank</span>
                 </div>
                 
-                <div class="flex items-baseline gap-2">
-                    <span class="text-3xl font-black ${theme.text} ${theme.darkText} leading-none">${gradeData.rank}</span>
-                    <span class="text-xs font-bold opacity-80 ${theme.text} ${theme.darkText}">${gradeData.label}</span>
+                <div class="flex flex-col items-start">
+                    <span class="text-3xl font-black ${theme.text} ${theme.darkText} leading-none tracking-tight">${gradeData.rank}</span>
+                    <span class="text-xs font-bold opacity-80 ${theme.text} ${theme.darkText} mt-1">${gradeData.label}</span>
                 </div>
             </div>
 
