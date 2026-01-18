@@ -244,10 +244,44 @@ export const openCheckModal = (dateStr = null) => {
 };
 
 // ★修正: dateStrを受け取れるように変更
-export const openManualInput = (dateStr = null) => {
-    const targetDate = dateStr || getTodayString();
-    document.getElementById('manual-date').value = targetDate;
-    toggleModal('exercise-modal', true);
+export const openManualInput = (dateStr = null, log = null) => {
+    // フォームリセット
+    document.getElementById('editing-exercise-id').value = '';
+    document.getElementById('manual-minutes').value = '';
+    
+    // 日付セット
+    if (dateStr) {
+        document.getElementById('manual-date').value = dateStr;
+    } else if (log) {
+        document.getElementById('manual-date').value = dayjs(log.timestamp).format('YYYY-MM-DD');
+    } else {
+        document.getElementById('manual-date').value = dayjs().format('YYYY-MM-DD');
+    }
+
+    // 編集モードの場合、データをセット
+    if (log) {
+        document.getElementById('editing-exercise-id').value = log.id;
+        document.getElementById('manual-minutes').value = log.minutes || 30;
+        
+        const typeSel = document.getElementById('exercise-select');
+        if (typeSel && log.exerciseKey) {
+            typeSel.value = log.exerciseKey;
+        }
+        
+        // フォームがある場所（Recordタブ）へスクロール
+        const recordTab = document.getElementById('nav-tab-record');
+        if (recordTab) recordTab.click();
+        
+        // 少し待ってからスクロール
+        setTimeout(() => {
+            const formEl = document.getElementById('manual-date');
+            if(formEl) formEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+    } else {
+        // 新規の場合はタブ切り替えだけ（任意）
+        const recordTab = document.getElementById('nav-tab-record');
+        if (recordTab) recordTab.click();
+    }
 };
 
 export const openTimer = () => {

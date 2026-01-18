@@ -30,12 +30,14 @@ export const refreshUI = async () => {
     if (!UI._fetchAllDataHandler) return;
     const { logs, checks } = await UI._fetchAllDataHandler();
     
+    // データ整合性チェック等のために少し待つケースも考慮
     const profile = Store.getProfile();
     let balance = 0;
     logs.forEach(l => {
         balance += (l.kcal || 0);
     });
     
+    // 各コンポーネント再描画
     renderBeerTank(balance);
     renderLiverRank(checks, logs);
     renderCheckStatus(checks, logs);
@@ -50,6 +52,9 @@ export const refreshUI = async () => {
     } else if (cellarMode === 'archives') {
         renderArchives();
     }
+
+    // ★追加: ヘッダーのモード選択プルダウンも更新
+    updateModeSelector(); 
 };
 
 export const UI = {
@@ -70,7 +75,7 @@ export const UI = {
         bind('nav-tab-cellar', 'click', () => UI.switchTab('cellar'));
         bind('nav-tab-settings', 'click', () => UI.switchTab('settings'));
 
-        bind('header-mode-select', 'change', (e) => { // ID変更: home-mode-select -> header-mode-select
+        bind('header-mode-select', 'change', (e) => {
             StateManager.setBeerMode(e.target.value);
             refreshUI();
         });
@@ -91,26 +96,71 @@ export const UI = {
             toggleModal('beer-modal', false);
         });
 
-        // ★追加: 「保存して次へ」
+        // 保存して次へ
         bind('btn-save-beer-next', 'click', () => {
             const data = getBeerFormData();
-            
-            // 保存イベント発火
             const event = new CustomEvent('save-beer', { detail: data });
             document.dispatchEvent(event);
             
-            // 完了メッセージ
             showMessage('Saved! Ready for next.', 'success');
-            
-            // フォームリセット (日付は維持する = true)
-            resetBeerForm(true);
-            
-            // フォームの一番上までスクロールを戻す
+            resetBeerForm(true); // 日付維持
             const container = document.querySelector('#beer-modal .overflow-y-auto');
             if(container) container.scrollTop = 0;
         });
         
         bind('btn-search-untappd', 'click', searchUntappd);
+
+// 運動記録の保存 (新規・編集対応)
+        bind('btn-save-exercise', 'click', async () => {
+            const date = document.getElementById('manual-date').value;
+            const minutes = parseInt(document.getElementById('manual-minutes').value, 10);
+            const key = document.getElementById('exercise-select').value;
+            const applyBonus = document.getElementById('manual-bonus').checked;
+            
+            // ★追加: 編集IDの取得
+            const idField = document.getElementById('editing-exercise-id');
+            const editId = idField && idField.value ? parseInt(idField.value) : null;
+
+            if (!date || !minutes || minutes <= 0) {
+                showMessage('Date and Minutes are required.', 'error');
+                return;
+            }
+
+            const data = {
+                date,
+                minutes,
+                exerciseKey: key,
+                applyBonus
+            };
+
+            if (editId) {
+                // 更新処理 (dbを直接更新するか、Service経由で行う)
+                // Service.updateExerciseLog がなければ db.logs.update を使用
+                await db.logs.update(editId, {
+                   timestamp: dayjs(date).valueOf(), // 日付が変わっている可能性
+                   minutes: minutes,
+                   exerciseKey: key,
+                   // カロリー等の再計算が必要なため、Serviceを通すのが理想だが、
+                   // 簡易的にはここで再計算ロジックを入れるか、Serviceにupdateを作る
+                });
+                
+                // ※ 正確にはカロリー再計算が必要なので、一旦削除して登録し直すのが一番安全です
+                await Service.deleteLog(editId);
+                await Service.saveExerciseLog(data);
+                
+                showMessage('Workout Updated!', 'success');
+            } else {
+                // 新規作成
+                await Service.saveExerciseLog(data);
+                showMessage('Workout Logged!', 'success');
+            }
+            
+            // フォームクリア
+            document.getElementById('manual-minutes').value = '';
+            idField.value = '';
+            
+            refreshUI();
+        });
 
         bind('btn-save-check', 'click', () => {
             const date = document.getElementById('check-date').value;
@@ -120,7 +170,7 @@ export const UI = {
             const footLightness = document.getElementById('check-footLightness')?.checked || false;
             const waterOk = document.getElementById('check-waterOk')?.checked || false;
             const fiberOk = document.getElementById('check-fiberOk')?.checked || false;
-            const noHangover = document.getElementById('check-noHangover')?.checked || false; // 追加
+            const noHangover = document.getElementById('check-noHangover')?.checked || false;
 
             const detail = { date, isDryDay, weight, waistEase, footLightness, waterOk, fiberOk, noHangover };
             document.dispatchEvent(new CustomEvent('save-check', { detail }));
@@ -160,7 +210,6 @@ export const UI = {
         bind('btn-timer-toggle', 'click', Timer.toggle);
         bind('btn-timer-finish', 'click', Timer.finish);
         
-        // FAB (画面右下固定)
         bind('btn-fab-fixed', 'click', () => {
              openActionMenu(null); 
         });
@@ -169,7 +218,6 @@ export const UI = {
     },
 
     switchTab: (tabId) => {
-        // コンテンツ切り替え
         document.querySelectorAll('.tab-content').forEach(el => {
             el.classList.remove('active');
             el.style.display = 'none'; 
@@ -181,25 +229,17 @@ export const UI = {
             setTimeout(() => target.classList.add('active'), 10);
         }
 
-        // ★修正: ナビゲーションスタイルのリセットと適用
         document.querySelectorAll('.nav-item').forEach(el => {
-            // リセット: 全て非アクティブ状態にする
             el.classList.remove('nav-pill-active'); 
             el.classList.add('p-3', 'hover:bg-base-100', 'dark:hover:bg-base-800', 'text-gray-400');
-            
-            // アイコンとラベルの色リセット
             const icon = el.querySelector('i');
-            const label = el.querySelector('.label');
-            if(icon) icon.className = icon.className.replace('ph-fill', 'ph-bold'); // Outline style
+            if(icon) icon.className = icon.className.replace('ph-fill', 'ph-bold'); 
         });
 
         const activeNav = document.getElementById(`nav-tab-${tabId}`);
         if(activeNav) {
-            // アクティブ適用
             activeNav.classList.remove('p-3', 'hover:bg-base-100', 'dark:hover:bg-base-800', 'text-gray-400');
             activeNav.classList.add('nav-pill-active');
-            
-            // アイコンをFillスタイルに
             const icon = activeNav.querySelector('i');
             if(icon) icon.className = icon.className.replace('ph-bold', 'ph-fill');
         }
@@ -261,14 +301,13 @@ export const UI = {
         const log = await db.logs.get(id);
         if(!log) return;
         
-        if(confirm('記録を複製して編集モードに入りますか？\n(古い記録は削除されません)')) {
-            if(log.type === 'beer') {
-                // ★修正: 第3引数に log を渡す
-                openBeerModal(null, dayjs(log.timestamp).format('YYYY-MM-DD'), log);
-            } else if(log.type === 'exercise') {
-                // Exercise側も同様に対応が必要なら引数を追加する (今回はBeerのみ対応)
-                openManualInput(dayjs(log.timestamp).format('YYYY-MM-DD'));
-            }
+        // 編集モード確認は不要（タップで編集、長押し選択のUXの場合）
+        // ここでは即編集モーダルへ
+        if(log.type === 'beer') {
+            openBeerModal(null, dayjs(log.timestamp).format('YYYY-MM-DD'), log);
+        } else if(log.type === 'exercise') {
+            // ★修正: 第2引数に log を渡して、編集モードで開く
+            openManualInput(null, log);
         }
     },
 
@@ -293,7 +332,10 @@ export const UI = {
     showMessage: showMessage,
     
     openActionMenu: openActionMenu,
-    handleActionSelect: handleActionSelect
+    handleActionSelect: handleActionSelect,
+    
+    // ★追加: これがないとDataManagerからの呼び出しでエラーになる
+    updateModeSelector: updateModeSelector 
 };
 
 export { 
