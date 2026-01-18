@@ -110,14 +110,14 @@ export const UI = {
         
         bind('btn-search-untappd', 'click', searchUntappd);
 
-// 運動記録の保存 (新規・編集対応)
+        // 運動記録の保存
         bind('btn-save-exercise', 'click', async () => {
+            // ID重複が解消されたので、正しくタブ内の要素が取得されます
             const date = document.getElementById('manual-date').value;
             const minutes = parseInt(document.getElementById('manual-minutes').value, 10);
             const key = document.getElementById('exercise-select').value;
             const applyBonus = document.getElementById('manual-bonus').checked;
             
-            // ★追加: 編集IDの取得
             const idField = document.getElementById('editing-exercise-id');
             const editId = idField && idField.value ? parseInt(idField.value) : null;
 
@@ -126,39 +126,23 @@ export const UI = {
                 return;
             }
 
-            const data = {
-                date,
-                minutes,
-                exerciseKey: key,
-                applyBonus
-            };
-
             if (editId) {
-                // 更新処理 (dbを直接更新するか、Service経由で行う)
-                // Service.updateExerciseLog がなければ db.logs.update を使用
-                await db.logs.update(editId, {
-                   timestamp: dayjs(date).valueOf(), // 日付が変わっている可能性
-                   minutes: minutes,
-                   exerciseKey: key,
-                   // カロリー等の再計算が必要なため、Serviceを通すのが理想だが、
-                   // 簡易的にはここで再計算ロジックを入れるか、Serviceにupdateを作る
-                });
-                
-                // ※ 正確にはカロリー再計算が必要なので、一旦削除して登録し直すのが一番安全です
-                await Service.deleteLog(editId);
-                await Service.saveExerciseLog(data);
-                
+                // 編集時
+                await Service.saveExerciseLog(key, minutes, date, applyBonus, editId);
                 showMessage('Workout Updated!', 'success');
             } else {
-                // 新規作成
-                await Service.saveExerciseLog(data);
+                // 新規作成時
+                await Service.saveExerciseLog(key, minutes, date, applyBonus);
                 showMessage('Workout Logged!', 'success');
             }
             
             // フォームクリア
             document.getElementById('manual-minutes').value = '';
-            idField.value = '';
+            if(idField) idField.value = '';
             
+            // ★変更点: モーダルではないので、閉じる処理(toggleModal)は削除しました
+            // 代わりにキーボードを閉じるためにフォーカスを外すなどの工夫があっても良いですが、必須ではありません
+
             refreshUI();
         });
 

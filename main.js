@@ -203,28 +203,6 @@ document.addEventListener('DOMContentLoaded', () => {
         btnSaveSettings.onclick = handleSaveSettings;
     }
 
-    const btnSaveEx = document.getElementById('btn-save-exercise');
-    if (btnSaveEx) {
-        btnSaveEx.addEventListener('click', () => {
-            const date = document.getElementById('manual-date').value;
-            const type = document.getElementById('exercise-select').value;
-            const min = parseInt(document.getElementById('manual-minutes').value) || 0;
-            const bonus = document.getElementById('manual-bonus').checked;
-            // 編集IDの取得
-            const idField = document.getElementById('editing-exercise-id');
-            const id = idField && idField.value ? parseInt(idField.value) : null;
-            
-            if (min > 0) {
-                // 直接Serviceを呼ばず、イベントを投げる
-                document.dispatchEvent(new CustomEvent('save-exercise', {
-                    detail: { exerciseKey: type, minutes: min, date: date, applyBonus: bonus, id: id }
-                }));
-            } else {
-                alert('Please enter minutes.');
-            }
-        });
-    }
-
     const btnTimerStart = document.getElementById('btn-timer-start');
     if(btnTimerStart) btnTimerStart.addEventListener('click', () => Timer.start());
     

@@ -607,28 +607,6 @@
         </div>
     </div>
 
-    <div id="exercise-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <div class="bg-white dark:bg-base-900 w-full max-w-sm rounded-3xl shadow-xl p-5 transform transition-all scale-95 opacity-0 duration-200">
-            <h3 class="font-bold text-lg mb-4">Manual Exercise</h3>
-            <div class="space-y-4">
-                <input type="date" id="manual-date" class="w-full bg-base-50 dark:bg-base-800 rounded-xl p-3 font-bold">
-                <select id="exercise-select" class="w-full bg-base-50 dark:bg-base-800 rounded-xl p-3 font-bold"></select>
-                <div class="flex items-center gap-2">
-                    <input type="number" id="manual-minutes" class="w-full bg-base-50 dark:bg-base-800 rounded-xl p-3 font-bold text-xl text-center" placeholder="30">
-                    <span class="font-bold text-gray-400">min</span>
-                </div>
-                <label class="flex items-center gap-2 text-xs font-bold text-gray-500 cursor-pointer justify-center">
-                    <input type="checkbox" id="manual-bonus" class="rounded text-indigo-600" checked>
-                    <span>Apply Streak Bonus</span>
-                </label>
-            </div>
-            <div class="flex gap-3 mt-6">
-                <button onclick="UI.closeModal('exercise-modal')" class="flex-1 font-bold text-gray-400">Cancel</button>
-                <button id="btn-save-exercise" class="flex-[2] py-3 rounded-xl bg-indigo-600 text-white font-bold">Record</button>
-            </div>
-        </div>
-    </div>
-
     <div id="timer-modal" class="fixed inset-0 z-[200] hidden items-center justify-center bg-base-900 text-white transition-opacity duration-300">
         <div class="absolute inset-0 bg-gradient-to-br from-indigo-900 to-black opacity-80"></div>
         
