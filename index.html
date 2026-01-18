@@ -169,39 +169,28 @@
 
                 <section class="mb-6">
                     <h2 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">Workout Timer</h2>
-                    <div class="glass-panel p-6 rounded-3xl relative overflow-hidden">
-                        <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-                        <div class="flex flex-col items-center justify-center py-4">
-                            <div class="text-6xl font-black font-mono text-base-900 dark:text-white mb-2 tracking-tighter" id="timer-display">
-                                00:00
+                    
+                    <button onclick="UI.openTimer()" class="w-full group relative overflow-hidden rounded-3xl p-6 bg-base-900 dark:bg-white text-left shadow-xl transition-transform active:scale-95">
+                        <div class="absolute top-0 right-0 w-40 h-40 bg-indigo-500/30 rounded-full blur-3xl pointer-events-none group-hover:bg-indigo-500/50 transition duration-500"></div>
+                        <div class="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/30 rounded-full blur-3xl pointer-events-none group-hover:bg-purple-500/50 transition duration-500"></div>
+                        
+                        <div class="relative z-10 flex items-center justify-between">
+                            <div>
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                                    <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Immersive Mode</span>
+                                </div>
+                                <h3 class="text-2xl font-black text-white dark:text-base-900 mb-1">Start Workout</h3>
+                                <p class="text-xs font-bold text-gray-400 group-hover:text-gray-300 dark:group-hover:text-gray-600 transition">
+                                    Live tracking & Beer conversion
+                                </p>
                             </div>
-                            <p class="text-xs font-bold text-gray-400 mb-6">Elapsed Time</p>
-
-                            <div class="w-full space-y-4">
-                                <div class="relative w-full">
-                                    <div class="bg-gray-100 dark:bg-gray-700/50 rounded-xl flex items-center w-full overflow-hidden border border-transparent focus-within:border-indigo-500 transition">
-                                        <div class="pl-4 text-gray-400">
-                                            <i class="ph-fill ph-person-simple-run"></i>
-                                        </div>
-                                        <select id="timer-exercise-select" class="w-full bg-transparent text-base-900 dark:text-white font-bold text-sm p-3 outline-none cursor-pointer z-10 relative">
-                                            </select>
-                                    </div>
-                                </div>
-
-                                <div class="flex gap-3">
-                                    <button id="btn-timer-toggle" class="flex-1 py-4 bg-base-900 dark:bg-white text-white dark:text-base-900 rounded-xl font-bold shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2">
-                                        <i class="ph-fill ph-play" id="timer-icon"></i>
-                                        <span id="timer-btn-label">Start</span>
-                                    </button>
-                                    
-                                    <button id="btn-timer-finish" class="px-6 py-4 bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 rounded-xl font-bold hover:bg-emerald-500 hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                                        Finish
-                                    </button>
-                                </div>
+                            
+                            <div class="w-14 h-14 rounded-full bg-white/10 dark:bg-base-900/10 flex items-center justify-center border border-white/20 dark:border-base-900/20 group-hover:scale-110 transition duration-300">
+                                <i class="ph-fill ph-play text-2xl text-white dark:text-base-900 ml-1"></i>
                             </div>
                         </div>
-                    </div>
+                    </button>
                 </section>
 
                 <section>

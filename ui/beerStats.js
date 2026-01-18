@@ -4,16 +4,29 @@ import { STYLE_METADATA } from '../constants.js';
 
 let statsChart = null;
 
+// フィルター状態管理
+let activeFilters = {
+    term: '',
+    brewery: '',
+    style: '',
+    rating: 0
+};
+
 export function renderBeerStats(logs) {
     const container = document.getElementById('view-cellar-stats');
     if (!container) return;
 
-    // データの集計
+    // 集計
     const stats = Calc.getBeerStats(logs);
+    const allBeers = stats.beerStats || [];
 
-    // HTML構造の生成 (検索バー + グラフエリア + リストエリア)
+    // ユニークなリストの抽出（選択肢用）
+    const uniqueBreweries = [...new Set(allBeers.map(b => b.brewery).filter(b => b && b !== 'Unknown'))].sort();
+    const uniqueStyles = [...new Set(allBeers.map(b => b.style).filter(s => s && s !== 'Unknown'))].sort();
+
+    // HTML構造生成
     container.innerHTML = `
-        <div class="space-y-6">
+        <div class="space-y-6 pb-24">
             <div class="grid grid-cols-3 gap-3 text-center">
                 <div class="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-2xl border border-amber-100 dark:border-amber-800/50">
                     <p class="text-[10px] font-bold text-amber-800 dark:text-amber-200 uppercase">Total</p>
@@ -39,20 +52,53 @@ export function renderBeerStats(logs) {
                 </div>
             </div>
 
-            <div>
-                <div class="sticky top-0 bg-white/90 dark:bg-base-900/90 backdrop-blur z-10 py-2">
-                    <div class="flex items-center justify-between mb-2 px-1">
+            <div id="beer-collection-section">
+                <div class="sticky top-0 bg-gray-50/95 dark:bg-base-900/95 backdrop-blur z-20 py-3 -mx-2 px-2 border-b border-gray-200 dark:border-gray-800">
+                    <div class="flex items-center justify-between mb-3 px-1">
                         <h3 class="text-lg font-black text-base-900 dark:text-white flex items-center gap-2">
                             <i class="ph-fill ph-books text-indigo-500"></i> Collection
                         </h3>
+                        <span class="text-xs font-bold text-gray-400" id="beer-list-count">${allBeers.length} beers</span>
+                    </div>
+
+                    <div class="space-y-2">
                         <div class="relative">
-                            <input type="text" id="beer-search-input" placeholder="Search..." class="bg-gray-100 dark:bg-gray-800 border-none rounded-xl text-xs font-bold py-2 pl-8 pr-3 w-40 focus:w-full transition-all focus:ring-2 focus:ring-indigo-500">
-                            <i class="ph-bold ph-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                            <input type="text" id="beer-search-input" placeholder="Search name..." class="w-full bg-white dark:bg-black border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold py-2.5 pl-9 pr-3 focus:ring-2 focus:ring-indigo-500 transition">
+                            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="relative">
+                                <select id="filter-brewery" class="w-full appearance-none bg-white dark:bg-black border border-gray-200 dark:border-gray-700 rounded-lg text-[10px] font-bold py-2 pl-2 pr-6 truncate focus:outline-none focus:border-indigo-500">
+                                    <option value="">All Breweries</option>
+                                    ${uniqueBreweries.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('')}
+                                </select>
+                                <div class="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs">▼</div>
+                            </div>
+
+                            <div class="relative">
+                                <select id="filter-style" class="w-full appearance-none bg-white dark:bg-black border border-gray-200 dark:border-gray-700 rounded-lg text-[10px] font-bold py-2 pl-2 pr-6 truncate focus:outline-none focus:border-indigo-500">
+                                    <option value="">All Styles</option>
+                                    ${uniqueStyles.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('')}
+                                </select>
+                                <div class="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs">▼</div>
+                            </div>
+
+                            <div class="relative">
+                                <select id="filter-rating" class="w-full appearance-none bg-white dark:bg-black border border-gray-200 dark:border-gray-700 rounded-lg text-[10px] font-bold py-2 pl-2 pr-6 truncate focus:outline-none focus:border-indigo-500">
+                                    <option value="0">All Ratings</option>
+                                    <option value="5">★ 5 Only</option>
+                                    <option value="4">★ 4 & up</option>
+                                    <option value="3">★ 3 & up</option>
+                                    <option value="2">★ 2 & up</option>
+                                </select>
+                                <div class="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 text-xs">▼</div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div id="beer-ranking-list" class="space-y-3 pb-24">
+                <div id="beer-ranking-list" class="space-y-3 mt-4">
                     </div>
             </div>
         </div>
@@ -61,47 +107,67 @@ export function renderBeerStats(logs) {
     // チャート描画
     renderStyleChart(stats.styleCounts);
 
-    // リスト描画 & 検索機能
-    const searchInput = document.getElementById('beer-search-input');
-    
-    const filterAndRender = (term = '') => {
-        const lowerTerm = term.toLowerCase();
-        const filtered = stats.beerStats.filter(b => 
-            (b.name && b.name.toLowerCase().includes(lowerTerm)) || 
-            (b.brewery && b.brewery.toLowerCase().includes(lowerTerm)) ||
-            (b.style && b.style.toLowerCase().includes(lowerTerm))
-        );
+    // フィルター機能の実装
+    const applyFilters = () => {
+        const term = activeFilters.term.toLowerCase();
+        
+        const filtered = allBeers.filter(b => {
+            const matchTerm = !term || 
+                (b.name && b.name.toLowerCase().includes(term)) || 
+                (b.brewery && b.brewery.toLowerCase().includes(term));
+            
+            const matchBrewery = !activeFilters.brewery || b.brewery === activeFilters.brewery;
+            const matchStyle = !activeFilters.style || b.style === activeFilters.style;
+            const matchRating = !activeFilters.rating || b.averageRating >= activeFilters.rating;
+
+            return matchTerm && matchBrewery && matchStyle && matchRating;
+        });
+
+        // 件数更新
+        const countLabel = document.getElementById('beer-list-count');
+        if(countLabel) countLabel.textContent = `${filtered.length} beers`;
+
         renderBeerList(filtered);
     };
 
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => filterAndRender(e.target.value));
-    }
+    // イベントリスナーの登録
+    const bindFilter = (id, key) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener(id === 'beer-search-input' ? 'input' : 'change', (e) => {
+                activeFilters[key] = e.target.value;
+                if(key === 'rating') activeFilters[key] = parseFloat(e.target.value);
+                applyFilters();
+            });
+        }
+    };
+
+    bindFilter('beer-search-input', 'term');
+    bindFilter('filter-brewery', 'brewery');
+    bindFilter('filter-style', 'style');
+    bindFilter('filter-rating', 'rating');
     
-    // 初回リスト描画
-    renderBeerList(stats.beerStats);
+    // 初期描画（全件）
+    activeFilters = { term: '', brewery: '', style: '', rating: 0 }; // リセット
+    applyFilters();
 }
 
 function renderStyleChart(styleCounts) {
     const ctx = document.getElementById('beerStyleChart');
     if (!ctx) return;
-
     if (statsChart) statsChart.destroy();
 
     const labels = Object.keys(styleCounts);
     const data = Object.values(styleCounts);
     
-    // 色マッピング (Tailwind colors to Hex)
     const map = {
         'gold': '#fbbf24', 'amber': '#f59e0b', 'black': '#1f2937', 
         'hazy': '#facc15', 'white': '#fcd34d', 'red': '#ef4444', 
         'pale': '#fef08a', 'copper': '#d97706', 'green': '#10b981'
     };
-
     const bgColors = labels.map(style => {
         const meta = STYLE_METADATA[style];
-        const colorKey = meta ? meta.color : 'gold';
-        return map[colorKey] || '#cbd5e1';
+        return map[meta ? meta.color : 'gold'] || '#cbd5e1';
     });
 
     statsChart = new Chart(ctx, {
@@ -121,12 +187,7 @@ function renderStyleChart(styleCounts) {
             cutout: '70%',
             plugins: {
                 legend: { display: false },
-                tooltip: {
-                    backgroundColor: 'rgba(0,0,0,0.8)',
-                    bodyFont: { size: 12, weight: 'bold' },
-                    padding: 10,
-                    cornerRadius: 8
-                }
+                tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', bodyFont: { size: 12, weight: 'bold' }, padding: 10, cornerRadius: 8 }
             }
         }
     });
@@ -140,19 +201,17 @@ function renderBeerList(beers) {
         listEl.innerHTML = `
             <div class="text-center py-10 opacity-50">
                 <i class="ph-duotone ph-beer-bottle text-4xl mb-2"></i>
-                <p class="text-xs font-bold">No beers found.</p>
+                <p class="text-xs font-bold">No matching beers.</p>
             </div>`;
         return;
     }
 
     listEl.innerHTML = beers.map((beer, index) => {
-        // ランキングバッジ
         let rankBadge = `<span class="text-xs font-bold text-gray-300 w-6 text-center">#${index + 1}</span>`;
         if (index === 0) rankBadge = `<span class="text-lg">🥇</span>`;
         if (index === 1) rankBadge = `<span class="text-lg">🥈</span>`;
         if (index === 2) rankBadge = `<span class="text-lg">🥉</span>`;
 
-        // 評価スター
         const rating = beer.averageRating > 0 
             ? `<span class="flex items-center text-[10px] text-yellow-500 font-bold bg-yellow-50 dark:bg-yellow-900/30 px-1.5 py-0.5 rounded gap-1"><i class="ph-fill ph-star"></i>${beer.averageRating.toFixed(1)}</span>`
             : '';
