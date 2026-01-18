@@ -118,7 +118,7 @@ export const Calc = {
         return (kcal / safeUnit).toFixed(1);
     },
 
-/**
+    /**
      * ストリーク計算 (修正版: チェック内容を最優先する)
      */
     getCurrentStreak: (logs, checks, profile, referenceDate = null) => {
@@ -356,6 +356,4 @@ export const Calc = {
             beerStats: beerStats // ★これを返すように修正
         };
     }
-
 };
-
