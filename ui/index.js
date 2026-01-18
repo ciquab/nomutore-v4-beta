@@ -1,7 +1,6 @@
 import { Calc } from '../logic.js';
 import { Store, db } from '../store.js';
 import { Service } from '../service.js';
-// ★修正: APP を追加インポート
 import { APP } from '../constants.js';
 import { DOM, toggleModal, showConfetti, showMessage, applyTheme, toggleDryDay } from './dom.js';
 import { StateManager } from './state.js';
@@ -21,7 +20,9 @@ import {
     openCheckModal, openManualInput, renderSettings, openHelp, openLogDetail, 
     updateModeSelector, updateBeerSelectOptions, updateInputSuggestions, renderQuickButtons,
     closeModal, adjustBeerCount, searchUntappd,
-    openTimer, closeTimer 
+    openTimer, closeTimer,
+    // ★追加: アクションメニュー関連
+    openActionMenu, handleActionSelect
 } from './modal.js';
 
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
@@ -66,19 +67,16 @@ export const UI = {
             if(el) el.addEventListener(event, fn);
         };
 
-        // Navigation
         bind('nav-tab-home', 'click', () => UI.switchTab('home'));
         bind('nav-tab-record', 'click', () => UI.switchTab('record'));
         bind('nav-tab-cellar', 'click', () => UI.switchTab('cellar'));
         bind('nav-tab-settings', 'click', () => UI.switchTab('settings'));
 
-        // Home Mode Select
         bind('home-mode-select', 'change', (e) => {
             StateManager.setBeerMode(e.target.value);
             refreshUI();
         });
 
-        // ★追加: ホーム画面のプルダウンのラベルを、設定されたビール名と同期させる
         const modes = Store.getModes();
         const homeSel = document.getElementById('home-mode-select');
         if(homeSel && modes) {
@@ -87,7 +85,6 @@ export const UI = {
             homeSel.value = StateManager.beerMode;
         }
 
-        // Modals & Other Bindings
         bind('btn-save-beer', 'click', () => {
             const data = getBeerFormData();
             const event = new CustomEvent('save-beer', { detail: data });
@@ -142,6 +139,11 @@ export const UI = {
         
         bind('btn-timer-toggle', 'click', Timer.toggle);
         bind('btn-timer-finish', 'click', Timer.finish);
+        
+        // ★修正: ホームのFABボタンを「統合アクションメニュー」にバインド
+        bind('btn-fab-add', 'click', () => {
+             openActionMenu(null); // 日付指定なし（今日）
+        });
 
         applyTheme(Store.getTheme());
     },
@@ -248,7 +250,11 @@ export const UI = {
     refreshUI: refreshUI,
     
     showConfetti: showConfetti,
-    showMessage: showMessage
+    showMessage: showMessage,
+    
+    // ★追加: HTMLから呼べるように公開
+    openActionMenu: openActionMenu,
+    handleActionSelect: handleActionSelect
 };
 
 export { 

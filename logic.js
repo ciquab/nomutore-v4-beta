@@ -299,21 +299,48 @@ export const Calc = {
         const totalKcal = beerLogs.reduce((sum, l) => sum + Math.abs(l.kcal || 0), 0);
 
         const styleCounts = {};
+        const statsMap = new Map(); // ★詳細集計用マップ
+
         beerLogs.forEach(l => {
+            // Style集計
             const s = l.style || 'Unknown';
             styleCounts[s] = (styleCounts[s] || 0) + (l.count || 1);
+
+            // 銘柄別集計 (Key: Brewery + Name)
+            const brewery = l.brewery ? l.brewery.trim() : 'Unknown';
+            const brand = l.brand ? l.brand.trim() : (l.name || 'Unknown Beer');
+            const key = `${brewery}|${brand}`;
+
+            if (!statsMap.has(key)) {
+                statsMap.set(key, {
+                    brewery: brewery === 'Unknown' ? '' : brewery,
+                    name: brand,
+                    count: 0,
+                    totalMl: 0,
+                    ratings: [],
+                    lastDrank: 0,
+                    style: s
+                });
+            }
+            
+            const entry = statsMap.get(key);
+            entry.count += (l.count || 1);
+            entry.totalMl += (l.rawAmount || (l.size * (l.count || 1)) || 0);
+            if (l.rating > 0) entry.ratings.push(l.rating);
+            if (l.timestamp > entry.lastDrank) entry.lastDrank = l.timestamp;
         });
 
-        const uniqueBeers = new Set();
-        beerLogs.forEach(l => {
-            if (l.brewery && l.brand) {
-                uniqueBeers.add(`${l.brewery}|${l.brand}`);
-            }
-        });
+        const uniqueBeers = statsMap.size;
 
         const topStyles = Object.entries(styleCounts)
             .sort((a, b) => b[1] - a[1])
             .map(([style, count]) => ({ style, count }));
+
+        // ★追加: 銘柄リストの生成
+        const beerStats = Array.from(statsMap.values()).map(item => ({
+            ...item,
+            averageRating: item.ratings.length ? (item.ratings.reduce((a,b)=>a+b,0) / item.ratings.length) : 0
+        })).sort((a, b) => b.count - a.count); // デフォルトは杯数順
 
         return {
             totalCount,
@@ -321,8 +348,9 @@ export const Calc = {
             totalKcal,
             styleCounts,
             topStyles,
-            uniqueBeersCount: uniqueBeers.size,
-            logsCount: beerLogs.length
+            uniqueBeersCount: uniqueBeers,
+            logsCount: beerLogs.length,
+            beerStats: beerStats // ★これを返すように修正
         };
     }
 };

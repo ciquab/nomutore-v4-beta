@@ -38,11 +38,9 @@ export const APP = {
 // drinking_only: true の項目は「休肝日OFF」の時のみ表示される
 export const CHECK_SCHEMA = [
     { id: 'waistEase', label: 'Waist Ease', icon: '👖', type: 'boolean', desc: 'お腹周りスッキリ' },
-    { id: 'footLightness', label: 'Foot Light', icon: '🦶', type: 'boolean', desc: '足取りが軽い' },
-    { id: 'waterOk', label: 'Water OK', icon: '💧', type: 'boolean', desc: '水分とれた' },
-    { id: 'fiberOk', label: 'Fiber OK', icon: '🥗', type: 'boolean', desc: '野菜とれた' },
-    { id: 'noHangover', label: 'No Hangover', icon: '😵', type: 'boolean', drinking_only: true, desc: '二日酔いなし' }
-];
+    { id: 'footLightness', label: 'Foot Light', icon: '🦶', type: 'boolean', desc: '下半身のむくみなし' },
+    { id: 'waterOk', label: 'Water OK', icon: '💧', type: 'boolean', drinking_only: true desc: '飲酒中に水分をとった' },
+    { id: 'fiberOk', label: 'Fiber OK', icon: '🥗', type: 'boolean', drinking_only: true, desc: '飲酒前に食物繊維をとった' };
 
 export const CALORIES = { 
     STYLES: { 

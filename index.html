@@ -132,22 +132,121 @@
         </div>
 
         <!-- Tab Content: Record -->
-        <div id="tab-record" class="tab-content">
-             <div class="glass-panel p-6 rounded-3xl text-center">
-                <h2 class="text-xl font-bold mb-4">Quick Record</h2>
-                <div class="grid grid-cols-2 gap-4">
-                    <button onclick="UI.openManualInput()" class="p-4 bg-white dark:bg-base-800 rounded-xl shadow-sm border border-base-200 dark:border-base-700 flex flex-col items-center gap-2 active:scale-95 transition">
-                        <span class="text-3xl">📝</span>
-                        <span class="text-sm font-bold">Manual Input</span>
-                    </button>
-                    <button onclick="UI.openTimer()" class="p-4 bg-white dark:bg-base-800 rounded-xl shadow-sm border border-base-200 dark:border-base-700 flex flex-col items-center gap-2 active:scale-95 transition">
-                        <span class="text-3xl">⏱️</span>
-                        <span class="text-sm font-bold">Timer</span>
-                    </button>
+<div id="tab-record" class="tab-content pb-24 hidden">
+            <div class="pt-8 px-6 pb-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h1 class="text-3xl font-black text-base-900 dark:text-white tracking-tight">Record</h1>
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Action Center</span>
                 </div>
-             </div>
-        </div>
 
+                <section class="mb-6">
+                    <h2 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">Quick Log</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="UI.openBeerModal()" class="group relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-orange-500/20 text-left transition transform hover:scale-[1.02] active:scale-95">
+                            <div class="relative z-10 flex flex-col h-full justify-between gap-2">
+                                <i class="ph-fill ph-beer-bottle text-3xl text-white"></i>
+                                <div>
+                                    <p class="text-xs font-bold text-white/80">Log Drink</p>
+                                    <p class="text-lg font-black text-white">ビールを記録</p>
+                                </div>
+                            </div>
+                            <div class="absolute -right-4 -bottom-4 text-white/10 rotate-12">
+                                <i class="ph-fill ph-beer-stein text-8xl"></i>
+                            </div>
+                        </button>
+
+                        <button onclick="UI.openCheckModal()" class="group relative overflow-hidden rounded-2xl p-5 bg-white dark:bg-base-800 border border-gray-200 dark:border-gray-700 shadow-sm text-left transition transform hover:scale-[1.02] active:scale-95">
+                            <div class="relative z-10 flex flex-col h-full justify-between gap-2">
+                                <i class="ph-fill ph-heartbeat text-3xl text-emerald-500"></i>
+                                <div>
+                                    <p class="text-xs font-bold text-gray-400">Daily Check</p>
+                                    <p class="text-lg font-black text-base-900 dark:text-white">健康チェック</p>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                </section>
+
+                <section class="mb-6">
+                    <h2 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">Workout Timer</h2>
+                    <div class="glass-panel p-6 rounded-3xl relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                        <div class="flex flex-col items-center justify-center py-4">
+                            <div class="text-6xl font-black font-mono text-base-900 dark:text-white mb-2 tracking-tighter" id="timer-display">
+                                00:00
+                            </div>
+                            <p class="text-xs font-bold text-gray-400 mb-6">Elapsed Time</p>
+
+                            <div class="w-full space-y-4">
+                                <div class="relative w-full">
+                                    <div class="bg-gray-100 dark:bg-gray-700/50 rounded-xl flex items-center w-full overflow-hidden border border-transparent focus-within:border-indigo-500 transition">
+                                        <div class="pl-4 text-gray-400">
+                                            <i class="ph-fill ph-person-simple-run"></i>
+                                        </div>
+                                        <select id="timer-exercise-select" class="w-full bg-transparent text-base-900 dark:text-white font-bold text-sm p-3 outline-none cursor-pointer z-10 relative">
+                                            </select>
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-3">
+                                    <button id="btn-timer-toggle" class="flex-1 py-4 bg-base-900 dark:bg-white text-white dark:text-base-900 rounded-xl font-bold shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2">
+                                        <i class="ph-fill ph-play" id="timer-icon"></i>
+                                        <span id="timer-btn-label">Start</span>
+                                    </button>
+                                    
+                                    <button id="btn-timer-finish" class="px-6 py-4 bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 rounded-xl font-bold hover:bg-emerald-500 hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                        Finish
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <div class="glass-panel p-6 rounded-3xl">
+                        <h3 class="text-sm font-bold text-base-900 dark:text-white mb-4 flex items-center gap-2">
+                            <i class="ph-fill ph-pencil-simple text-indigo-500"></i>
+                            Manual Entry
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Date</label>
+                                    <input type="date" id="manual-date" class="w-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-sm font-bold text-base-900 dark:text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Mins</label>
+                                    <input type="number" id="manual-minutes" placeholder="30" class="w-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-sm font-bold text-base-900 dark:text-white focus:outline-none focus:border-indigo-500">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Activity</label>
+                                <div class="relative">
+                                    <select id="exercise-select" class="w-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-sm font-bold text-base-900 dark:text-white focus:outline-none focus:border-indigo-500 appearance-none">
+                                        </select>
+                                    <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                        <i class="ph-bold ph-caret-down"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-2 py-1">
+                                <input type="checkbox" id="manual-bonus" class="w-4 h-4 rounded text-indigo-600 bg-gray-100 border-gray-300 focus:ring-indigo-500" checked>
+                                <label for="manual-bonus" class="text-xs text-gray-500 dark:text-gray-400 select-none">Apply Streak Bonus</label>
+                            </div>
+
+                            <button id="btn-save-exercise" class="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-md hover:bg-indigo-700 transition">
+                                Log Workout
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
         <!-- Tab Content: Cellar (History) -->
         <div id="tab-cellar" class="tab-content space-y-4">
              <div class="flex items-center justify-between px-2">
@@ -574,7 +673,39 @@
             </div>
         </div>
     </div>
+<div id="action-menu-modal" class="fixed inset-0 z-[100] hidden items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div class="bg-white dark:bg-base-900 w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-6 relative animate-slide-up sm:animate-none">
+            
+            <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-6 sm:hidden"></div>
+            
+            <div class="text-center mb-6">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Record for</span>
+                <h3 id="action-menu-date-label" class="text-2xl font-black text-base-900 dark:text-white mt-1">Today</h3>
+                <input type="hidden" id="action-menu-target-date">
+            </div>
 
+            <div class="grid grid-cols-3 gap-4 mb-4">
+                <button onclick="UI.handleActionSelect('beer')" class="flex flex-col items-center gap-3 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition group">
+                    <span class="text-4xl group-hover:scale-110 transition duration-300">🍺</span>
+                    <span class="text-xs font-bold text-amber-800 dark:text-amber-200">Drink</span>
+                </button>
+                
+                <button onclick="UI.handleActionSelect('exercise')" class="flex flex-col items-center gap-3 p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition group">
+                    <span class="text-4xl group-hover:scale-110 transition duration-300">🏃</span>
+                    <span class="text-xs font-bold text-indigo-800 dark:text-indigo-200">Workout</span>
+                </button>
+                
+                <button onclick="UI.handleActionSelect('check')" class="flex flex-col items-center gap-3 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition group">
+                    <span class="text-4xl group-hover:scale-110 transition duration-300">✅</span>
+                    <span class="text-xs font-bold text-emerald-800 dark:text-emerald-200">Check</span>
+                </button>
+            </div>
+            
+            <button onclick="UI.closeModal('action-menu-modal')" class="w-full py-4 text-gray-500 font-bold hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition">
+                Cancel
+            </button>
+        </div>
+    </div>
     <!-- Scripts -->
     <script type="module" src="main.js"></script>
     <script>

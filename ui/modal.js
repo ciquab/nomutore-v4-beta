@@ -7,12 +7,57 @@ import { Service } from '../service.js';
 import { Timer } from './timer.js'; 
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
-// UI.getTodayString() の代わり
 const getTodayString = () => dayjs().format('YYYY-MM-DD');
 
-// --- 既存のフォーム系関数は変更なし ---
+/* --- Action Menu (New) --- */
+// ★追加: 統合メニューを開く関数
+// dateStrがあれば、その日付で記録を開始する
+export const openActionMenu = (dateStr = null) => {
+    // 隠しフィールドに日付を一時保存（メニュー内のボタンがこれを使う）
+    const targetDate = dateStr || getTodayString();
+    StateManager.setSelectedDate(targetDate); // StateManagerに保存推奨だが、今回は属性で簡易対応
+    
+    // UI上の日付表示（メニューに「202X-XX-XX の記録」と出すため）
+    const label = document.getElementById('action-menu-date-label');
+    if(label) label.textContent = dayjs(targetDate).format('MM/DD (ddd)');
+    
+    // ボタンのonclick属性を動的に書き換えるのではなく、開く各モーダル側で StateManager.selectedDate を見るか、
+    // あるいは単純にここで dateStr を渡すクロージャを作るのが理想だが、
+    // 既存のHTML onclick="UI.openBeerModal()" との兼ね合いがあるため、
+    // 今回は「各open関数が引数 dateStr を受け取る」形に統一する。
+    
+    // HTML側の onclick="UI.openBeerModal(null, 'YYYY-MM-DD')" のように動的にセットするのは難しいので、
+    // 「メニューを開くときに、そのメニュー内のボタンが押されたらどうするか」を制御する。
+    
+    // 最もシンプルな実装: グローバル変数(StateManager)に日付をセットし、各Modalが開くときにそれを参照する。
+    // StateManager.tempDate = targetDate; // ui/state.js に tempDate を追加する必要があるが、
+    // ここでは DOM要素 (hidden input) を使うのが安全。
+    
+    const hiddenDate = document.getElementById('action-menu-target-date');
+    if(hiddenDate) hiddenDate.value = targetDate;
+
+    toggleModal('action-menu-modal', true);
+};
+
+// メニューから呼ばれるラッパー関数
+export const handleActionSelect = (type) => {
+    const hiddenDate = document.getElementById('action-menu-target-date');
+    const dateStr = hiddenDate ? hiddenDate.value : getTodayString();
+    
+    toggleModal('action-menu-modal', false);
+
+    if (type === 'beer') {
+        openBeerModal(null, dateStr);
+    } else if (type === 'exercise') {
+        openManualInput(dateStr);
+    } else if (type === 'check') {
+        openCheckModal(dateStr);
+    }
+};
+
+/* --- Existing Modals (Updated) --- */
+
 export const getBeerFormData = () => {
-    // ... (元のコードのまま)
     const dateVal = document.getElementById('beer-date').value;
     const brewery = document.getElementById('beer-brewery').value;
     const brand = document.getElementById('beer-brand').value;
@@ -34,7 +79,6 @@ export const getBeerFormData = () => {
     
     const count = parseInt(document.getElementById('beer-count').value) || 1;
 
-    // Custom data
     const customAbv = parseFloat(document.getElementById('custom-abv').value) || 5.0;
     const customMl = parseInt(document.getElementById('custom-amount').value) || 350;
     const customType = 'brew'; 
@@ -79,6 +123,7 @@ export const searchUntappd = () => {
 
 export const openBeerModal = (e, dateStr = null) => {
     resetBeerForm();
+    // ★修正: 引数で日付が渡されたらそれをセット
     if (dateStr) {
         document.getElementById('beer-date').value = dateStr;
     }
@@ -105,8 +150,10 @@ export const switchBeerInputTab = (mode) => {
     }
 };
 
-export const openCheckModal = () => {
-    document.getElementById('check-date').value = getTodayString();
+// ★修正: dateStrを受け取れるように変更
+export const openCheckModal = (dateStr = null) => {
+    const targetDate = dateStr || getTodayString();
+    document.getElementById('check-date').value = targetDate;
     
     const container = document.getElementById('check-items-container');
     if (!container) {
@@ -141,7 +188,6 @@ export const openCheckModal = () => {
         
         isDryCheck.onchange = (e) => {
             const isDry = e.target.checked;
-            
             const items = document.querySelectorAll('.drinking-only');
             items.forEach(el => {
                 if (isDry) { 
@@ -157,8 +203,10 @@ export const openCheckModal = () => {
     toggleModal('check-modal', true);
 };
 
-export const openManualInput = () => {
-    document.getElementById('manual-date').value = getTodayString();
+// ★修正: dateStrを受け取れるように変更
+export const openManualInput = (dateStr = null) => {
+    const targetDate = dateStr || getTodayString();
+    document.getElementById('manual-date').value = targetDate;
     toggleModal('exercise-modal', true);
 };
 
@@ -178,21 +226,13 @@ export const closeTimer = () => {
     toggleModal('timer-modal', false);
 };
 
-// --- 設定画面 & カスタムチェックエディタ ---
-
-// ★修正: openSettings -> renderSettings に変更し、toggleModalを削除
 export const renderSettings = () => {
     const currentMode = localStorage.getItem(APP.STORAGE_KEYS.PERIOD_MODE) || 'weekly';
     const periodSel = document.getElementById('setting-period-mode');
     if (periodSel) periodSel.value = currentMode;
-    
-    // エディタを描画
     renderCheckEditor();
-    
-    // toggleModal('settings-modal', true); // 削除: タブ表示のためモーダルは開かない
 };
 
-// チェック項目エディタのレンダリング
 const renderCheckEditor = () => {
     const container = document.getElementById('check-editor-list');
     if (!container) return; 
@@ -209,7 +249,7 @@ const renderCheckEditor = () => {
         const div = document.createElement('div');
         div.className = "flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mb-2";
         
-        const isSystem = ['waistEase', 'footLightness', 'waterOk', 'fiberOk', 'noHangover'].includes(item.id);
+        const isSystem = ['waistEase', 'footLightness', 'waterOk', 'fiberOk'].includes(item.id);
         const deleteBtn = isSystem 
             ? `<span class="text-gray-300 text-xs"><i class="ph-fill ph-lock-key"></i></span>`
             : `<button onclick="deleteCheckItem(${index})" class="text-red-500 hover:bg-red-100 p-1 rounded"><i class="ph-bold ph-trash"></i></button>`;
@@ -228,16 +268,13 @@ const renderCheckEditor = () => {
     });
 };
 
-// グローバル関数として公開
 window.deleteCheckItem = (index) => {
     if(!confirm('この項目を削除しますか？')) return;
-    
     let schema = CHECK_SCHEMA;
     try {
         const stored = localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA);
         if (stored) schema = JSON.parse(stored);
     } catch(e) {}
-
     schema.splice(index, 1);
     localStorage.setItem(APP.STORAGE_KEYS.CHECK_SCHEMA, JSON.stringify(schema));
     renderCheckEditor();
@@ -246,7 +283,6 @@ window.deleteCheckItem = (index) => {
 window.addNewCheckItem = () => {
     const label = prompt('項目名を入力してください (例: 筋トレ)');
     if(!label) return;
-    
     const icon = prompt('アイコン絵文字を入力してください (例: 💪)', '💪');
     const desc = prompt('説明を入力してください (例: 30分以上やった)', '');
     const drinkingOnly = confirm('「お酒を飲んだ日」だけ表示しますか？\n(OK=はい / キャンセル=いいえ[毎日表示])');
@@ -261,7 +297,6 @@ window.addNewCheckItem = () => {
         const stored = localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA);
         if (stored) schema = JSON.parse(stored);
     } catch(e) {}
-
     schema.push(newItem);
     localStorage.setItem(APP.STORAGE_KEYS.CHECK_SCHEMA, JSON.stringify(schema));
     renderCheckEditor();
@@ -302,9 +337,6 @@ export const handleSaveSettings = async () => {
         localStorage.setItem(APP.STORAGE_KEYS.THEME, theme);
 
         showMessage('設定を保存しました', 'success');
-        
-        // toggleModal('settings-modal', false); // 削除: タブなので閉じる動作は不要
-        
         document.dispatchEvent(new CustomEvent('refresh-ui'));
 
     } catch(e) {
