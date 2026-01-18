@@ -214,14 +214,16 @@ export const UI = {
              openActionMenu(null); 
         });
 
+        // 全データ削除 (Danger Zone)
         bind('btn-reset-all', 'click', async () => {
             if (confirm('【警告】\nすべてのデータを削除して初期化しますか？\nこの操作は取り消せません。')) {
                 if (confirm('本当に削除しますか？\n(復元用のバックアップがない場合、データは永遠に失われます)')) {
                     try {
-                        // DBクリア
-                        await db.logs.clear();
-                        await db.checks.clear();
-                        await db.archives.clear();
+                        // テーブルが存在する場合のみ削除を実行 (エラー回避)
+                        if (db.logs) await db.logs.clear();
+                        if (db.checks) await db.checks.clear();
+                        if (db.archives) await db.archives.clear();
+                        
                         // ローカルストレージ（設定）クリア
                         localStorage.clear();
                         
@@ -229,7 +231,7 @@ export const UI = {
                         window.location.reload();
                     } catch (e) {
                         console.error(e);
-                        alert('削除中にエラーが発生しました。');
+                        alert('削除中にエラーが発生しました。\n' + e.message);
                     }
                 }
             }
