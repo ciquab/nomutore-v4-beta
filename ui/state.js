@@ -1,4 +1,3 @@
-// ui/state.js
 import { APP } from '../constants.js';
 
 // 内部状態（直接アクセス禁止）
@@ -11,7 +10,8 @@ const _state = {
     heatmapOffset: 0,
     logLimit: 50,
     isLoadingLogs: false,
-    cellarViewMode: 'logs' 
+    cellarViewMode: 'logs',
+    selectedDate: null // ★追加: 日付選択状態
 };
 
 // 状態マネージャー
@@ -24,14 +24,14 @@ export const StateManager = {
     get heatmapOffset() { return _state.heatmapOffset; },
     get logLimit() { return _state.logLimit; },
     get isLoadingLogs() { return _state.isLoadingLogs; },
-    get cellarViewMode() { return _state.cellarViewMode; }, 
+    get cellarViewMode() { return _state.cellarViewMode; },
+    get selectedDate() { return _state.selectedDate; }, // ★追加 getter
 
     setBeerMode: (v) => { 
         _state.beerMode = v; 
         localStorage.setItem('nomutore_home_beer_mode', v);
     },
-    // ここで setChart を定義しています
-    setChart: (v) => { _state.chart = v; },
+    setChart: (v) => { if(_state.chart) _state.chart.destroy(); _state.chart = v; },
     setTimerId: (v) => { _state.timerId = v; },
     setChartRange: (v) => { _state.chartRange = v; },
     setIsEditMode: (v) => { _state.isEditMode = v; }, 
@@ -41,5 +41,6 @@ export const StateManager = {
     setLogLimit: (v) => { _state.logLimit = v; },
     setLogLoading: (v) => { _state.isLoadingLogs = v; },
     
-    setCellarViewMode: (v) => { _state.cellarViewMode = v; } 
+    setCellarViewMode: (v) => { _state.cellarViewMode = v; },
+    setSelectedDate: (v) => { _state.selectedDate = v; } // ★追加 setter
 };
