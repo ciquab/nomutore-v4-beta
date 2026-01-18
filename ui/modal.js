@@ -168,6 +168,19 @@ export const openBeerModal = (e, dateStr = null, log = null) => {
         }
     }
 
+    const delBtn = document.getElementById('btn-delete-beer');
+    if (delBtn) {
+        if (log) {
+            // 編集モードなら表示
+            delBtn.classList.remove('hidden');
+            delBtn.classList.add('flex');
+        } else {
+            // 新規作成なら隠す
+            delBtn.classList.add('hidden');
+            delBtn.classList.remove('flex');
+        }
+    }
+
     toggleModal('beer-modal', true);
 };
 
