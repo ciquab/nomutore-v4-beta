@@ -19,75 +19,114 @@ export function renderCheckStatus(checks, logs) {
         }
     }
 
-    // クラス定義 (LiverRankと高さを合わせるため h-full flex flex-col を使用)
-    let bgClass = "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-300";
+    // テーマとテキストの決定
+    let theme = {
+        bg: "bg-gray-50", darkBg: "dark:bg-gray-800/50",
+        text: "text-gray-800", darkText: "dark:text-white",
+        icon: "text-gray-300", iconName: "ph-clipboard-text",
+        accent: "bg-gray-200"
+    };
     
-    if (type === 'today') {
-        bgClass = "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300";
-    } else if (type === 'yesterday') {
-        bgClass = "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200";
-    }
-
-    // コンテナ自体のスタイルを上書き
-    status.className = `p-4 rounded-2xl border shadow-sm transition-colors cursor-pointer relative overflow-hidden flex flex-col justify-between h-full min-h-[140px] ${bgClass}`;
+    let label = "DAILY CHECK";
+    let mainStatus = "No Record";
+    let subStatus = "記録がありません";
+    let bottomContent = `<span class="text-[10px] font-bold opacity-60">Tap to record</span>`;
 
     if (type !== 'none') {
-        const msg = getCheckMessage(targetCheck, logs);
-        const title = type === 'today' ? "Today's Check" : "Yesterday";
+        const { short, desc, score } = analyzeCondition(targetCheck, logs);
         
-        let weightHtml = '';
-        if(targetCheck.weight) {
-            weightHtml = `<div class="mt-auto text-right"><span class="text-[10px] font-bold bg-black/5 dark:bg-white/10 px-2 py-1 rounded-lg">${escapeHtml(targetCheck.weight)}kg</span></div>`;
+        if (type === 'today') {
+            label = "TODAY'S COND.";
+            // スコアに基づく色分け
+            if (score >= 3) { // 好調
+                theme = { 
+                    bg: "bg-emerald-50", darkBg: "dark:bg-emerald-900/20",
+                    text: "text-emerald-900", darkText: "dark:text-emerald-100",
+                    icon: "text-emerald-500", iconName: "ph-smiley"
+                };
+            } else if (score >= 1) { // 普通
+                theme = { 
+                    bg: "bg-blue-50", darkBg: "dark:bg-blue-900/20",
+                    text: "text-blue-900", darkText: "dark:text-blue-100",
+                    icon: "text-blue-500", iconName: "ph-activity"
+                };
+            } else { // 不調
+                theme = { 
+                    bg: "bg-orange-50", darkBg: "dark:bg-orange-900/20",
+                    text: "text-orange-900", darkText: "dark:text-orange-100",
+                    icon: "text-orange-500", iconName: "ph-warning"
+                };
+            }
+        } else {
+            label = "YESTERDAY";
+            theme = { 
+                bg: "bg-white", darkBg: "dark:bg-gray-800",
+                text: "text-gray-600", darkText: "dark:text-gray-300",
+                icon: "text-gray-300", iconName: "ph-calendar-check"
+            };
         }
 
-        // 内部HTML (二重divを廃止)
-        status.innerHTML = `
-            <div class="flex justify-between items-start w-full">
-                <div class="flex flex-col">
-                    <span class="text-[10px] opacity-70 font-bold uppercase tracking-wider mb-1">${title}</span>
-                    <div class="flex items-center gap-2">
-                        <span class="text-2xl">${type==='today'?'😎':'✅'}</span>
-                        <span class="text-sm font-bold leading-tight">${msg}</span>
-                    </div>
-                </div>
-                <button id="btn-edit-check" class="text-[10px] font-bold bg-black/5 dark:bg-white/10 hover:bg-black/10 px-2 py-1 rounded transition">
-                    Edit
-                </button>
-            </div>
-            ${weightHtml}
-        `;
-    } else {
-        // 未記録時
-        status.innerHTML = `
-            <div class="flex flex-col h-full justify-between">
-                <div>
-                    <span class="text-[10px] opacity-70 font-bold uppercase tracking-wider block mb-1">Daily Check</span>
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-2xl">👋</span>
-                        <span class="text-sm font-bold">How are you?</span>
-                    </div>
-                </div>
-                <button class="w-full bg-white/60 dark:bg-black/20 py-2 rounded-xl text-xs font-bold hover:bg-white/80 transition text-center shadow-sm">
-                    Record Now
-                </button>
-            </div>
-        `;
+        mainStatus = short;
+        subStatus = desc;
+        
+        // フッター（体重表示 または Editバッジ）
+        if (targetCheck.weight) {
+            bottomContent = `<span class="text-[10px] font-bold font-mono bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded">${targetCheck.weight}kg</span>`;
+        } else {
+            bottomContent = `<span class="text-[10px] font-bold opacity-40">Edit</span>`;
+        }
     }
+
+    // HTML生成 (LiverRankと構造を完全一致させる)
+    // h-full を指定し、親グリッドの高さに合わせて伸縮させる
+    status.className = `glass-panel p-4 rounded-2xl relative overflow-hidden group cursor-pointer transition hover:border-opacity-50 flex flex-col justify-between h-full min-h-[130px] ${theme.bg} ${theme.darkBg}`;
+    
+    status.innerHTML = `
+        <div class="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition transform group-hover:scale-110 duration-500">
+            <i class="ph-fill ${theme.iconName} text-5xl ${theme.icon}"></i>
+        </div>
+        
+        <div class="relative z-10 flex flex-col h-full justify-between">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-[10px] font-bold uppercase tracking-widest opacity-60 ${theme.text} ${theme.darkText}">${label}</span>
+                </div>
+                
+                <div class="flex flex-col items-start">
+                    <span class="text-3xl font-black ${theme.text} ${theme.darkText} leading-none tracking-tight truncate w-full">${mainStatus}</span>
+                    <span class="text-xs font-bold opacity-80 ${theme.text} ${theme.darkText} mt-1 truncate w-full">${subStatus}</span>
+                </div>
+            </div>
+
+            <div class="mt-3 flex justify-end items-end">
+                <div class="${theme.text} ${theme.darkText}">
+                    ${bottomContent}
+                </div>
+            </div>
+        </div>
+    `;
 }
 
-export function getCheckMessage(check, logs) {
+// 状態解析ロジック (短い英語タイトルと詳細を生成)
+function analyzeCondition(check, logs) {
     const drank = Calc.hasAlcoholLog(logs, check.timestamp);
-    if (drank || !check.isDryDay) {
-        let s = 0; 
-        if (check.waistEase) s++; 
-        if (check.footLightness) s++; 
-        if (check.fiberOk) s++; 
-        if (check.waterOk) s++;
-        
-        if (s >= 3) return '調子ヨシ！😆';
-        if (s >= 1) return 'まずまず 🙂'; 
-        return '不調気味... 😰';
-    } else { 
-        return (check.waistEase && check.footLightness) ? '休肝日✨' : '休肝日🍵'; 
+    let score = 0;
+    if (check.waistEase) score++; 
+    if (check.footLightness) score++; 
+    if (check.fiberOk) score++; 
+    if (check.waterOk) score++;
+
+    // 休肝日かどうかで分岐
+    if (!drank || check.isDryDay) {
+        if (check.waistEase && check.footLightness) {
+            return { short: "Perfect", desc: "休肝日・絶好調 ✨", score: 4 };
+        }
+        return { short: "Rest Day", desc: "休肝日 🍵", score: 3 };
     }
+
+    // 飲酒日
+    if (score >= 3) return { short: "Good", desc: "対策バッチリ 👍", score: 3 };
+    if (score >= 1) return { short: "Average", desc: "まずまず 🙂", score: 1 };
+    
+    return { short: "Warning", desc: "不調気味... 😰", score: 0 };
 }
