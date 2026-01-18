@@ -164,7 +164,7 @@ export const UI = {
 
         bind('btn-save-check', 'click', () => {
             const date = document.getElementById('check-date').value;
-            const isDryDay = !document.getElementById('check-is-dry').checked;
+            const isDryDay = document.getElementById('check-is-dry').checked;
             const weight = document.getElementById('check-weight').value;
             const waistEase = document.getElementById('check-waistEase')?.checked || false;
             const footLightness = document.getElementById('check-footLightness')?.checked || false;

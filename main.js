@@ -55,47 +55,58 @@ const setupLifecycleListeners = () => {
    App Initialization
    ========================================================================== */
 
+// ★修正: async関数全体を try-catch で囲む
 const initApp = async () => {
-    console.log('App Initializing...');
-    
-    // ★修正: 初回起動かどうか判定を受け取る
-    let isFirstRun = false;
-    if (Store.migrateV3ToV4) {
-        isFirstRun = await Store.migrateV3ToV4();
-    }
+    try {
+        console.log('App Initializing...');
+        
+        // 初回起動判定
+        let isFirstRun = false;
+        if (Store.migrateV3ToV4) {
+            isFirstRun = await Store.migrateV3ToV4();
+        }
 
-    UI.init();
+        UI.init();
 
-    await Service.ensureTodayCheckRecord();
+        await Service.ensureTodayCheckRecord();
 
-    const rolledOver = await Service.checkPeriodRollover();
-    if (rolledOver) {
-        toggleModal('rollover-modal', true);
-    }
+        const rolledOver = await Service.checkPeriodRollover();
+        if (rolledOver) {
+            toggleModal('rollover-modal', true);
+        }
 
-    UI.setFetchAllDataHandler(async () => {
-        return await Service.getAllDataForUI();
-    });
+        UI.setFetchAllDataHandler(async () => {
+            return await Service.getAllDataForUI();
+        });
 
-    UI.setFetchLogsHandler(async (offset, limit) => {
-        return await Service.getLogsWithPagination(offset, limit);
-    });
-    
-    generateSettingsOptions();
+        UI.setFetchLogsHandler(async (offset, limit) => {
+            return await Service.getLogsWithPagination(offset, limit);
+        });
+        
+        generateSettingsOptions();
 
-    await refreshUI();
+        await refreshUI();
 
-    if (!isResuming) setupLifecycleListeners();
-    
-    showSwipeCoachMark();
-    
-    // ★追加: 初回起動時は設定タブを開く
-    if (isFirstRun) {
-        console.log('First run detected. Opening settings...');
-        setTimeout(() => {
-            UI.switchTab('settings');
-            UI.showMessage('Welcome! Please configure your settings.', 'success');
-        }, 300);
+        if (!isResuming) setupLifecycleListeners();
+        
+        showSwipeCoachMark();
+        
+        if (isFirstRun) {
+            console.log('First run detected. Opening settings...');
+            setTimeout(() => {
+                UI.switchTab('settings');
+                UI.showMessage('Welcome! Please configure your settings.', 'success');
+            }, 300);
+        }
+
+    } catch (e) {
+        // ★追加: 致命的なエラーが発生した場合、エラー画面を表示する
+        console.error('Critical Initialization Error:', e);
+        import('./errorHandler.js').then(m => m.showErrorOverlay(
+            `初期化に失敗しました。\n${e.message}`, 
+            'main.js (initApp)', 
+            0
+        ));
     }
 };
 
@@ -146,6 +157,27 @@ document.addEventListener('DOMContentLoaded', () => {
         await Service.saveDailyCheck(e.detail);
     });
 
+    // ★追加: 運動記録の共通イベントリスナー
+    document.addEventListener('save-exercise', async (e) => {
+        // detail: { exerciseKey, minutes, date, applyBonus, id? }
+        const { exerciseKey, minutes, date, applyBonus, id } = e.detail;
+        
+        try {
+            await Service.saveExerciseLog(exerciseKey, minutes, date, applyBonus, id);
+            
+            // モーダルが開いていれば閉じる（手動入力の場合）
+            toggleModal('exercise-modal', false);
+            
+            // もし編集中のIDフィールドがあればリセット
+            const editIdField = document.getElementById('editing-exercise-id');
+            if(editIdField) editIdField.value = '';
+            
+        } catch(err) {
+            console.error(err);
+            UI.showMessage('運動の記録に失敗しました', 'error');
+        }
+    });
+
     document.addEventListener('bulk-delete', async () => {
         const checkboxes = document.querySelectorAll('.log-checkbox:checked');
         const ids = Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));
@@ -173,15 +205,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnSaveEx = document.getElementById('btn-save-exercise');
     if (btnSaveEx) {
-        btnSaveEx.addEventListener('click', async () => {
+        btnSaveEx.addEventListener('click', () => {
             const date = document.getElementById('manual-date').value;
             const type = document.getElementById('exercise-select').value;
             const min = parseInt(document.getElementById('manual-minutes').value) || 0;
             const bonus = document.getElementById('manual-bonus').checked;
+            // 編集IDの取得
+            const idField = document.getElementById('editing-exercise-id');
+            const id = idField && idField.value ? parseInt(idField.value) : null;
             
             if (min > 0) {
-                await Service.saveExerciseLog(type, min, date, bonus);
-                toggleModal('exercise-modal', false);
+                // 直接Serviceを呼ばず、イベントを投げる
+                document.dispatchEvent(new CustomEvent('save-exercise', {
+                    detail: { exerciseKey: type, minutes: min, date: date, applyBonus: bonus, id: id }
+                }));
             } else {
                 alert('Please enter minutes.');
             }

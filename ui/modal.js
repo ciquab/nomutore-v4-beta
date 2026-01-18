@@ -191,53 +191,54 @@ export const switchBeerInputTab = (mode) => {
 };
 
 // ★修正: dateStrを受け取れるように変更
-export const openCheckModal = (dateStr = null) => {
-    const targetDate = dateStr || getTodayString();
-    document.getElementById('check-date').value = targetDate;
+export const openCheckModal = async (dateStr) => {
+    const d = dateStr ? dayjs(dateStr) : dayjs();
+    const dateVal = d.format('YYYY-MM-DD');
     
-    const container = document.getElementById('check-items-container');
-    if (!container) {
-        toggleModal('check-modal', true);
-        return;
-    }
+    // 1. 日付セット
+    const dateInput = document.getElementById('check-date');
+    if(dateInput) dateInput.value = dateVal;
 
-    container.innerHTML = '';
+    // 2. フォームリセット (初期値: false / 空)
+    const setCheck = (id, val) => {
+        const el = document.getElementById(id);
+        if(el) el.checked = !!val;
+    };
     
-    let currentSchema = CHECK_SCHEMA;
+    setCheck('check-is-dry', false);
+    setCheck('check-waistEase', false);
+    setCheck('check-footLightness', false);
+    setCheck('check-waterOk', false);
+    setCheck('check-fiberOk', false);
+    setCheck('check-noHangover', false);
+    
+    const wEl = document.getElementById('check-weight');
+    if(wEl) wEl.value = '';
+
+    // 3. データ復元 (DBから検索)
     try {
-        const stored = localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA);
-        if (stored) currentSchema = JSON.parse(stored);
-    } catch(e) { console.error(e); }
+        const start = d.startOf('day').valueOf();
+        const end = d.endOf('day').valueOf();
+        
+        // その日のCheckデータを取得
+        const existingLogs = await db.checks.where('timestamp').between(start, end, true, true).toArray();
+        const existing = existingLogs.length > 0 ? existingLogs[0] : null;
 
-    currentSchema.forEach(item => {
-        const label = document.createElement('label');
-        const visibilityClass = item.drinking_only ? 'drinking-only hidden' : '';
-        
-        label.className = `check-item p-3 border rounded-xl flex flex-col items-center gap-2 cursor-pointer hover:bg-base-50 dark:hover:bg-base-800 transition ${visibilityClass}`;
-        label.innerHTML = `
-            <span class="text-2xl">${item.icon}</span>
-            <span class="text-xs font-bold">${item.label}</span>
-            <input type="checkbox" id="check-${item.id}" class="accent-indigo-600">
-        `;
-        container.appendChild(label);
-    });
-    
-    const isDryCheck = document.getElementById('check-is-dry');
-    if (isDryCheck) {
-        isDryCheck.checked = false;
-        
-        isDryCheck.onchange = (e) => {
-            const isDry = e.target.checked;
-            const items = document.querySelectorAll('.drinking-only');
-            items.forEach(el => {
-                if (isDry) { 
-                    el.classList.add('hidden');
-                } else { 
-                    el.classList.remove('hidden');
-                }
-            });
-        };
-        isDryCheck.dispatchEvent(new Event('change'));
+        if (existing) {
+            // データがあれば反映
+            // index.jsの修正により、isDryDay: true が「休肝日」扱い
+            setCheck('check-is-dry', existing.isDryDay);
+            
+            setCheck('check-waistEase', existing.waistEase);
+            setCheck('check-footLightness', existing.footLightness);
+            setCheck('check-waterOk', existing.waterOk);
+            setCheck('check-fiberOk', existing.fiberOk);
+            setCheck('check-noHangover', existing.noHangover);
+            
+            if(wEl) wEl.value = existing.weight || '';
+        }
+    } catch (e) {
+        console.error("Failed to fetch check data:", e);
     }
 
     toggleModal('check-modal', true);

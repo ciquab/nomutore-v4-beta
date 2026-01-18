@@ -220,16 +220,19 @@ export const Service = {
         }
 
         if (shouldRollover) {
-            console.log(`[Service] Rollover detected. Mode: ${mode}`);
+    console.log(`[Service] Rollover detected. Mode: ${mode}`);
+    
+    // トランザクションで囲む
+    await db.transaction('rw', db.logs, db.period_archives, async () => {
+        // 1. ログ取得
+        const logsToArchive = await db.logs.where('timestamp').below(nextStart).toArray();
+        
+        if (logsToArchive.length > 0) {
+            const totalBalance = logsToArchive.reduce((sum, l) => sum + (l.kcal || 0), 0);
             
-            // 次の期間の開始前までのログをアーカイブ
-            const logsToArchive = await db.logs.where('timestamp').below(nextStart).toArray();
-            
-            if (logsToArchive.length > 0) {
-                const totalBalance = logsToArchive.reduce((sum, l) => sum + (l.kcal || 0), 0);
-                
-                await db.period_archives.add({
-                    startDate: storedStart,
+            // 2. アーカイブ追加
+            await db.period_archives.add({
+                startDate: storedStart,
                     endDate: nextStart - 1,
                     mode: mode,
                     totalBalance: totalBalance,
@@ -244,7 +247,8 @@ export const Service = {
             }
 
             localStorage.setItem(APP.STORAGE_KEYS.PERIOD_START, nextStart);
-            return true; 
+    });
+    return true; 
         }
 
         return false;

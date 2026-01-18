@@ -1,7 +1,6 @@
 import { APP, EXERCISE } from '../constants.js';
 import { Calc } from '../logic.js';
 import { Store } from '../store.js';
-import { Service } from '../service.js'; // 直接Serviceを呼ぶ
 import { toggleModal } from './dom.js';
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
@@ -92,7 +91,7 @@ export const Timer = {
         Timer.updateUI(false);
     },
 
-    finish: async () => {
+    finish: async () => { // asyncは外しても良いがそのままでもOK
         Timer.pause(); // まず止める
         
         const totalMs = parseInt(localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED)) || 0;
@@ -100,7 +99,19 @@ export const Timer = {
 
         if (minutes > 0) {
             const type = document.getElementById('timer-exercise-select').value;
-            await Service.saveExerciseLog(type, minutes, dayjs().format('YYYY-MM-DD'), true);
+            
+            // ★修正: Service直接呼び出しをやめ、イベントを発火する
+            // await Service.saveExerciseLog(type, minutes, dayjs().format('YYYY-MM-DD'), true);
+            
+            document.dispatchEvent(new CustomEvent('save-exercise', {
+                detail: {
+                    exerciseKey: type,
+                    minutes: minutes,
+                    date: dayjs().format('YYYY-MM-DD'),
+                    applyBonus: true
+                }
+            }));
+            
         } else {
             alert('1分未満のため記録しませんでした。');
         }

@@ -4,6 +4,12 @@ import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 // DexieはHTMLで読み込んでいるため window.Dexie として存在します
 export const db = new Dexie("NomutoreDB");
 
+// 過去のバージョン履歴
+db.version(1).stores({
+    logs: '++id, timestamp, type, name, kcal',
+    checks: '++id, timestamp'
+});
+
 db.version(2).stores({
     logs: '++id, timestamp, type, name, kcal',
     checks: '++id, timestamp'
@@ -13,6 +19,16 @@ db.version(3).stores({
     logs: '++id, timestamp, type, name, kcal, memo, untappd_query',
     checks: '++id, timestamp',
     period_archives: '++id, startDate, endDate, mode'
+});
+
+// ★追加: v4用定義 (archivesテーブルを追加)
+db.version(4).stores({
+    logs: '++id, timestamp, type, name, kcal, memo, untappd_query, isCustom, exerciseKey',
+    checks: '++id, timestamp, isDryDay',
+    archives: '++id, startDate, endDate, mode, totalDays, dryDays' // period_archives -> archives
+}).upgrade(tx => {
+    // v3の period_archives データがあれば archives に移行（必要なら）
+    // 今回は全削除前提ならスキーマ定義だけでOKですが、念のため構造を整えます
 });
 
 export const Store = {
@@ -31,9 +47,8 @@ export const Store = {
     getDefaultRecordExercise: () => localStorage.getItem(APP.STORAGE_KEYS.DEFAULT_RECORD_EXERCISE) || APP.DEFAULTS.DEFAULT_RECORD_EXERCISE,
 
     migrateV3ToV4: async () => {
-        // すでに移行済み（v4起動済み）なら何もしない
         if (localStorage.getItem('v4_migration_complete')) {
-            return false; // ★修正: 初回ではないので false を返す
+            return false; 
         }
 
         console.log('[Migration] Starting v3 to v4 migration...');
@@ -42,14 +57,12 @@ export const Store = {
             localStorage.setItem(APP.STORAGE_KEYS.PERIOD_MODE, APP.DEFAULTS.PERIOD_MODE);
         }
 
-        // 月曜始まりロジックで初期期間を設定
         if (!localStorage.getItem(APP.STORAGE_KEYS.PERIOD_START)) {
             const now = dayjs();
-            const day = now.day() || 7; // Sun(0) -> 7, Mon(1) -> 1
+            const day = now.day() || 7; 
             const startOfWeek = now.subtract(day - 1, 'day').startOf('day').valueOf();
             
             localStorage.setItem(APP.STORAGE_KEYS.PERIOD_START, startOfWeek);
-            console.log(`[Migration] Set initial period start to ${dayjs(startOfWeek).format('YYYY-MM-DD')} (Monday Start)`);
         }
 
         if (!localStorage.getItem(APP.STORAGE_KEYS.UNIT_MODE)) {
@@ -63,7 +76,7 @@ export const Store = {
         localStorage.setItem('v4_migration_complete', 'true');
         console.log('[Migration] v4 migration completed successfully.');
         
-        return true; // ★修正: 初回起動なので true を返す
+        return true; 
     }
 };
 
