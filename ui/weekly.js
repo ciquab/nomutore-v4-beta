@@ -1,13 +1,33 @@
 import { Calc } from '../logic.js';
-import { Store } from '../store.js';
+import { Store, db } from '../store.js';
 import { StateManager } from './state.js';
 import { DOM } from './dom.js';
 
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
-export function renderWeeklyAndHeatUp(logs, checks) {
+export async function renderWeeklyAndHeatUp(logs, checks) {
     const profile = Store.getProfile();
-    const streak = Calc.getCurrentStreak(logs, checks, profile);
+
+    // --- ★追加: アーカイブデータの結合処理 ---
+    let allLogsForDisplay = [...logs]; // 現在のログをコピー
+    try {
+        // period_archivesテーブルが存在すれば読み込む
+        if (db.period_archives) {
+            const archives = await db.period_archives.toArray();
+            archives.forEach(arch => {
+                if (arch.logs && Array.isArray(arch.logs)) {
+                    // 過去のログを結合
+                    allLogsForDisplay = allLogsForDisplay.concat(arch.logs);
+                }
+            });
+        }
+    } catch (e) {
+        console.error("Failed to load archives for calendar:", e);
+    }
+    // ---------------------------------------
+
+    // ★修正3: logs の代わりに allLogsForDisplay を使う
+    const streak = Calc.getCurrentStreak(allLogsForDisplay, checks, profile);
     const multiplier = Calc.getStreakMultiplier ? Calc.getStreakMultiplier(streak) : 1.0;
     
     // Streak表示更新
@@ -26,7 +46,9 @@ export function renderWeeklyAndHeatUp(logs, checks) {
         }
     }
 
-    renderHeatmap(checks, logs, profile);
+    // ★修正4: logs の代わりに allLogsForDisplay を渡す
+    // (引数の順番は変えずに checks, logs, profile の順)
+    renderHeatmap(checks, allLogsForDisplay, profile);
 }
 
 export function renderHeatmap(checks, logs, profile) {

@@ -41,7 +41,9 @@ export const refreshUI = async () => {
     renderBeerTank(balance);
     renderLiverRank(checks, logs);
     renderCheckStatus(checks, logs);
-    renderWeeklyAndHeatUp(logs, checks);
+    
+    await renderWeeklyAndHeatUp(logs, checks);
+
     renderChart(logs, checks);
     
     const cellarMode = StateManager.cellarViewMode;
@@ -216,7 +218,7 @@ export const UI = {
                         // テーブルが存在する場合のみ削除を実行 (エラー回避)
                         if (db.logs) await db.logs.clear();
                         if (db.checks) await db.checks.clear();
-                        if (db.archives) await db.archives.clear();
+                        if (db.period_archives) await db.period_archives.clear();
                         
                         // ローカルストレージ（設定）クリア
                         localStorage.clear();
