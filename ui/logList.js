@@ -64,21 +64,34 @@ export const updateLogListView = async (forceRefresh = true) => {
         
         let icon = '🍺';
         let colorClass = 'bg-yellow-100 text-yellow-600';
-        let mainText = log.name;
-        let subText = `${Math.round(Math.abs(log.kcal))} kcal`;
+        
+        // ★修正: 表示テキストのロジック変更
+        let mainText = '';
+        let subText = '';
 
         if (log.type === 'exercise') {
             const ex = EXERCISE[log.exerciseKey];
             icon = ex ? ex.icon : '🏃';
             colorClass = 'bg-indigo-100 text-indigo-600';
+            mainText = log.name; // 運動名
             subText = `${log.minutes} min (${Math.round(log.kcal)} kcal)`;
         } else if (log.type === 'beer') {
             const size = log.size || 350;
             const count = log.count || 1;
-            subText = `${size}ml x ${count} (${Math.round(Math.abs(log.kcal))} kcal)`;
+            
+            // ★変更: 銘柄(Brand)があればそれを優先、なければName(Style)
+            // ブルワリーがあるなら「Brewery - Brand」の形式に
+            if (log.brand) {
+                mainText = log.brewery ? `${log.brewery} ${log.brand}` : log.brand;
+            } else {
+                mainText = log.name; // Style名が入っていることが多い
+            }
+
+            // サブテキストにスタイル名とカロリーを入れる
+            const styleInfo = log.brand ? `(${log.style || log.name})` : ''; 
+            subText = `${styleInfo} ${size}ml x ${count} / ${Math.round(Math.abs(log.kcal))} kcal`;
         }
 
-        // ★修正: onclick内の !isEditMode && を削除。UI.editLog側で判定する。
         li.innerHTML = `
             <div class="${isEditMode ? 'block' : 'hidden'} mr-2">
                 <input type="checkbox" class="log-checkbox w-5 h-5 accent-indigo-600" data-id="${log.id}" onchange="UI.updateBulkCount()">
@@ -93,8 +106,8 @@ export const updateLogListView = async (forceRefresh = true) => {
                     <h4 class="text-sm font-bold text-base-900 dark:text-gray-100 truncate">${escapeHtml(mainText)}</h4>
                     <span class="text-xs font-mono text-gray-400 ml-2">${dayjs(log.timestamp).format('HH:mm')}</span>
                 </div>
-                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">${subText}</p>
-                ${log.memo ? `<p class="text-[10px] text-gray-400 mt-1 truncate">"${escapeHtml(log.memo)}"</p>` : ''}
+                <p class="text-[10px] text-gray-500 dark:text-gray-400 truncate">${subText}</p>
+                ${log.memo ? `<p class="text-[9px] text-gray-400 mt-0.5 truncate opacity-70">📝 ${escapeHtml(log.memo)}</p>` : ''}
             </div>
 
             <button onclick="UI.deleteLog(${log.id})" class="${isEditMode ? 'hidden' : 'block'} w-8 h-8 flex items-center justify-center text-gray-300 hover:text-red-500 transition z-10">

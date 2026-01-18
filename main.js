@@ -108,20 +108,38 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('save-beer', async (e) => {
         const data = e.detail;
         
-        // 保存処理
-        await Service.saveBeerLog(data, editingLogId);
-        editingLogId = null; 
+        // ★修正: 編集IDを取得
+        const idField = document.getElementById('editing-log-id');
+        const existingId = idField && idField.value ? parseInt(idField.value) : null;
 
-        // ★追加: Untappd連携 (v3仕様の復活)
+        if (existingId) {
+            // IDがある場合 = 更新 (Update)
+            // Serviceにupdateメソッドがない場合はdbを直接使うか、Serviceに追加する
+            // ここではdbを直接使って更新します
+            await db.logs.update(existingId, data);
+            
+            // 元のeditingLogIdロジックは不要になるのでnullへ
+            editingLogId = null;
+            
+            // UI側にメッセージ
+            UI.showMessage('Record Updated', 'success');
+        } else {
+            // IDがない場合 = 新規作成 (Add)
+            await Service.saveBeerLog(data);
+        }
+
+        // Untappd連携
         if (data.useUntappd) {
             const query = encodeURIComponent(`${data.brewery || ''} ${data.brand || ''}`.trim());
             if(query) {
-                // ポップアップブロック回避のため、少し遅延させるか、ユーザーアクション内であることを期待
                 setTimeout(() => {
                     window.open(`https://untappd.com/search?q=${query}`, '_blank');
                 }, 100);
             }
         }
+        
+        // リフレッシュ
+        await refreshUI();
     });
 
     document.addEventListener('save-check', async (e) => {
