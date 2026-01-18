@@ -35,7 +35,7 @@ export const Service = {
         const start = startStr ? parseInt(startStr) : 0;
 
         const logs = await db.logs.where('timestamp').aboveOrEqual(start).toArray();
-        const checks = await db.checks.where('timestamp').aboveOrEqual(start).toArray();
+        const checks = await db.checks.toArray();
         
         return { logs, checks };
     },
@@ -440,15 +440,19 @@ export const Service = {
         const existing = await db.checks.where('timestamp')
             .between(dayjs(ts).startOf('day').valueOf(), dayjs(ts).endOf('day').valueOf())
             .first();
+
+        // 基本データ
         const data = {
             timestamp: ts,
             isDryDay: formData.isDryDay,
-            waistEase: formData.waistEase,
-            footLightness: formData.footLightness,
-            waterOk: formData.waterOk,
-            fiberOk: formData.fiberOk,
             weight: formData.weight
         };
+
+        // カスタム項目を含むすべての項目をマージ
+        Object.keys(formData).forEach(key => {
+            if (key !== 'date') data[key] = formData[key];
+        });
+
         if (existing) {
             await db.checks.update(existing.id, data);
             showMessage('✅ デイリーチェックを更新しました', 'success');
@@ -457,9 +461,8 @@ export const Service = {
             showMessage('✅ デイリーチェックを記録しました', 'success');
             showConfetti();
         }
-        if (formData.weight) {
-            localStorage.setItem(APP.STORAGE_KEYS.WEIGHT, formData.weight);
-        }
+        
+        if (formData.weight) localStorage.setItem(APP.STORAGE_KEYS.WEIGHT, formData.weight);
         await Service.recalcImpactedHistory(ts);
         document.dispatchEvent(new CustomEvent('refresh-ui'));
     }

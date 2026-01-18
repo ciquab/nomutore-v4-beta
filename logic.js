@@ -60,8 +60,9 @@ export const Calc = {
     },
 
     calculateExerciseBurn: (mets, minutes, profile) => {
-        const rate = Calc.burnRate(mets, profile);
-        return (minutes || 0) * rate;
+    const _mets = mets || 6.0; // ★引数が空の場合のデフォルト値を設定
+    const rate = Calc.burnRate(_mets, profile);
+    return (minutes || 0) * rate;
     },
 
     calculateExerciseCredit: (baseKcal, streak) => {

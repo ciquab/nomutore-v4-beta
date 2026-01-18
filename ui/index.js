@@ -309,10 +309,14 @@ export const UI = {
             activeEl.classList.remove('hidden');
             (async () => {
                 if (mode === 'stats') {
-                    if(UI._fetchAllDataHandler) {
-                        const { logs } = await UI._fetchAllDataHandler();
-                        renderBeerStats(logs);
-                    }
+                    // ★ここを修正
+                    // 1. 現在の期間（今週/月）のデータを取得
+                    const { logs: periodLogs } = await Service.getAllDataForUI();
+                    // 2. データベースから全てのメインログを取得
+                    const allLogs = await db.logs.toArray();
+                    
+                    // 両方を渡して描画
+                    renderBeerStats(periodLogs, allLogs);
                 } else if (mode === 'archives') {
                     renderArchives();
                 }
@@ -369,7 +373,8 @@ export const UI = {
     
     // ★追加: これがないとDataManagerからの呼び出しでエラーになる
     updateModeSelector: updateModeSelector,
-    applyTheme: applyTheme 
+    applyTheme: applyTheme,
+    toggleDryDay: toggleDryDay 
 
 };
 

@@ -569,8 +569,12 @@
         <i class="ph-bold ph-trash text-xl"></i>
     </button>
 
-    <button id="btn-save-beer-next" class="flex-1 py-4 ...">Save & Next</button>
-    <button id="btn-save-beer" class="flex-[2] py-4 ...">Save & Close</button>
+    <button id="btn-save-beer-next" class="flex-1 py-4 text-xs font-bold text-gray-500 bg-gray-100 dark:bg-base-800 rounded-2xl hover:bg-gray-200 dark:hover:bg-base-700 transition active:scale-95">
+    Save & Next
+</button>
+<button id="btn-save-beer" class="flex-[2] py-4 text-sm font-bold bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition active:scale-95">
+    Save & Close
+</button>
 </div>
         </div>
     </div>
@@ -578,7 +582,12 @@
     <div id="check-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div class="bg-white dark:bg-base-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden transform transition-all scale-95 opacity-0 duration-200">
             <div class="p-5">
-                <h3 class="text-lg font-bold mb-4">Daily Check</h3>
+                <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-bold">Daily Check</h3>
+        <button onclick="UI.closeModal('check-modal')" class="w-8 h-8 rounded-full bg-base-200 dark:bg-base-800 flex items-center justify-center text-gray-500 hover:bg-base-300 dark:hover:bg-base-700 transition">
+            ✕
+        </button>
+    </div>
                 <div class="space-y-4">
                     <div>
                         <label class="text-[10px] font-bold text-gray-400 uppercase">Date</label>

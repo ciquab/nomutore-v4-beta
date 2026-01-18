@@ -9,7 +9,7 @@ export async function renderWeeklyAndHeatUp(logs, checks) {
     const profile = Store.getProfile();
 
     // --- ★追加: アーカイブデータの結合処理 ---
-    let allLogsForDisplay = [...logs]; // 現在のログをコピー
+    let allLogsForDisplay = await db.logs.toArray();
     try {
         // period_archivesテーブルが存在すれば読み込む
         if (db.period_archives) {
