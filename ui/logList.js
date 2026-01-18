@@ -1,22 +1,21 @@
-// ui/logList.js
 import { db } from '../store.js';
 import { DOM, escapeHtml } from './dom.js';
 import { EXERCISE, CALORIES } from '../constants.js';
+import { StateManager } from './state.js'; // 追加
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
 let isEditMode = false;
 
 export const toggleEditMode = () => {
     isEditMode = !isEditMode;
+    StateManager.setIsEditMode(isEditMode); // StateManagerにも反映
     updateLogListView();
     
-    // UI反映
     const toolbar = document.getElementById('edit-toolbar');
     const selectAllBtn = document.getElementById('btn-select-all');
     if (toolbar) toolbar.classList.toggle('hidden', !isEditMode);
     if (selectAllBtn) selectAllBtn.classList.toggle('hidden', !isEditMode);
     
-    // 選択状態リセット
     document.querySelectorAll('.log-checkbox').forEach(cb => cb.checked = false);
     updateBulkCount();
 };
@@ -34,12 +33,10 @@ export const updateBulkCount = () => {
     if (el) el.textContent = count;
 };
 
-// ログリスト描画のメイン関数
 export const updateLogListView = async (forceRefresh = true) => {
     const listEl = document.getElementById('log-list');
     if (!listEl) return;
 
-    // 簡易的に全件取得して表示 (動作優先)
     const allLogs = await db.logs.orderBy('timestamp').reverse().limit(50).toArray();
 
     listEl.innerHTML = '';
@@ -54,7 +51,6 @@ export const updateLogListView = async (forceRefresh = true) => {
     allLogs.forEach(log => {
         const dateStr = dayjs(log.timestamp).format('YYYY-MM-DD (ddd)');
         
-        // 日付ヘッダー
         if (dateStr !== currentDateStr) {
             const header = document.createElement('li');
             header.className = "text-xs font-bold text-gray-400 mt-4 mb-2 pl-2 border-l-2 border-indigo-200 dark:border-indigo-800";
@@ -66,7 +62,6 @@ export const updateLogListView = async (forceRefresh = true) => {
         const li = document.createElement('li');
         li.className = "relative group bg-white dark:bg-base-800 rounded-xl p-3 shadow-sm flex items-center gap-3 transition-all active:scale-[0.99]";
         
-        // アイコン決定
         let icon = '🍺';
         let colorClass = 'bg-yellow-100 text-yellow-600';
         let mainText = log.name;
@@ -83,7 +78,7 @@ export const updateLogListView = async (forceRefresh = true) => {
             subText = `${size}ml x ${count} (${Math.round(Math.abs(log.kcal))} kcal)`;
         }
 
-        // HTML生成: onclick="UI.deleteLog(...)" を埋め込むことで確実に動作させる
+        // ★修正: onclick内の !isEditMode && を削除。UI.editLog側で判定する。
         li.innerHTML = `
             <div class="${isEditMode ? 'block' : 'hidden'} mr-2">
                 <input type="checkbox" class="log-checkbox w-5 h-5 accent-indigo-600" data-id="${log.id}" onchange="UI.updateBulkCount()">
@@ -93,7 +88,7 @@ export const updateLogListView = async (forceRefresh = true) => {
                 ${icon}
             </div>
 
-            <div class="flex-1 min-w-0" onclick="!isEditMode && UI.editLog(${log.id})">
+            <div class="flex-1 min-w-0" onclick="UI.editLog(${log.id})">
                 <div class="flex justify-between items-baseline">
                     <h4 class="text-sm font-bold text-base-900 dark:text-gray-100 truncate">${escapeHtml(mainText)}</h4>
                     <span class="text-xs font-mono text-gray-400 ml-2">${dayjs(log.timestamp).format('HH:mm')}</span>

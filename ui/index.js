@@ -21,7 +21,6 @@ import {
     updateModeSelector, updateBeerSelectOptions, updateInputSuggestions, renderQuickButtons,
     closeModal, adjustBeerCount, searchUntappd,
     openTimer, closeTimer,
-    // ★追加: アクションメニュー関連
     openActionMenu, handleActionSelect
 } from './modal.js';
 
@@ -29,7 +28,6 @@ import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
 export const refreshUI = async () => {
     if (!UI._fetchAllDataHandler) return;
-    
     const { logs, checks } = await UI._fetchAllDataHandler();
     
     const profile = Store.getProfile();
@@ -72,17 +70,18 @@ export const UI = {
         bind('nav-tab-cellar', 'click', () => UI.switchTab('cellar'));
         bind('nav-tab-settings', 'click', () => UI.switchTab('settings'));
 
-        bind('home-mode-select', 'change', (e) => {
+        bind('header-mode-select', 'change', (e) => { // ID変更: home-mode-select -> header-mode-select
             StateManager.setBeerMode(e.target.value);
             refreshUI();
         });
 
+        // 初期値反映
         const modes = Store.getModes();
-        const homeSel = document.getElementById('home-mode-select');
-        if(homeSel && modes) {
-            homeSel.options[0].text = modes.mode1 || 'Lager';
-            homeSel.options[1].text = modes.mode2 || 'Ale';
-            homeSel.value = StateManager.beerMode;
+        const headerSel = document.getElementById('header-mode-select');
+        if(headerSel && modes) {
+            headerSel.options[0].text = modes.mode1 || 'Lager';
+            headerSel.options[1].text = modes.mode2 || 'Ale';
+            headerSel.value = StateManager.beerMode;
         }
 
         bind('btn-save-beer', 'click', () => {
@@ -102,7 +101,9 @@ export const UI = {
             const footLightness = document.getElementById('check-footLightness')?.checked || false;
             const waterOk = document.getElementById('check-waterOk')?.checked || false;
             const fiberOk = document.getElementById('check-fiberOk')?.checked || false;
-            const detail = { date, isDryDay, weight, waistEase, footLightness, waterOk, fiberOk };
+            const noHangover = document.getElementById('check-noHangover')?.checked || false; // 追加
+
+            const detail = { date, isDryDay, weight, waistEase, footLightness, waterOk, fiberOk, noHangover };
             document.dispatchEvent(new CustomEvent('save-check', { detail }));
             toggleModal('check-modal', false);
         });
@@ -140,17 +141,20 @@ export const UI = {
         bind('btn-timer-toggle', 'click', Timer.toggle);
         bind('btn-timer-finish', 'click', Timer.finish);
         
-        // ★修正: ホームのFABボタンを「統合アクションメニュー」にバインド
-        bind('btn-fab-add', 'click', () => {
-             openActionMenu(null); // 日付指定なし（今日）
+        // FAB (画面右下固定)
+        bind('btn-fab-fixed', 'click', () => {
+             openActionMenu(null); 
         });
 
         applyTheme(Store.getTheme());
     },
 
     switchTab: (tabId) => {
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none'); 
+        // コンテンツ切り替え
+        document.querySelectorAll('.tab-content').forEach(el => {
+            el.classList.remove('active');
+            el.style.display = 'none'; 
+        });
 
         const target = document.getElementById(`tab-${tabId}`);
         if(target) {
@@ -158,14 +162,27 @@ export const UI = {
             setTimeout(() => target.classList.add('active'), 10);
         }
 
+        // ★修正: ナビゲーションスタイルのリセットと適用
         document.querySelectorAll('.nav-item').forEach(el => {
-            el.classList.remove('nav-pill-active');
-            el.classList.add('p-3');
+            // リセット: 全て非アクティブ状態にする
+            el.classList.remove('nav-pill-active'); 
+            el.classList.add('p-3', 'hover:bg-base-100', 'dark:hover:bg-base-800', 'text-gray-400');
+            
+            // アイコンとラベルの色リセット
+            const icon = el.querySelector('i');
+            const label = el.querySelector('.label');
+            if(icon) icon.className = icon.className.replace('ph-fill', 'ph-bold'); // Outline style
         });
+
         const activeNav = document.getElementById(`nav-tab-${tabId}`);
         if(activeNav) {
+            // アクティブ適用
+            activeNav.classList.remove('p-3', 'hover:bg-base-100', 'dark:hover:bg-base-800', 'text-gray-400');
             activeNav.classList.add('nav-pill-active');
-            activeNav.classList.remove('p-3');
+            
+            // アイコンをFillスタイルに
+            const icon = activeNav.querySelector('i');
+            if(icon) icon.className = icon.className.replace('ph-bold', 'ph-fill');
         }
 
         if (tabId === 'cellar') {
@@ -220,6 +237,9 @@ export const UI = {
     
     deleteLog: (id) => Service.deleteLog(id),
     editLog: async (id) => {
+        // ★修正: 編集モード中はクリックを無視
+        if (StateManager.isEditMode) return;
+
         const log = await db.logs.get(id);
         if(!log) return;
         
@@ -252,7 +272,6 @@ export const UI = {
     showConfetti: showConfetti,
     showMessage: showMessage,
     
-    // ★追加: HTMLから呼べるように公開
     openActionMenu: openActionMenu,
     handleActionSelect: handleActionSelect
 };

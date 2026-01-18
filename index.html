@@ -9,13 +9,10 @@
     <meta name="theme-color" content="#f8fafc">
     <link rel="apple-touch-icon" href="icon-192.png">
 
-    <!-- Styles -->
     <link rel="stylesheet" href="style.css">
     
-    <!-- Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
-    <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.js"></script>
@@ -35,37 +32,33 @@
         }
     </script>
 </head>
-<body class="antialiased selection:bg-indigo-500 selection:text-white">
+<body class="antialiased selection:bg-indigo-500 selection:text-white bg-base-50 dark:bg-black text-base-900 dark:text-base-50">
 
-    <!-- Header -->
     <header class="fixed top-0 w-full z-40 bg-white/80 dark:bg-base-900/80 backdrop-blur-md border-b border-base-200 dark:border-base-800 transition-colors">
         <div class="container mx-auto max-w-md h-14 flex items-center justify-between px-4">
             <div class="flex items-center gap-2">
                 <i class="ph-fill ph-beer-bottle text-indigo-500 text-xl"></i>
                 <h1 class="text-lg font-bold tracking-tight">NOMUTORE <span class="text-[10px] text-indigo-500 bg-indigo-50 dark:bg-indigo-900 px-1.5 py-0.5 rounded ml-1">v4.0</span></h1>
             </div>
-            <button onclick="UI.toggleTheme()" class="w-8 h-8 flex items-center justify-center rounded-full bg-base-100 dark:bg-base-800 text-base-800 dark:text-base-100 transition">
-                <i class="ph ph-moon-stars"></i>
-            </button>
+            
+            <div class="flex items-center gap-3">
+                <select id="header-mode-select" class="text-xs font-bold bg-base-100 dark:bg-base-800 border-none rounded-lg px-2 py-1.5 text-gray-600 dark:text-gray-300 focus:ring-0 cursor-pointer outline-none">
+                    <option value="mode1">Lager</option>
+                    <option value="mode2">Ale</option>
+                </select>
+
+                <button onclick="UI.toggleTheme()" class="w-8 h-8 flex items-center justify-center rounded-full bg-base-100 dark:bg-base-800 text-base-800 dark:text-base-100 transition hover:bg-base-200 dark:hover:bg-base-700">
+                    <i class="ph ph-moon-stars"></i>
+                </button>
+            </div>
         </div>
     </header>
 
-    <!-- Main Content -->
     <main class="container mx-auto max-w-md pt-20 px-4 space-y-8 pb-32">
         
-        <!-- Tab Content: Home -->
         <div id="tab-home" class="tab-content active space-y-8">
             
-            <!-- 1. ORB Section (Replaces Tank) -->
-            <section class="relative text-center">
-                <!-- Mode Selector -->
-                <div class="absolute top-0 right-0 z-20">
-                    <select id="home-mode-select" class="text-xs font-bold bg-white/50 dark:bg-black/20 border-none rounded-lg px-2 py-1 backdrop-blur text-gray-500">
-                        <option value="mode1">Lager</option>
-                        <option value="mode2">Ale</option>
-                    </select>
-                </div>
-
+            <section class="relative text-center py-4">
                 <div class="orb-container">
                     <div id="orb-liquid-back" class="liquid-layer liquid-back" style="top: 100%;"></div>
                     <div id="orb-liquid-front" class="liquid-layer liquid-front" style="top: 100%;"></div>
@@ -81,26 +74,16 @@
                     </div>
                 </div>
 
-                <div id="tank-message" class="mt-6 min-h-[24px]"></div>
-
-                <div class="absolute bottom-0 right-4 translate-y-1/2 z-20">
-                     <button onclick="UI.openBeerModal()" class="w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl shadow-lg shadow-indigo-500/30 flex items-center justify-center transition active:scale-95 group">
-                        <i class="ph-bold ph-plus text-2xl group-hover:rotate-90 transition-transform"></i>
-                    </button>
-                </div>
+                <div id="tank-message" class="mt-6 min-h-[24px] text-sm font-bold text-gray-500"></div>
             </section>
 
-            <!-- 2. Status Cards -->
             <section class="grid grid-cols-2 gap-3">
                 <div id="liver-rank-card" class="glass-panel p-4 rounded-2xl relative overflow-hidden group transition hover:border-indigo-300 dark:hover:border-indigo-700 cursor-pointer" onclick="UI.openHelp()">
-                    <!-- JS Injected -->
-                </div>
+                    </div>
                 <div id="check-status" class="glass-panel p-4 rounded-2xl relative overflow-hidden group transition hover:border-emerald-300 dark:hover:border-emerald-700 cursor-pointer" onclick="UI.openCheckModal()">
-                    <!-- JS Injected -->
-                </div>
+                    </div>
             </section>
 
-            <!-- 3. Weekly Heatmap & Chart -->
             <section class="glass-panel p-5 rounded-3xl">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-sm font-bold flex items-center gap-2">
@@ -131,8 +114,7 @@
             </section>
         </div>
 
-        <!-- Tab Content: Record -->
-<div id="tab-record" class="tab-content pb-24 hidden">
+        <div id="tab-record" class="tab-content pb-24 hidden">
             <div class="pt-8 px-6 pb-6">
                 <div class="flex items-center justify-between mb-6">
                     <h1 class="text-3xl font-black text-base-900 dark:text-white tracking-tight">Record</h1>
@@ -201,21 +183,21 @@
                         </h3>
                         
                         <div class="space-y-4">
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
+                            <div class="grid grid-cols-5 gap-3">
+                                <div class="col-span-3">
                                     <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Date</label>
-                                    <input type="date" id="manual-date" class="w-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-sm font-bold text-base-900 dark:text-white focus:outline-none focus:border-indigo-500">
+                                    <input type="date" id="manual-date" class="w-full bg-base-50 dark:bg-base-700/50 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-sm font-bold text-base-900 dark:text-white focus:outline-none focus:border-indigo-500">
                                 </div>
-                                <div>
+                                <div class="col-span-2">
                                     <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Mins</label>
-                                    <input type="number" id="manual-minutes" placeholder="30" class="w-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-sm font-bold text-base-900 dark:text-white focus:outline-none focus:border-indigo-500">
+                                    <input type="number" id="manual-minutes" placeholder="30" class="w-full bg-base-50 dark:bg-base-700/50 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-sm font-bold text-base-900 dark:text-white focus:outline-none focus:border-indigo-500">
                                 </div>
                             </div>
 
                             <div>
                                 <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Activity</label>
                                 <div class="relative">
-                                    <select id="exercise-select" class="w-full bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-sm font-bold text-base-900 dark:text-white focus:outline-none focus:border-indigo-500 appearance-none">
+                                    <select id="exercise-select" class="w-full bg-base-50 dark:bg-base-700/50 border border-gray-200 dark:border-gray-600 rounded-xl px-3 py-2 text-sm font-bold text-base-900 dark:text-white focus:outline-none focus:border-indigo-500 appearance-none">
                                         </select>
                                     <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
                                         <i class="ph-bold ph-caret-down"></i>
@@ -236,11 +218,10 @@
                 </section>
             </div>
         </div>
-        <!-- Tab Content: Cellar (History) -->
-        <div id="tab-cellar" class="tab-content space-y-4">
+
+        <div id="tab-cellar" class="tab-content space-y-4 hidden">
              <div class="flex items-center justify-between px-2">
                 <h2 class="text-xl font-bold">Cellar</h2>
-                <!-- Sub Navigation -->
                 <div class="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
                     <button id="btn-cellar-logs" onclick="UI.switchCellarViewHTML('logs')" class="px-3 py-1.5 text-xs font-bold rounded-lg transition-all">Logs</button>
                     <button id="btn-cellar-stats" onclick="UI.switchCellarViewHTML('stats')" class="px-3 py-1.5 text-xs font-bold rounded-lg transition-all text-gray-500">Stats</button>
@@ -248,14 +229,12 @@
                 </div>
              </div>
 
-             <!-- View: Logs -->
              <div id="view-cellar-logs" class="space-y-3 pb-20">
                  <div class="flex justify-between items-center px-2 mb-2">
                      <span id="history-base-label" class="text-xs text-gray-500">All Records</span>
                      <button id="btn-select-all" onclick="UI.toggleSelectAll()" class="hidden text-xs text-indigo-500 font-bold">全選択</button>
                  </div>
                  
-                 <!-- Edit Toolbar -->
                  <div id="edit-toolbar" class="hidden sticky top-16 z-30 bg-white/90 dark:bg-base-900/90 backdrop-blur p-2 rounded-xl shadow-lg border border-indigo-100 dark:border-indigo-900 mb-2 flex justify-between items-center">
                      <span class="text-xs font-bold ml-2"><span id="bulk-selected-count">0</span> items</span>
                      <button onclick="document.dispatchEvent(new Event('bulk-delete'))" class="bg-red-50 text-red-500 px-3 py-1.5 rounded-lg text-xs font-bold">Delete</button>
@@ -265,164 +244,164 @@
                  <div id="edit-spacer" class="h-16 hidden"></div>
              </div>
 
-             <!-- View: Stats -->
              <div id="view-cellar-stats" class="hidden pb-20">
                  <div class="flex items-center justify-center h-40">
                      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
                  </div>
              </div>
 
-             <!-- View: Archives -->
              <div id="view-cellar-archives" class="hidden pb-20"></div>
         </div>
 
-        <!-- Tab Content: Settings -->
-        <div id="tab-settings" class="tab-content pb-24">
-        <div class="glass-panel p-6 rounded-3xl mb-4">
-            <h2 class="text-xl font-black mb-4 flex items-center gap-2">
-                <i class="ph-fill ph-user-circle text-indigo-500"></i>
-                Profile & Goals
-            </h2>
-            
-            <div class="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                    <label class="text-xs font-bold text-gray-500 mb-1 block">Weight (kg)</label>
-                    <input type="number" id="weight-input" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold text-lg" placeholder="60">
+        <div id="tab-settings" class="tab-content pb-24 hidden">
+            <div class="glass-panel p-6 rounded-3xl mb-4">
+                <h2 class="text-xl font-black mb-4 flex items-center gap-2">
+                    <i class="ph-fill ph-user-circle text-indigo-500"></i>
+                    Profile & Goals
+                </h2>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="text-xs font-bold text-gray-500 mb-1 block">Weight (kg)</label>
+                        <input type="number" id="weight-input" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold text-lg" placeholder="60">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-500 mb-1 block">Height (cm)</label>
+                        <input type="number" id="height-input" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold text-lg" placeholder="170">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-500 mb-1 block">Age</label>
+                        <input type="number" id="age-input" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold text-lg" placeholder="30">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-500 mb-1 block">Gender</label>
+                        <select id="gender-input" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold">
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label class="text-xs font-bold text-gray-500 mb-1 block">Height (cm)</label>
-                    <input type="number" id="height-input" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold text-lg" placeholder="170">
+                
+                <div class="mb-4">
+                    <label class="text-xs font-bold text-gray-500 mb-1 block">Period Mode</label>
+                    <select id="setting-period-mode" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold mb-1">
+                        <option value="weekly">Weekly (Reset on Mon)</option>
+                        <option value="monthly">Monthly (Reset on 1st)</option>
+                        <option value="permanent">Permanent (Endless)</option>
+                    </select>
+                    <p class="text-[10px] text-gray-400">Controls when your debt/balance resets.</p>
                 </div>
-                <div>
-                    <label class="text-xs font-bold text-gray-500 mb-1 block">Age</label>
-                    <input type="number" id="age-input" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold text-lg" placeholder="30">
-                </div>
-                <div>
-                    <label class="text-xs font-bold text-gray-500 mb-1 block">Gender</label>
-                    <select id="gender-input" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold">
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
+            </div>
+
+            <div class="glass-panel p-6 rounded-3xl mb-4">
+                <h2 class="text-xl font-black mb-4 flex items-center gap-2">
+                    <i class="ph-fill ph-gear text-gray-500"></i>
+                    Preferences
+                </h2>
+                
+                <div class="mb-4">
+                    <label class="text-xs font-bold text-gray-500 mb-1 block">Theme</label>
+                    <select id="theme-input" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold">
+                        <option value="system">System Default</option>
+                        <option value="light">Light Mode</option>
+                        <option value="dark">Dark Mode</option>
                     </select>
                 </div>
-            </div>
-            
-            <div class="mb-4">
-                <label class="text-xs font-bold text-gray-500 mb-1 block">Period Mode</label>
-                <select id="setting-period-mode" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold mb-1">
-                    <option value="weekly">Weekly (Reset on Mon)</option>
-                    <option value="monthly">Monthly (Reset on 1st)</option>
-                    <option value="permanent">Permanent (Endless)</option>
-                </select>
-                <p class="text-[10px] text-gray-400">Controls when your debt/balance resets.</p>
-            </div>
-        </div>
 
-        <div class="glass-panel p-6 rounded-3xl mb-4">
-            <h2 class="text-xl font-black mb-4 flex items-center gap-2">
-                <i class="ph-fill ph-gear text-gray-500"></i>
-                Preferences
-            </h2>
-            
-            <div class="mb-4">
-                <label class="text-xs font-bold text-gray-500 mb-1 block">Theme</label>
-                <select id="theme-input" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold">
-                    <option value="system">System Default</option>
-                    <option value="light">Light Mode</option>
-                    <option value="dark">Dark Mode</option>
-                </select>
-            </div>
-
-            <div class="mb-4">
-                <label class="text-xs font-bold text-gray-500 mb-1 block">Favorite Beer 1</label>
-                <select id="setting-mode-1" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold"></select>
-            </div>
-            
-            <div class="mb-4">
-                <label class="text-xs font-bold text-gray-500 mb-1 block">Favorite Beer 2</label>
-                <select id="setting-mode-2" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold"></select>
-            </div>
-
-            <div class="mb-4">
-                <label class="text-xs font-bold text-gray-500 mb-1 block">Base Exercise (for Tank)</label>
-                <select id="setting-base-exercise" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold"></select>
-            </div>
-            
-             <div class="mb-4">
-                <label class="text-xs font-bold text-gray-500 mb-1 block">Default Record Exercise</label>
-                <select id="setting-default-record-exercise" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold"></select>
-            </div>
-        </div>
-<div class="glass-panel p-6 rounded-3xl mb-4">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-black flex items-center gap-2">
-                    <i class="ph-fill ph-check-square-offset text-emerald-500"></i>
-                    Daily Checks
-                </h2>
-                <button onclick="addNewCheckItem()" class="text-xs font-bold bg-indigo-100 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-200 transition">
-                    + Add Custom
-                </button>
-            </div>
-            <div id="check-editor-list">
+                <div class="mb-4">
+                    <label class="text-xs font-bold text-gray-500 mb-1 block">Favorite Beer 1</label>
+                    <select id="setting-mode-1" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold"></select>
                 </div>
-        </div>
-        <div class="glass-panel p-6 rounded-3xl mb-24">
-            <h2 class="text-xl font-black mb-4 text-red-500 flex items-center gap-2">
-                <i class="ph-fill ph-warning-circle"></i>
-                Data Management
-            </h2>
-            <button onclick="DataManager.exportCSV('logs')" class="w-full mb-3 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 font-bold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-                Export Logs (CSV)
-            </button>
-            
-            <button onclick="DataManager.exportJSON()" class="w-full mb-3 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 font-bold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-                Export Backup (JSON)
-            </button>
+                
+                <div class="mb-4">
+                    <label class="text-xs font-bold text-gray-500 mb-1 block">Favorite Beer 2</label>
+                    <select id="setting-mode-2" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold"></select>
+                </div>
 
-            <div class="relative">
-                <input type="file" id="import-file" class="hidden" onchange="DataManager.importJSON(this)">
-                <button onclick="document.getElementById('import-file').click()" class="w-full py-3 rounded-xl bg-gray-100 dark:bg-gray-800 font-bold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-                    Import Backup (JSON)
+                <div class="mb-4">
+                    <label class="text-xs font-bold text-gray-500 mb-1 block">Base Exercise (for Tank)</label>
+                    <select id="setting-base-exercise" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold"></select>
+                </div>
+                
+                 <div class="mb-4">
+                    <label class="text-xs font-bold text-gray-500 mb-1 block">Default Record Exercise</label>
+                    <select id="setting-default-record-exercise" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold"></select>
+                </div>
+            </div>
+
+            <div class="glass-panel p-6 rounded-3xl mb-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-black flex items-center gap-2">
+                        <i class="ph-fill ph-check-square-offset text-emerald-500"></i>
+                        Daily Checks
+                    </h2>
+                    <button onclick="addNewCheckItem()" class="text-xs font-bold bg-indigo-100 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-200 transition">
+                        + Add Custom
+                    </button>
+                </div>
+                <div id="check-editor-list">
+                    </div>
+            </div>
+
+            <div class="glass-panel p-6 rounded-3xl mb-24">
+                <h2 class="text-xl font-black mb-4 text-red-500 flex items-center gap-2">
+                    <i class="ph-fill ph-warning-circle"></i>
+                    Data Management
+                </h2>
+                <button onclick="DataManager.exportCSV('logs')" class="w-full mb-3 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 font-bold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Export Logs (CSV)
                 </button>
+                
+                <button onclick="DataManager.exportJSON()" class="w-full mb-3 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 font-bold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                    Export Backup (JSON)
+                </button>
+
+                <div class="relative">
+                    <input type="file" id="import-file" class="hidden" onchange="DataManager.importJSON(this)">
+                    <button onclick="document.getElementById('import-file').click()" class="w-full py-3 rounded-xl bg-gray-100 dark:bg-gray-800 font-bold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                        Import Backup (JSON)
+                    </button>
+                </div>
+            </div>
+            
+            <div class="fixed bottom-24 left-0 right-0 px-6 z-50">
+                <div class="max-w-md mx-auto">
+                    <button id="btn-save-settings" class="w-full py-4 rounded-2xl bg-indigo-600 text-white font-bold shadow-lg hover:bg-indigo-700 transition transform active:scale-95">
+                        Save Changes
+                    </button>
+                </div>
             </div>
         </div>
-        
-        <div class="fixed bottom-24 left-0 right-0 px-6 z-50">
-            <div class="max-w-md mx-auto">
-                <button id="btn-save-settings" class="w-full py-4 rounded-2xl bg-indigo-600 text-white font-bold shadow-lg hover:bg-indigo-700 transition transform active:scale-95">
-                    Save Changes
-                </button>
-            </div>
-        </div>
-    </div>
 
     </main>
 
-    <!-- Floating Navigation Bar -->
     <nav class="fixed bottom-6 left-1/2 transform -translate-x-1/2 w-[90%] max-w-sm z-50">
-        <div class="floating-nav rounded-full px-2 py-2 flex justify-between items-center">
+        <div class="floating-nav rounded-full px-2 py-2 flex justify-between items-center border border-transparent dark:border-base-800 bg-white dark:bg-base-900 shadow-xl shadow-indigo-900/10 dark:shadow-none">
             <button id="nav-tab-home" class="nav-item nav-pill-active" onclick="UI.switchTab('home')">
-                <i class="ph-bold ph-house"></i>
+                <i class="ph-fill ph-house"></i>
                 <span class="label">Home</span>
             </button>
-            <button id="nav-tab-record" class="nav-item p-3 rounded-full hover:bg-base-100 dark:hover:bg-base-800" onclick="UI.switchTab('record')">
+            <button id="nav-tab-record" class="nav-item p-3 rounded-full hover:bg-base-100 dark:hover:bg-base-800 text-gray-400" onclick="UI.switchTab('record')">
                 <i class="ph-bold ph-plus-circle"></i>
                 <span class="label">Record</span>
             </button>
-            <button id="nav-tab-cellar" class="nav-item p-3 rounded-full hover:bg-base-100 dark:hover:bg-base-800" onclick="UI.switchTab('cellar')">
+            <button id="nav-tab-cellar" class="nav-item p-3 rounded-full hover:bg-base-100 dark:hover:bg-base-800 text-gray-400" onclick="UI.switchTab('cellar')">
                 <i class="ph-bold ph-books"></i>
                 <span class="label">Cellar</span>
             </button>
-            <button id="nav-tab-settings" class="nav-item p-3 rounded-full hover:bg-base-100 dark:hover:bg-base-800" onclick="UI.switchTab('settings')">
+            <button id="nav-tab-settings" class="nav-item p-3 rounded-full hover:bg-base-100 dark:hover:bg-base-800 text-gray-400" onclick="UI.switchTab('settings')">
                 <i class="ph-bold ph-gear"></i>
                 <span class="label">Config</span>
             </button>
         </div>
     </nav>
 
-    <!-- Global Message Toast -->
+    <button id="btn-fab-fixed" class="fixed bottom-24 right-6 z-40 w-14 h-14 bg-indigo-600 text-white rounded-2xl shadow-xl shadow-indigo-600/30 flex items-center justify-center hover:scale-105 active:scale-95 transition-all">
+        <i class="ph-bold ph-plus text-2xl"></i>
+    </button>
+
     <div id="message-box" class="fixed top-6 left-1/2 transform -translate-x-1/2 translate-y-[-150%] opacity-0 z-[9999] transition-all duration-300"></div>
 
-    <!-- Swipe Coach Mark -->
     <div id="swipe-coach-mark" class="fixed inset-0 pointer-events-none z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-1000">
         <div class="bg-black/60 text-white px-6 py-4 rounded-xl flex flex-col items-center">
             <div class="text-4xl animate-bounce">👆</div>
@@ -430,7 +409,6 @@
         </div>
     </div>
     
-    <!-- Error Overlay -->
     <div id="global-error-overlay" class="fixed inset-0 bg-black/90 z-[10000] hidden flex flex-col items-center justify-center p-6 text-white">
         <h2 class="text-2xl font-bold mb-4 text-red-500">System Error</h2>
         <pre id="error-details" class="bg-gray-800 p-4 rounded text-xs w-full overflow-auto mb-4 max-h-[50vh]"></pre>
@@ -440,10 +418,7 @@
         </div>
     </div>
 
-    <!-- Modals -->
-    <!-- Beer Modal -->
     <div id="beer-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <!-- Content same as before -->
         <div class="bg-white dark:bg-base-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] transform transition-all scale-95 opacity-0 duration-200">
             <div class="p-4 border-b border-base-100 dark:border-base-800 flex justify-between items-center bg-base-50 dark:bg-base-900">
                 <h3 class="font-bold text-lg">Record Drink</h3>
@@ -513,7 +488,6 @@
         </div>
     </div>
 
-    <!-- Check Modal (Updated to hold dynamic container) -->
     <div id="check-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div class="bg-white dark:bg-base-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden transform transition-all scale-95 opacity-0 duration-200">
             <div class="p-5">
@@ -534,10 +508,8 @@
                         <p class="text-[10px] text-orange-600/70 mt-2">Switch ON if you didn't drink alcohol.</p>
                     </div>
                     
-                    <!-- Dynamic Checks Container -->
                     <div id="check-items-container" class="grid grid-cols-2 gap-3">
-                        <!-- JS injected -->
-                    </div>
+                        </div>
 
                     <div>
                         <label class="text-[10px] font-bold text-gray-400 uppercase">Weight (kg)</label>
@@ -552,7 +524,6 @@
         </div>
     </div>
 
-    <!-- Manual Exercise Modal (Same) -->
     <div id="exercise-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div class="bg-white dark:bg-base-900 w-full max-w-sm rounded-3xl shadow-xl p-5 transform transition-all scale-95 opacity-0 duration-200">
             <h3 class="font-bold text-lg mb-4">Manual Exercise</h3>
@@ -575,39 +546,36 @@
         </div>
     </div>
 
-    <!-- Timer Modal (New) -->
     <div id="timer-modal" class="fixed inset-0 z-[200] hidden items-center justify-center bg-base-900 text-white transition-opacity duration-300">
         <div class="absolute inset-0 bg-gradient-to-br from-indigo-900 to-black opacity-80"></div>
         
-        <div class="relative w-full max-w-md h-full flex flex-col justify-between p-8 text-center">
+        <div class="relative w-full max-w-md h-full flex flex-col justify-center p-8 text-center">
             
-            <!-- Header -->
-            <div class="flex justify-between items-center">
+            <button onclick="UI.closeTimer()" class="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition z-50">✕</button>
+
+            <div class="absolute top-8 left-0 right-0 flex justify-center">
                 <div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                     <span class="text-xs font-bold tracking-widest uppercase opacity-70">Live Recording</span>
                 </div>
-                <button onclick="UI.closeTimer()" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition">✕</button>
             </div>
 
-            <!-- Timer Display -->
-            <div class="flex-1 flex flex-col items-center justify-center">
-                <div id="timer-display" class="text-7xl font-black font-mono tracking-tighter mb-4 tabular-nums">00:00</div>
-                <div class="flex items-center gap-4 text-sm font-bold opacity-80">
+            <div class="flex flex-col items-center justify-center py-10 relative">
+                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full border-2 border-indigo-500/30 animate-pulse pointer-events-none"></div>
+                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full border border-indigo-500/10 animate-spin-slow pointer-events-none"></div>
+
+                <div id="timer-display" class="text-7xl font-black font-mono tracking-tighter mb-6 tabular-nums relative z-10">00:00</div>
+                
+                <div class="flex items-center gap-6 text-sm font-bold opacity-80 relative z-10">
                     <span class="flex items-center gap-1"><i class="ph-fill ph-fire text-orange-500"></i> <span id="timer-kcal">0</span> kcal</span>
                     <span class="flex items-center gap-1"><i class="ph-fill ph-beer-bottle text-yellow-400"></i> <span id="timer-beer">0.0</span> cans</span>
                 </div>
-                
-                <!-- Zen Circle Animation -->
-                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full border-2 border-indigo-500/30 animate-pulse pointer-events-none"></div>
-                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full border border-indigo-500/10 animate-spin-slow pointer-events-none"></div>
             </div>
 
-            <!-- Controls -->
-            <div class="space-y-6">
-                <div class="relative w-full">
-                    <div class="bg-white/10 rounded-2xl flex items-center w-full overflow-hidden border border-white/10">
-                        <select id="timer-exercise-select" class="w-full bg-transparent text-white font-bold text-center appearance-none p-3 outline-none cursor-pointer z-10 relative">
+            <div class="space-y-8 mt-8">
+                <div class="relative w-full max-w-xs mx-auto">
+                    <div class="bg-white/10 rounded-2xl flex items-center w-full overflow-hidden border border-white/10 hover:bg-white/15 transition">
+                        <select id="timer-exercise-select" class="w-full bg-transparent text-white font-bold text-center appearance-none p-4 outline-none cursor-pointer z-10 relative">
                             </select>
                         <div class="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-white/50">
                             <i class="ph-bold ph-caret-down"></i>
@@ -615,22 +583,21 @@
                     </div>
                 </div>
 
-                <div class="flex justify-center gap-6 items-center">
-                    <button id="btn-timer-toggle" class="w-20 h-20 rounded-full bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/50 transition-all active:scale-95">
-                        <i id="icon-timer-toggle" class="ph-fill ph-play text-3xl"></i>
+                <div class="flex justify-center gap-8 items-center">
+                    <button id="btn-timer-toggle" class="w-20 h-20 rounded-full bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-500/40 transition-all active:scale-95 border-4 border-base-900">
+                        <i id="icon-timer-toggle" class="ph-fill ph-play text-3xl ml-1"></i>
                     </button>
                     
-                    <button id="btn-timer-finish" class="hidden w-20 h-20 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/50 transition-all active:scale-95">
-                        <i class="ph-fill ph-check text-3xl"></i>
+                    <button id="btn-timer-finish" class="hidden w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center shadow-xl shadow-emerald-500/40 transition-all active:scale-95 border-4 border-base-900">
+                        <i class="ph-fill ph-check text-2xl"></i>
                     </button>
                 </div>
                 
-                <p class="text-[10px] opacity-40">Don't close the browser completely.</p>
+                <p class="text-[10px] opacity-40 mt-4">Don't close the browser completely.</p>
             </div>
         </div>
     </div>
 
-    <!-- Rollover Modal -->
     <div id="rollover-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div class="bg-white dark:bg-base-900 w-full max-w-sm rounded-3xl p-6 relative flex flex-col items-center text-center shadow-2xl">
             <div class="w-16 h-16 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center mb-4">
@@ -647,10 +614,7 @@
         </div>
     </div>
 
-    
-    <!-- Help Modal -->
     <div id="help-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <!-- Content same as before -->
         <div class="bg-white dark:bg-base-900 w-full max-w-sm rounded-3xl p-6 relative">
             <button onclick="UI.closeModal('help-modal')" class="absolute top-4 right-4 w-8 h-8 bg-base-100 rounded-full">✕</button>
             <h3 class="font-bold text-xl mb-4">Rank System</h3>
@@ -662,7 +626,8 @@
             </div>
         </div>
     </div>
-<div id="action-menu-modal" class="fixed inset-0 z-[100] hidden items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
+
+    <div id="action-menu-modal" class="fixed inset-0 z-[100] hidden items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
         <div class="bg-white dark:bg-base-900 w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl p-6 relative animate-slide-up sm:animate-none">
             
             <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-6 sm:hidden"></div>
@@ -695,7 +660,7 @@
             </button>
         </div>
     </div>
-    <!-- Scripts -->
+
     <script type="module" src="main.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
