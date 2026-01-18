@@ -123,21 +123,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const idField = document.getElementById('editing-log-id');
         const existingId = idField && idField.value ? parseInt(idField.value) : null;
 
-        if (existingId) {
-            // IDがある場合 = 更新 (Update)
-            // Serviceにupdateメソッドがない場合はdbを直接使うか、Serviceに追加する
-            // ここではdbを直接使って更新します
-            await db.logs.update(existingId, data);
-            
-            // 元のeditingLogIdロジックは不要になるのでnullへ
-            editingLogId = null;
-            
-            // UI側にメッセージ
-            UI.showMessage('Record Updated', 'success');
-        } else {
-            // IDがない場合 = 新規作成 (Add)
-            await Service.saveBeerLog(data);
-        }
+        // ★修正: 新規・更新ともに Service.saveBeerLog に任せます
+        // Service内で IDがあれば update, なければ add を適切に処理してくれます
+        await Service.saveBeerLog(data, existingId);
 
         // Untappd連携
         if (data.useUntappd) {

@@ -164,7 +164,7 @@ export const updateLogListView = async (isLoadMore = false) => {
         // チェックボックス (編集モード時のみ表示)
         const checkboxHtml = StateManager.isEditMode ? `
             <div class="mr-1">
-                <input type="checkbox" class="log-checkbox checkbox checkbox-xs checkbox-primary" data-id="${log.id}" onchange="updateLogListView.updateBulkCount()">
+                <input type="checkbox" class="log-checkbox checkbox checkbox-xs checkbox-primary" data-id="${log.id}">
             </div>
         ` : '';
 

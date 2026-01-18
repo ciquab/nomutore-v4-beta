@@ -190,16 +190,31 @@ export const switchBeerInputTab = (mode) => {
     const btnPreset = document.getElementById('tab-beer-preset');
     const btnCustom = document.getElementById('tab-beer-custom');
 
+    // スタイルの定義（アクティブ時と非アクティブ時）
+    const activeClasses = ['bg-indigo-600', 'text-white', 'shadow-sm'];
+    const inactiveClasses = ['text-gray-500', 'hover:bg-base-200', 'dark:hover:bg-base-800'];
+
+    // 状態を切り替えるヘルパー関数
+    const setActive = (el) => {
+        el.classList.remove(...inactiveClasses);
+        el.classList.add(...activeClasses);
+    };
+
+    const setInactive = (el) => {
+        el.classList.remove(...activeClasses);
+        el.classList.add(...inactiveClasses);
+    };
+
     if (mode === 'preset') {
         preset.classList.remove('hidden');
         custom.classList.add('hidden');
-        btnPreset.className = 'flex-1 py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white shadow-sm transition';
-        btnCustom.className = 'flex-1 py-2 text-xs font-bold rounded-xl text-gray-500 hover:bg-base-200 dark:hover:bg-base-800 transition';
+        setActive(btnPreset);
+        setInactive(btnCustom);
     } else {
         preset.classList.add('hidden');
         custom.classList.remove('hidden');
-        btnPreset.className = 'flex-1 py-2 text-xs font-bold rounded-xl text-gray-500 hover:bg-base-200 dark:hover:bg-base-800 transition';
-        btnCustom.className = 'flex-1 py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white shadow-sm transition';
+        setInactive(btnPreset);
+        setActive(btnCustom);
     }
 };
 
