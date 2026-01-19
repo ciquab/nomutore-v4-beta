@@ -175,7 +175,7 @@ export const UI = {
             } catch(e) {}
 
             // 基本データ
-            const detail = { date, isDryDay, weight };
+            const detail = { date, isDryDay, weight, isSaved: true };
 
             // 動的データの収集
             schema.forEach(item => {

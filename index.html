@@ -84,7 +84,7 @@
                     </div>
                 </div>
 
-                <div id="tank-message" class="mt-6 min-h-[24px] text-sm font-bold text-gray-500"></div>
+                <div id="tank-message" class="mt-2 min-h-[24px] text-sm font-bold text-gray-500"></div>
             </section>
 
             <section class="grid grid-cols-2 gap-3">
@@ -670,154 +670,144 @@
                 <button onclick="UI.closeModal('help-modal')" class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center hover:bg-gray-300 dark:hover:bg-gray-600 transition text-gray-500 dark:text-gray-300">✕</button>
             </div>
             
-            <div class="p-6 overflow-y-auto custom-scrollbar space-y-8">
-                
-                <section class="text-center space-y-3">
-                    <span class="px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 text-[10px] font-bold uppercase tracking-widest">Concept</span>
-                    <h4 class="text-2xl font-black text-base-900 dark:text-white">
-                        飲んだら、動いて返す。<br>
-                        <span class="text-indigo-500">「実質ゼロ」</span>を目指そう。
-                    </h4>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                        Nomutore (ノムトレ) は、飲酒による摂取カロリーを<br>
-                        運動による消費カロリーで相殺する<br>
-                        <strong class="text-base-800 dark:text-gray-200">「借金返済型」</strong>の健康管理アプリです。
-                    </p>
-                </section>
+            <div class="p-6 overflow-y-auto custom-scrollbar space-y-10">
+    
+    <section class="text-center space-y-3">
+        <span class="px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 text-[10px] font-bold uppercase tracking-widest">Concept</span>
+        <h4 class="text-2xl font-black text-base-900 dark:text-white">
+            飲んだら、動いて返す。<br>
+            <span class="text-indigo-500">「実質ゼロ」</span>を目指そう。
+        </h4>
+        <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+            Nomutoreは、飲酒摂取カロリーを「借金」、運動消費カロリーを「返済」と捉え、<br>
+            <strong class="text-base-800 dark:text-gray-200">「美味しいビールを、罪悪感なく飲み続ける」</strong>ためのツールです。
+        </p>
+    </section>
 
-                <hr class="border-gray-100 dark:border-gray-800">
-                
-                <section>
-                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <i class="ph-fill ph-game-controller"></i> How to Play
-                    </h4>
-                    <div class="space-y-3">
-                        <div class="flex gap-4 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30">
-                            <div class="w-10 h-10 rounded-full bg-white dark:bg-amber-800 flex items-center justify-center text-xl shadow-sm flex-shrink-0">🍺</div>
-                            <div>
-                                <h5 class="font-bold text-amber-900 dark:text-amber-200 text-sm">1. 飲んだら記録 (蓄積)</h5>
-                                <p class="text-xs text-amber-800/70 dark:text-amber-300/70 mt-1">
-                                    ビールを記録すると、ホームのオーブに<strong>「未消化カロリー (液体)」</strong>が溜まっていきます。
-                                </p>
-                            </div>
-                        </div>
+    <hr class="border-gray-100 dark:border-gray-800">
 
-                        <div class="flex gap-4 p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30">
-                            <div class="w-10 h-10 rounded-full bg-white dark:bg-indigo-800 flex items-center justify-center text-xl shadow-sm flex-shrink-0">🏃</div>
-                            <div>
-                                <h5 class="font-bold text-indigo-900 dark:text-indigo-200 text-sm">2. 動いて燃焼 (排出)</h5>
-                                <p class="text-xs text-indigo-800/70 dark:text-indigo-300/70 mt-1">
-                                    運動してカロリーを消費すると、オーブの液体が減ります。<strong>「実質ゼロ (空っぽ)」</strong>を目指しましょう。
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="flex gap-4 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30">
-                            <div class="w-10 h-10 rounded-full bg-white dark:bg-emerald-800 flex items-center justify-center text-xl shadow-sm flex-shrink-0">✅</div>
-                            <div>
-                                <h5 class="font-bold text-emerald-900 dark:text-emerald-200 text-sm">3. コンディション管理</h5>
-                                <p class="text-xs text-emerald-800/70 dark:text-emerald-300/70 mt-1">
-                                    休肝日や体調を「Daily Check」で記録。ランクを上げて、健康的なビアライフを維持します。
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <hr class="border-gray-100 dark:border-gray-800">
-
-                <section>
-                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <i class="ph-fill ph-trophy"></i> Rank System
-                    </h4>
-                    <div class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-700">
-                        <p class="text-xs text-gray-600 dark:text-gray-300 mb-4 text-center">
-                            <strong class="text-indigo-600 dark:text-indigo-400">直近28日間の休肝日率</strong>等でランクが決まります。<br>
-                            連続で休肝日を作るとボーナスが発生！
-                        </p>
-                        
-                        <div class="grid grid-cols-2 gap-2">
-                            <div class="bg-white dark:bg-gray-800 p-3 rounded-xl border border-purple-100 dark:border-purple-900/30 shadow-sm flex items-center gap-3">
-                                <span class="text-2xl">👼</span>
-                                <div>
-                                    <span class="block text-xs font-black text-purple-600 dark:text-purple-400">Rank S</span>
-                                    <span class="block text-[10px] text-gray-400">神の肝臓 (20日+)</span>
-                                </div>
-                            </div>
-                            <div class="bg-white dark:bg-gray-800 p-3 rounded-xl border border-indigo-100 dark:border-indigo-900/30 shadow-sm flex items-center gap-3">
-                                <span class="text-2xl">🛡️</span>
-                                <div>
-                                    <span class="block text-xs font-black text-indigo-600 dark:text-indigo-400">Rank A</span>
-                                    <span class="block text-[10px] text-gray-400">鉄の肝臓 (12日+)</span>
-                                </div>
-                            </div>
-                            <div class="bg-white dark:bg-gray-800 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30 shadow-sm flex items-center gap-3">
-                                <span class="text-2xl">🌿</span>
-                                <div>
-                                    <span class="block text-xs font-black text-emerald-600 dark:text-emerald-400">Rank B</span>
-                                    <span class="block text-[10px] text-gray-400">健康志向 (8日+)</span>
-                                </div>
-                            </div>
-                            <div class="bg-white dark:bg-gray-800 p-3 rounded-xl border border-red-100 dark:border-red-900/30 shadow-sm flex items-center gap-3">
-                                <span class="text-2xl">⚠️</span>
-                                <div>
-                                    <span class="block text-xs font-black text-red-500 dark:text-red-400">Rank C</span>
-                                    <span class="block text-[10px] text-gray-400">要注意</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <hr class="border-gray-100 dark:border-gray-800">
-
-                <section>
-                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <i class="ph-fill ph-scales"></i> Other Drinks
-                    </h4>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                        ビール以外のお酒は、カロリーが近いスタイルを選んで記録してください。
-                    </p>
-                    
-                    <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
-                        <table class="w-full text-left border-collapse text-xs">
-                            <thead class="bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                                <tr>
-                                    <th class="p-3 font-bold">飲み物</th>
-                                    <th class="p-3 font-bold">おすすめ設定</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200">
-                                <tr>
-                                    <td class="p-3 font-bold"><span class="mr-2">🥃</span>ハイボール (7%)</td>
-                                    <td class="p-3"><span class="text-indigo-600 dark:text-indigo-400 font-bold">アンバーエール</span></td>
-                                </tr>
-                                <tr>
-                                    <td class="p-3 font-bold"><span class="mr-2">🍋</span>レモンサワー</td>
-                                    <td class="p-3"><span class="text-indigo-600 dark:text-indigo-400 font-bold">ペールエール</span></td>
-                                </tr>
-                                <tr>
-                                    <td class="p-3 font-bold"><span class="mr-2">🥤</span>ストロング系 (9%)</td>
-                                    <td class="p-3"><span class="text-indigo-600 dark:text-indigo-400 font-bold">IPA (West Coast)</span></td>
-                                </tr>
-                                <tr>
-                                    <td class="p-3 font-bold"><span class="mr-2">🍷</span>ワイン / 日本酒</td>
-                                    <td class="p-3"><span class="text-indigo-600 dark:text-indigo-400 font-bold">ベルジャン・トリペル</span> (250ml)</td>
-                                </tr>
-                                <tr>
-                                    <td class="p-3 font-bold"><span class="mr-2">🍵</span>お茶割り</td>
-                                    <td class="p-3"><span class="text-indigo-600 dark:text-indigo-400 font-bold">セッションIPA</span></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <div class="text-center pt-4">
-                    <p class="text-[10px] text-gray-300 dark:text-gray-600">Nomutore v4.0 - Designed for Beer Geeks</p>
-                </div>
-
+    <section>
+        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <i class="ph-fill ph-house"></i> Dashboard Analysis
+        </h4>
+        <div class="space-y-4">
+            <div class="p-4 rounded-2xl bg-base-50 dark:bg-base-800/50 border border-base-100 dark:border-base-700">
+                <h5 class="font-bold text-sm mb-2 flex items-center gap-2">🔮 センターオーブ (Beer Tank)</h5>
+                <ul class="text-xs space-y-2 text-gray-600 dark:text-gray-300">
+                    <li class="flex gap-2">
+                        <span class="text-red-500 font-bold">● Debt:</span>
+                        <span>収支がマイナスの時、液体が溜まります。完済に必要な運動時間の目安が表示されます。</span>
+                    </li>
+                    <li class="flex gap-2">
+                        <span class="text-emerald-500 font-bold">● Zen:</span>
+                        <span>収支がプラスになると液体が消え、オーブが緑に輝きます。これは「貯金」がある状態です。</span>
+                    </li>
+                </ul>
             </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-[11px]">
+                    <span class="font-bold block mb-1">🛡️ Liver Rank</span>
+                    直近28日間の休肝日数で判定。
+                </div>
+                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-[11px]">
+                    <span class="font-bold block mb-1">🔥 Streak</span>
+                    「休肝」か「運動」をした連続日数。
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <i class="ph-fill ph-plus-circle"></i> Recording Operations
+        </h4>
+        <div class="space-y-4">
+            <div class="flex gap-4">
+                <div class="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-xl shrink-0">🍺</div>
+                <div class="text-xs">
+                    <h5 class="font-bold text-sm">ビールを記録する</h5>
+                    <p class="text-gray-500 mt-1">「Preset」からスタイル選ぶか、「Custom」で度数(ABV)と量を直接入力。銘柄名を入れて🔍を押すとUntappdで検索も可能です。</p>
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <div class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-xl shrink-0">⏱️</div>
+                <div class="text-xs">
+                    <h5 class="font-bold text-sm">ワークアウト・タイマー</h5>
+                    <p class="text-gray-500 mt-1">運動開始時にスタート。リアルタイムで「ビール何本分返済したか」が表示され、没入感を高めます。</p>
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <div class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-xl shrink-0">✅</div>
+                <div class="text-xs">
+                    <h5 class="font-bold text-sm">デイリーチェック</h5>
+                    <p class="text-gray-500 mt-1">その日が「休肝日」ならトグルをON。腹周りの余裕や体重も記録でき、コンディションを視覚化します。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <i class="ph-fill ph-lightning"></i> Game Mechanics
+        </h4>
+        <div class="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 space-y-4">
+            <div class="space-y-2">
+                <h5 class="font-black text-indigo-600 dark:text-indigo-400 text-sm">🔥 ストリーク・ボーナス</h5>
+                <p class="text-[11px] text-indigo-800/80 dark:text-indigo-300/80 leading-relaxed">
+                    「休肝日」または「運動日」を継続すると、運動時の消費カロリーにボーナスがつきます。
+                    <br>・3日継続: <strong>1.1x</strong> / 7日: <strong>1.2x</strong> / 14日: <strong>1.3x</strong>
+                </p>
+            </div>
+            <div class="space-y-2">
+                <h5 class="font-black text-indigo-600 dark:text-indigo-400 text-sm">🐣 ルーキーモード</h5>
+                <p class="text-[11px] text-indigo-800/80 dark:text-indigo-300/80 leading-relaxed">
+                    利用開始から14日間は、ランク判定が「休肝成功率」になります。まずは 25% 以上の成功率（たまご卒業）を目指しましょう！
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <i class="ph-fill ph-books"></i> Data Management
+        </h4>
+        <div class="grid grid-cols-3 gap-2">
+            <div class="text-center p-2 rounded-xl bg-gray-50 dark:bg-gray-800">
+                <span class="font-bold text-[10px] block">Logs</span>
+                <span class="text-[9px] text-gray-400">履歴の編集・削除</span>
+            </div>
+            <div class="text-center p-2 rounded-xl bg-gray-50 dark:bg-gray-800">
+                <span class="font-bold text-[10px] block">Stats</span>
+                <span class="text-[9px] text-gray-400">飲酒傾向の分析</span>
+            </div>
+            <div class="text-center p-2 rounded-xl bg-gray-50 dark:bg-gray-800">
+                <span class="font-bold text-[10px] block">Archives</span>
+                <span class="text-[9px] text-gray-400">過去期間の成績</span>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <i class="ph-fill ph-scales"></i> Substitution Tips
+        </h4>
+        <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
+            <table class="w-full text-left border-collapse text-[11px]">
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200">
+                    <tr><td class="p-3">🥃 ハイボール (7%)</td><td class="p-3 font-bold text-indigo-600">アンバーエール</td></tr>
+                    <tr><td class="p-3">🍋 レモンサワー</td><td class="p-3 font-bold text-indigo-600">ペールエール</td></tr>
+                    <tr><td class="p-3">🥤 ストロング系 (9%)</td><td class="p-3 font-bold text-indigo-600">IPA (West Coast)</td></tr>
+                    <tr><td class="p-3">🍷 ワイン / 日本酒</td><td class="p-3 font-bold text-indigo-600">トリペル (250ml)</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <div class="text-center pt-4">
+        <p class="text-[10px] text-gray-300 dark:text-gray-600 tracking-widest">NOMUTORE v4.0 - NO BEER NO LIFE</p>
+    </div>
+
+</div>
             
             <div class="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
                 <button onclick="UI.closeModal('help-modal')" class="w-full bg-base-900 dark:bg-white dark:text-base-900 text-white font-bold py-3.5 rounded-xl shadow-lg transition transform active:scale-95 text-sm">

@@ -9,11 +9,9 @@ export function renderCheckStatus(checks, logs) {
     const today = dayjs();
     const yest = today.subtract(1, 'day');
     
-    // ★修正: 優先順位を明確にしてレコードを特定する
-    // リスト全体から今日の日付を探す
-    const todayCheck = checks.find(c => dayjs(c.timestamp).isSame(today, 'day'));
-    // リスト全体から昨日の日付を探す
-    const yestCheck = checks.find(c => dayjs(c.timestamp).isSame(yest, 'day'));
+    // ★修正: 「isSaved フラグが立っている」レコードだけを有効なチェックとして探す
+    const todayCheck = checks.find(c => dayjs(c.timestamp).isSame(today, 'day') && c.isSaved === true);
+    const yestCheck = checks.find(c => dayjs(c.timestamp).isSame(yest, 'day') && c.isSaved === true);
 
     let targetCheck = null;
     let type = 'none';
@@ -85,7 +83,7 @@ export function renderCheckStatus(checks, logs) {
     }
 
     // HTML生成 (LiverRankと構造を完全一致させる)
-    // h-full を指定し、親グリッドの高さに合わせて伸縮させる
+    // ★修正: leading-tight と py-1 を追加して「g」の欠けを防止
     status.className = `glass-panel p-4 rounded-2xl relative overflow-hidden group cursor-pointer transition hover:border-opacity-50 flex flex-col justify-between h-full min-h-[130px] ${theme.bg} ${theme.darkBg}`;
     
     status.innerHTML = `
@@ -100,8 +98,9 @@ export function renderCheckStatus(checks, logs) {
                 </div>
                 
                 <div class="flex flex-col items-start">
-                    <span class="text-3xl font-black ${theme.text} ${theme.darkText} leading-none tracking-tight truncate w-full">${mainStatus}</span>
+                    <span class="text-3xl font-black ${theme.text} ${theme.darkText} leading-normal mb-1 tracking-tight truncate w-full">${mainStatus}</span>
                     <span class="text-xs font-bold opacity-80 ${theme.text} ${theme.darkText} mt-1 truncate w-full">${subStatus}</span>
+                </div>
                 </div>
             </div>
 
