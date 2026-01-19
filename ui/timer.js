@@ -9,9 +9,8 @@ let timerInterval = null;
 let isRunning = false;
 let lastBurnedKcal = 0;
 let accumulatedTime = 0;
-let currentBeerStyleName = null; // 現在のスタイル名を保持
+let currentBeerStyleName = null; 
 
-// 内部関数: 時間整形
 const formatTime = (ms) => {
     const totalSec = Math.floor(ms / 1000);
     const m = Math.floor(totalSec / 60);
@@ -38,7 +37,7 @@ export const Timer = {
         const start = localStorage.getItem(APP.STORAGE_KEYS.TIMER_START);
         const accumulated = parseInt(localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED)) || 0;
         
-        // スタイルが未設定ならランダム設定
+        // スタイル未設定なら設定
         if (!currentBeerStyleName) {
             Timer.setRandomBeerBackground();
         }
@@ -57,18 +56,14 @@ export const Timer = {
         }
     },
 
-    // ★重要: constantsの色を使って背景グラデーションを作る
     setRandomBeerBackground: () => {
-        // BEER_COLORSが定義されていなければ安全策でゴールドを使用
         const colors = (typeof BEER_COLORS !== 'undefined') ? BEER_COLORS : { 'Golden Ale': 'linear-gradient(to top, #eab308, #facc15)' };
         
-        // BEER_COLORSの値がすでに linear-gradient 文字列の場合はそのまま使う
-        // 単色ヘックスコードの場合はグラデーション化する処理を入れる
         const styleKeys = Object.keys(colors);
         const randomKey = styleKeys[Math.floor(Math.random() * styleKeys.length)];
         let backgroundStyle = colors[randomKey];
 
-        // もし単色コード(#...)ならグラデーションに変換（念のためのフォールバック）
+        // 単色コードの場合はグラデーション化
         if (backgroundStyle.startsWith('#')) {
             backgroundStyle = `linear-gradient(to bottom right, ${backgroundStyle}, #1a1a1a)`;
         }
@@ -77,7 +72,8 @@ export const Timer = {
 
         const modal = document.getElementById('timer-modal');
         if (modal) {
-            // 背景グラデーションを適用
+            // ★修正: Tailwindのクラス(bg-base-900)を一時的に除去して背景を確実に反映
+            modal.classList.remove('bg-base-900');
             modal.style.background = backgroundStyle;
         }
     },
@@ -93,7 +89,6 @@ export const Timer = {
     start: () => {
         if (isRunning && timerInterval) return;
         
-        // 背景セット（まだ無ければ）
         if (!currentBeerStyleName) Timer.setRandomBeerBackground();
 
         const now = Date.now();
@@ -133,18 +128,20 @@ export const Timer = {
         const beerEl = document.getElementById('timer-beer');
         if(beerEl) {
             const cans = burned / 140;
-            beerEl.textContent = cans.toFixed(1);
+            // ★修正: 動作確認用に桁数を増やしました (0.000)
+            // これなら数秒で数字が増えるのが確認できます
+            beerEl.textContent = cans.toFixed(3);
         }
 
         Timer.updateRing(burned);
 
         if (isRunning) {
-            // カロリー消費の泡 (0.1kcalごと)
+            // カロリー消費の泡
             if (burned - lastBurnedKcal > 0.1) { 
                 Timer.createBubble(); 
                 lastBurnedKcal = burned;
             }
-            // アンビエント泡 (背景が液体になったので、少し多めに出す)
+            // アンビエント泡
             if (Math.random() < 0.3) {
                 Timer.createBubble(true);
             }
@@ -158,7 +155,6 @@ export const Timer = {
         const TARGET_KCAL = 140;
         const progress = (burnedKcal % TARGET_KCAL) / TARGET_KCAL * 100;
         
-        // ★修正: 背景がビール色なので、リング（進捗）は「白（泡）」にする
         const ringColor = 'rgba(255, 255, 255, 0.9)'; 
 
         ring.style.background = `conic-gradient(
@@ -169,19 +165,15 @@ export const Timer = {
         )`;
     },
 
-    // ★修正: 泡は「白」にする（リアルな気泡表現）
     createBubble: (isAmbient = false) => {
-        // ★ここを修正！ id="timer-bubbles-container" (複数形sあり) に合わせる
         const container = document.getElementById('timer-bubbles-container');
         if (!container) return;
 
         const b = document.createElement('div');
+        // ★確認: animate-float-up クラスが style.css に定義されている必要があります
         b.className = 'absolute rounded-full backdrop-blur-sm pointer-events-none animate-float-up';
         
-        // 色は白固定
         b.style.backgroundColor = '#ffffff';
-        
-        // 透明度で奥行きを出す
         b.style.opacity = isAmbient ? (Math.random() * 0.3 + 0.1).toString() : '0.6';
         
         const size = isAmbient 
@@ -191,7 +183,7 @@ export const Timer = {
         b.style.width = `${size}px`;
         b.style.height = `${size}px`;
         b.style.left = `${Math.random() * 100}%`;
-        b.style.bottom = '-20px';
+        b.style.bottom = '-20px'; // 画面外からスタート
         
         const duration = isAmbient ? (Math.random() * 4 + 5) : (Math.random() * 2 + 2);
         b.style.animationDuration = `${duration}s`;
@@ -250,7 +242,7 @@ export const Timer = {
         
         accumulatedTime = 0;
         lastBurnedKcal = 0;
-        currentBeerStyleName = null; // スタイルリセット
+        currentBeerStyleName = null; 
         
         const container = document.getElementById('timer-bubbles-container');
         if (container) container.innerHTML = '';
@@ -260,9 +252,12 @@ export const Timer = {
         const beerEl = document.getElementById('timer-beer');
         const ring = document.getElementById('timer-ring');
         
-        // モーダルの背景色リセット
+        // モーダルの背景色リセット (Tailwindクラスを戻す)
         const modal = document.getElementById('timer-modal');
-        if (modal) modal.style.background = ''; // デフォルト(CSS定義)に戻す
+        if (modal) {
+            modal.style.background = '';
+            modal.classList.add('bg-base-900');
+        }
 
         if (display) display.textContent = '00:00';
         if (kcalEl) kcalEl.textContent = '0.0';
@@ -280,7 +275,6 @@ export const Timer = {
         const wrapper = select ? select.parentElement : null;
 
         if (running) {
-            // 背景が濃いビール色になるため、ボタンは「白」系にして視認性を確保
             toggleBtn.classList.remove('bg-indigo-500', 'hover:bg-indigo-600');
             toggleBtn.classList.add('bg-white', 'text-yellow-600', 'hover:bg-gray-100');
             icon.className = 'ph-fill ph-pause text-3xl';
