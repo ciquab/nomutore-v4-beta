@@ -573,56 +573,56 @@
     </div>
 
     <div id="timer-modal" class="fixed inset-0 z-[200] hidden items-center justify-center bg-base-900 text-white transition-opacity duration-300">
-        <div id="timer-bubbles-container" class="absolute inset-0 overflow-hidden pointer-events-none opacity-40 z-0"></div>
+    <div id="timer-bubbles-container" class="absolute inset-0 overflow-hidden pointer-events-none opacity-40 z-0"></div>
+    
+    <div class="relative z-10 w-full max-w-md h-full flex flex-col justify-center p-8 text-center">
         
-        <div class="relative w-full max-w-md h-full flex flex-col justify-center p-8 text-center">
-            
-            <button onclick="UI.closeTimer()" class="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition z-50">✕</button>
+        <button onclick="UI.closeTimer()" class="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition z-50 cursor-pointer">✕</button>
 
-            <div class="absolute top-8 left-0 right-0 flex justify-center">
-                <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                    <span class="text-xs font-bold tracking-widest uppercase opacity-70">Live Recording</span>
-                </div>
-            </div>
-
-            <div class="flex flex-col items-center justify-center py-10 relative">
-                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full border-2 border-indigo-500/30 animate-pulse pointer-events-none"></div>
-                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full border border-indigo-500/10 animate-spin-slow pointer-events-none"></div>
-
-                <div id="timer-display" class="text-7xl font-black font-mono tracking-tighter mb-6 tabular-nums relative z-10">00:00</div>
-                
-                <div class="flex items-center gap-6 text-sm font-bold opacity-80 relative z-10">
-                    <span class="flex items-center gap-1"><i class="ph-fill ph-fire text-orange-500"></i> <span id="timer-kcal">0</span> kcal</span>
-                    <span class="flex items-center gap-1"><i class="ph-fill ph-beer-bottle text-yellow-400"></i> <span id="timer-beer">0.0</span> cans</span>
-                </div>
-            </div>
-
-            <div class="space-y-8 mt-8">
-                <div class="relative w-full max-w-xs mx-auto">
-                    <div class="bg-white/10 rounded-2xl flex items-center w-full overflow-hidden border border-white/10 hover:bg-white/15 transition">
-                        <select id="timer-exercise-select" class="w-full bg-transparent text-white font-bold text-center appearance-none p-4 outline-none cursor-pointer z-10 relative">
-                            </select>
-                        <div class="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-white/50">
-                            <i class="ph-bold ph-caret-down"></i>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="flex justify-center gap-8 items-center">
-                    <button id="btn-timer-toggle" class="w-20 h-20 rounded-full bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-500/40 transition-all active:scale-95 border-4 border-base-900">
-                        <i id="icon-timer-toggle" class="ph-fill ph-play text-3xl ml-1"></i>
-                    </button>
-                    
-                    <button id="btn-timer-finish" class="hidden w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center shadow-xl shadow-emerald-500/40 transition-all active:scale-95 border-4 border-base-900">
-                        <i class="ph-fill ph-check text-2xl"></i>
-                    </button>
-                </div>
-                
-                <p class="text-[10px] opacity-40 mt-4">Don't close the browser completely.</p>
+        <div class="absolute top-8 left-0 right-0 flex justify-center">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                <span class="text-xs font-bold tracking-widest uppercase opacity-70">Live Recording</span>
             </div>
         </div>
+
+        <div class="flex flex-col items-center justify-center py-10 relative">
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full border-2 border-indigo-500/30 animate-pulse pointer-events-none"></div>
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full border border-indigo-500/10 animate-spin-slow pointer-events-none"></div>
+
+            <div id="timer-display" class="text-7xl font-black font-mono tracking-tighter mb-6 tabular-nums relative z-10">00:00</div>
+            
+            <div class="flex items-center gap-6 text-sm font-bold opacity-80 relative z-10">
+                <span class="flex items-center gap-1"><i class="ph-fill ph-fire text-orange-500"></i> <span id="timer-kcal">0</span> kcal</span>
+                <span class="flex items-center gap-1"><i class="ph-fill ph-beer-bottle text-yellow-400"></i> <span id="timer-beer">0.0</span> cans</span>
+            </div>
+        </div>
+
+        <div class="space-y-8 mt-8">
+            <div class="relative w-full max-w-xs mx-auto">
+                <div class="bg-white/10 rounded-2xl flex items-center w-full overflow-hidden border border-white/10 hover:bg-white/15 transition relative">
+                    <select id="timer-exercise-select" class="w-full bg-transparent text-white font-bold text-center appearance-none p-4 outline-none cursor-pointer relative z-20">
+                    </select>
+                    <div class="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-white/50 z-10">
+                        <i class="ph-bold ph-caret-down"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-center gap-8 items-center">
+                <button id="btn-timer-toggle" class="w-20 h-20 rounded-full bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-500/40 transition-all active:scale-95 border-4 border-base-900 cursor-pointer z-10">
+                    <i id="icon-timer-toggle" class="ph-fill ph-play text-3xl ml-1"></i>
+                </button>
+                
+                <button id="btn-timer-finish" class="hidden w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center shadow-xl shadow-emerald-500/40 transition-all active:scale-95 border-4 border-base-900 cursor-pointer z-10">
+                    <i class="ph-fill ph-check text-2xl"></i>
+                </button>
+            </div>
+            
+            <p class="text-[10px] opacity-40 mt-4">Don't close the browser completely.</p>
+        </div>
     </div>
+</div>
 
     <div id="rollover-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div class="bg-white dark:bg-base-900 w-full max-w-sm rounded-3xl p-6 relative flex flex-col items-center text-center shadow-2xl">
@@ -859,26 +859,26 @@
             </div>
 
             <div class="grid grid-cols-2 gap-3 mb-6">
-                <button onclick="UI.handleActionSelect('beer')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition group h-28">
-                    <span class="text-4xl group-hover:scale-110 transition duration-300 filter drop-shadow-sm">🍺</span>
-                    <span class="text-xs font-bold text-amber-900 dark:text-amber-100">ビールを記録</span>
-                </button>
-                
-                <button onclick="UI.handleActionSelect('check')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition group h-24">
-                    <span class="text-2xl group-hover:scale-110 transition duration-300">✅</span>
-                    <span class="text-xs font-bold text-emerald-800 dark:text-emerald-200">体調を記録</span>
-                </button>
+    <button onclick="UI.handleActionSelect('beer')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition group h-28">
+        <span class="text-4xl group-hover:scale-110 transition duration-300 filter drop-shadow-sm">🍺</span>
+        <span class="text-xs font-bold text-amber-900 dark:text-amber-100">ビールを記録</span>
+    </button>
+    
+    <button onclick="UI.handleActionSelect('check')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition group h-28">
+        <span class="text-4xl group-hover:scale-110 transition duration-300">✅</span>
+        <span class="text-xs font-bold text-emerald-800 dark:text-emerald-200">体調を記録</span>
+    </button>
 
-                <button onclick="UI.handleActionSelect('exercise')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition group h-24">
-                    <span class="text-2xl group-hover:scale-110 transition duration-300">📝</span>
-                    <span class="text-xs font-bold text-gray-600 dark:text-gray-300">運動を記録</span>
-                </button>
-                
-　　　　　　　　<button onclick="UI.handleActionSelect('timer')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition group h-28">
-                    <i class="ph-fill ph-timer text-4xl group-hover:scale-110 transition duration-300"></i>
-                    <span class="text-xs font-bold">ストップウォッチ<br>開始</span>
-                </button>
-            </div>
+    <button onclick="UI.handleActionSelect('exercise')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition group h-24">
+        <span class="text-2xl group-hover:scale-110 transition duration-300">📝</span>
+        <span class="text-xs font-bold text-gray-600 dark:text-gray-300">運動を記録</span>
+    </button>
+    
+    <button onclick="UI.handleActionSelect('timer')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition group h-24">
+        <i class="ph-fill ph-timer text-2xl group-hover:scale-110 transition duration-300"></i>
+        <span class="text-xs font-bold">ストップウォッチ<br>開始</span>
+    </button>
+</div>
             
             <button onclick="UI.closeModal('action-menu-modal')" class="w-full py-4 text-gray-500 font-bold hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition">
                 Cancel

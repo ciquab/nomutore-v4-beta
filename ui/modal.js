@@ -292,16 +292,23 @@ export const openCheckModal = async (dateStr) => {
     const wEl = document.getElementById('check-weight');
     if(wEl) wEl.value = '';
 
-    // 5. データ復元 (DBから検索)
+    // 5. データ復元 & 整合性チェック (★ここを修正)
     try {
         const start = d.startOf('day').valueOf();
         const end = d.endOf('day').valueOf();
-        const existingLogs = await db.checks.where('timestamp').between(start, end, true, true).toArray();
-        const existing = existingLogs.length > 0 ? existingLogs[0] : null;
+        
+        // 並列で「既存チェック」と「ビールログ」を取得
+        const [existingLogs, beerLogs] = await Promise.all([
+            db.checks.where('timestamp').between(start, end, true, true).toArray(),
+            db.logs.where('timestamp').between(start, end, true, true).filter(l => l.type === 'beer').toArray()
+        ]);
 
+        const existing = existingLogs.length > 0 ? existingLogs[0] : null;
+        const hasBeer = beerLogs.length > 0;
+
+        // 既存データの復元
         if (existing) {
             setCheck('check-is-dry', existing.isDryDay);
-            // ★重要: 復元した値に基づいてUI（色と表示項目）を同期
             syncDryDayUI(existing.isDryDay);
             
             let schema = CHECK_SCHEMA;
@@ -317,6 +324,23 @@ export const openCheckModal = async (dateStr) => {
             });
             if(wEl) wEl.value = existing.weight || '';
         }
+
+        // ★ ビール記録がある場合の強制オーバーライド処理
+        if (hasBeer) {
+            setCheck('check-is-dry', false); // 強制OFF
+            syncDryDayUI(false);             // UIも飲酒モードへ
+            
+            if (isDryInput) isDryInput.disabled = true;
+            
+            // 視覚的な無効化と理由表示
+            if (dryLabelContainer) {
+                dryLabelContainer.classList.add('opacity-50', 'pointer-events-none');
+            }
+            if (dryLabelText) {
+                dryLabelText.innerHTML = "Is today a Dry Day? <span class='text-[10px] text-red-500 font-bold ml-2'>(Alcohol Recorded)</span>";
+            }
+        }
+
     } catch (e) {
         console.error("Failed to fetch check data:", e);
     }
