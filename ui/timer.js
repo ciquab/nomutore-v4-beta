@@ -1,10 +1,12 @@
-import { APP, EXERCISE, BEER_COLORS } from '../constants.js'; 
+/* timer.js */
+// ★修正: CALORIES を追加インポート
+import { APP, EXERCISE, BEER_COLORS, CALORIES } from '../constants.js'; 
 import { Calc } from '../logic.js';
 import { Store } from '../store.js';
 import { toggleModal } from './dom.js';
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
-// タイマー状態
+// ... (変数の定義などはそのまま) ...
 let timerInterval = null;
 let isRunning = false;
 let lastBurnedKcal = 0;
@@ -19,6 +21,7 @@ const formatTime = (ms) => {
 };
 
 export const Timer = {
+    // ... (init, checkResume, setRandomBeerBackground, toggle, start はそのまま) ...
     init: () => {
         const el = document.getElementById('timer-exercise-select');
         if (el && el.children.length === 0) {
@@ -37,7 +40,6 @@ export const Timer = {
         const start = localStorage.getItem(APP.STORAGE_KEYS.TIMER_START);
         const accumulated = parseInt(localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED)) || 0;
         
-        // スタイル未設定なら設定
         if (!currentBeerStyleName) {
             Timer.setRandomBeerBackground();
         }
@@ -63,7 +65,6 @@ export const Timer = {
         const randomKey = styleKeys[Math.floor(Math.random() * styleKeys.length)];
         let backgroundStyle = colors[randomKey];
 
-        // 単色コードの場合はグラデーション化
         if (backgroundStyle.startsWith('#')) {
             backgroundStyle = `linear-gradient(to bottom right, ${backgroundStyle}, #1a1a1a)`;
         }
@@ -72,7 +73,6 @@ export const Timer = {
 
         const modal = document.getElementById('timer-modal');
         if (modal) {
-            // ★修正: Tailwindのクラス(bg-base-900)を一時的に除去して背景を確実に反映
             modal.classList.remove('bg-base-900');
             modal.style.background = backgroundStyle;
         }
@@ -120,6 +120,7 @@ export const Timer = {
         const profile = Store.getProfile(); 
         const minutes = diffMs / 1000 / 60;
         
+        // 運動消費カロリー (kcal)
         const burned = Calc.calculateExerciseBurn(mets, minutes, profile);
         
         const kcalEl = document.getElementById('timer-kcal');
@@ -127,9 +128,20 @@ export const Timer = {
 
         const beerEl = document.getElementById('timer-beer');
         if(beerEl) {
-            // ★修正: ml換算 (140kcal = 350ml -> 1kcal = 2.5ml)
-            const ml = burned * 2.5;
-            // mlは整数表示で十分スピード感が出る
+            // ★修正: 設定されている「Favorite Beer 1」を基準にする
+            const modes = Store.getModes(); // 設定を取得
+            const refStyle = modes.mode1 || '国産ピルスナー'; // デフォルトは国産ピルスナー
+            
+            // 定義から350mlあたりのカロリーを取得 (未定義なら140kcalとする)
+            const kcalPer350 = CALORIES.STYLES[refStyle] || 140;
+            
+            // 1mlあたりのカロリーを算出
+            const kcalPer1ml = kcalPer350 / 350;
+
+            // 何ml飲めるか = 消費カロリー / 1mlあたりのカロリー
+            const ml = burned / kcalPer1ml;
+
+            // 整数で表示
             beerEl.textContent = Math.floor(ml);
         }
 
@@ -146,11 +158,16 @@ export const Timer = {
         }
     },
 
+    // ... (updateRing, createBubble, pause, finish, reset, updateUI はそのまま) ...
     updateRing: (burnedKcal) => {
         const ring = document.getElementById('timer-ring');
         if (!ring) return;
 
-        const TARGET_KCAL = 140;
+        // ここも「Favorite Beer 1」の1本分(350ml)を1周とするのが自然
+        const modes = Store.getModes();
+        const refStyle = modes.mode1 || '国産ピルスナー';
+        const TARGET_KCAL = CALORIES.STYLES[refStyle] || 140;
+
         const progress = (burnedKcal % TARGET_KCAL) / TARGET_KCAL * 100;
         
         const ringColor = 'rgba(255, 255, 255, 0.9)'; 
@@ -168,7 +185,6 @@ export const Timer = {
         if (!container) return;
 
         const b = document.createElement('div');
-        // ★確認: animate-float-up クラスが style.css に定義されている必要があります
         b.className = 'absolute rounded-full backdrop-blur-sm pointer-events-none animate-float-up';
         
         b.style.backgroundColor = '#ffffff';
@@ -181,7 +197,7 @@ export const Timer = {
         b.style.width = `${size}px`;
         b.style.height = `${size}px`;
         b.style.left = `${Math.random() * 100}%`;
-        b.style.bottom = '-20px'; // 画面外からスタート
+        b.style.bottom = '-20px'; 
         
         const duration = isAmbient ? (Math.random() * 4 + 5) : (Math.random() * 2 + 2);
         b.style.animationDuration = `${duration}s`;
@@ -250,7 +266,6 @@ export const Timer = {
         const beerEl = document.getElementById('timer-beer');
         const ring = document.getElementById('timer-ring');
         
-        // モーダルの背景色リセット (Tailwindクラスを戻す)
         const modal = document.getElementById('timer-modal');
         if (modal) {
             modal.style.background = '';
@@ -259,7 +274,7 @@ export const Timer = {
 
         if (display) display.textContent = '00:00';
         if (kcalEl) kcalEl.textContent = '0.0';
-        if (beerEl) beerEl.textContent = '0.0';
+        if (beerEl) beerEl.textContent = '0'; // 整数表記
         if (ring) ring.style.background = 'transparent';
         
         Timer.updateUI(false);
@@ -273,11 +288,7 @@ export const Timer = {
         const wrapper = select ? select.parentElement : null;
 
         if (running) {
-            // ★修正: 実行中（一時停止ボタン）
-            // 色は白のまま、アイコンだけPauseに変える
-            // 視覚的な変化として、少し透明度を下げるなどしても良いが、シンプルに保つ
             icon.className = 'ph-fill ph-pause text-3xl';
-            
             finishBtn.classList.add('hidden');
             
             if(select) {
@@ -286,13 +297,10 @@ export const Timer = {
                 if(wrapper) wrapper.classList.add('opacity-50');
             }
         } else {
-            // ★修正: 停止中（再開ボタン）
             icon.className = 'ph-fill ph-play text-3xl ml-1';
             
             if (accumulatedTime > 0) {
-                // 完了ボタンを表示
                 finishBtn.classList.remove('hidden');
-                // 並んだ時にバランスが良いよう、再開ボタンのデザインは変えない
             } else {
                 finishBtn.classList.add('hidden');
             }

@@ -15,7 +15,7 @@ export const toggleEditMode = () => {
     // UI反映
     updateLogListView(false); // 再描画してチェックボックスを表示
     
-    // ★追加: Select Allボタンの表示制御
+    // Select Allボタンの表示制御
     const selectAllBtn = document.getElementById('btn-select-all');
     if (selectAllBtn) {
         if (isEdit) selectAllBtn.classList.remove('hidden');
@@ -80,7 +80,7 @@ export const deleteSelectedLogs = async () => {
         
         // ★修正: 削除後に編集モードを強制終了し、UIをリセットする
         StateManager.setIsEditMode(false); 
-        updateBulkActionUI(); // これによりカウントが0になりボタンが隠れる
+        updateBulkActionUI(); 
         
     } catch (e) {
         console.error(e);
@@ -98,9 +98,6 @@ export const updateLogListView = async (isLoadMore = false) => {
 
     if (isLoadMore) {
         currentLimit += LIMIT_STEP;
-    } else {
-        // タブ切り替え時などは件数リセットせず、現在のLimitを維持
-        // 必要なら currentLimit = 20; をここに入れる
     }
 
     // データ取得
@@ -117,24 +114,33 @@ export const updateLogListView = async (isLoadMore = false) => {
 
     let currentDateStr = '';
 
-    logs.forEach(log => {
+    logs.forEach((log, index) => {
         // ★日付のみ表示（時間は削除）
         const dateStr = dayjs(log.timestamp).format('YYYY-MM-DD (ddd)');
         
-        // 日付ヘッダー挿入
+        // 【UI改善】 Sticky Headerで見やすく
         if (dateStr !== currentDateStr) {
             const header = document.createElement('li');
-            header.className = "text-[10px] font-bold text-gray-400 mt-6 mb-2 pl-1 border-l-2 border-indigo-200 dark:border-indigo-800 uppercase tracking-wider";
-            header.textContent = dateStr;
+            // sticky top-[-1px] z-10 によりスクロール時に日付が追従します
+            // 背景にブラーを入れて読みやすく
+            header.className = "sticky top-[-1px] z-20 bg-base-50/95 dark:bg-base-900/95 backdrop-blur-sm py-2 px-1 text-xs font-black text-gray-400 uppercase tracking-widest border-b border-indigo-100 dark:border-indigo-900/50 mb-3 mt-1";
+            header.innerHTML = `<span>${dateStr}</span>`;
             listEl.appendChild(header);
             currentDateStr = dateStr;
         }
 
         const li = document.createElement('li');
-        li.className = "relative group bg-white dark:bg-gray-800 rounded-2xl p-3 shadow-sm flex items-center gap-3 mb-2 transition-all active:scale-[0.98] border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900";
+        // 【UI改善】 p-3 -> p-4, gap-3 -> gap-4 でゆとりを持たせる
+        // アニメーション用のクラス log-item を追加
+        li.className = "log-item relative group bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm flex items-center gap-4 mb-3 transition-all active:scale-[0.98] border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900";
         
-        let icon = '🍺';
+        // アニメーション用遅延 (リストがパラパラと表示される演出)
+        li.style.animationDelay = `${Math.min(index * 0.05, 0.3)}s`;
+        
+        // 【UI改善】 アイコンサイズ拡大 w-10 -> w-12
+        let iconSizeClass = "w-12 h-12 text-xl";
         let colorClass = 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-500';
+        let icon = '🍺';
         let mainText = '';
         let subText = '';
         let rightContent = '';
@@ -144,47 +150,52 @@ export const updateLogListView = async (isLoadMore = false) => {
             icon = ex ? ex.icon : '🏃';
             colorClass = 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400';
             mainText = log.name; 
-            subText = `${log.minutes} min · -${Math.round(log.kcal)} kcal`;
-            rightContent = `<span class="text-xs font-bold text-indigo-500">-${Math.round(log.kcal)}</span>`;
+            subText = `<span class="font-bold text-gray-600 dark:text-gray-300">${log.minutes} min</span> · -${Math.round(log.kcal)} kcal`;
+            rightContent = `<span class="text-sm font-black text-indigo-500">-${Math.round(log.kcal)}</span>`;
         } else if (log.type === 'beer') {
             const size = log.size || 350;
             const count = log.count || 1;
             
             if (log.brand) {
-                mainText = log.brewery ? `<span class="text-[10px] opacity-70 block leading-tight">${escapeHtml(log.brewery)}</span>${escapeHtml(log.brand)}` : escapeHtml(log.brand);
+                // 【UI改善】 ブランド名を強調、ブルワリー名は少し控えめに（階層構造の明確化）
+                mainText = log.brewery ? `<span class="text-[10px] opacity-60 block leading-tight mb-0.5 font-bold uppercase tracking-wide">${escapeHtml(log.brewery)}</span>${escapeHtml(log.brand)}` : escapeHtml(log.brand);
             } else {
                 mainText = escapeHtml(log.name); 
             }
 
             const styleInfo = log.style ? ` · ${log.style}` : ''; 
             const totalMl = size * count;
-            subText = `${count} cans (${totalMl}ml)${styleInfo}`;
+            subText = `${count} cans <span class="opacity-60">(${totalMl}ml)</span>${styleInfo}`;
             
             if(log.rating > 0) {
-                rightContent = `<span class="text-[10px] text-amber-400">★${log.rating}</span>`;
+                // 星評価のデザイン調整
+                rightContent = `<div class="flex items-center bg-yellow-50 dark:bg-yellow-900/30 px-2 py-1 rounded-lg"><span class="text-xs font-bold text-yellow-600 dark:text-yellow-400">★${log.rating}</span></div>`;
             }
         }
 
         // チェックボックス (編集モード時のみ表示)
         const checkboxHtml = StateManager.isEditMode ? `
-            <div class="mr-1">
-                <input type="checkbox" class="log-checkbox checkbox checkbox-xs checkbox-primary" data-id="${log.id}">
+            <div class="mr-2">
+                <input type="checkbox" class="log-checkbox checkbox checkbox-sm checkbox-primary rounded-md" data-id="${log.id}">
             </div>
         ` : '';
 
         li.innerHTML = `
             ${checkboxHtml}
-            <div class="w-10 h-10 rounded-full ${colorClass} flex items-center justify-center text-lg shrink-0">
+            <div class="${iconSizeClass} rounded-full ${colorClass} flex items-center justify-center shrink-0 shadow-inner">
                 ${icon}
             </div>
 
             <div class="flex-1 min-w-0 cursor-pointer" onclick="UI.editLog(${log.id})">
                 <div class="flex justify-between items-start">
-                    <div class="text-sm font-bold text-gray-800 dark:text-gray-100 leading-tight">${mainText}</div>
-                    ${rightContent}
+                    <!-- 【UI改善】 text-sm -> text-base, font-black で視認性向上 -->
+                    <div class="text-base font-black text-gray-900 dark:text-gray-50 leading-snug">${mainText}</div>
+                    <div class="ml-2 flex-shrink-0">${rightContent}</div>
                 </div>
-                <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">${subText}</div>
-                ${log.memo ? `<div class="text-[10px] text-gray-400 mt-1 truncate bg-gray-50 dark:bg-gray-700/50 p-1 rounded inline-block max-w-full"><i class="ph-bold ph-note-pencil mr-1"></i>${escapeHtml(log.memo)}</div>` : ''}
+                <!-- 【UI改善】 text-[11px] -> text-xs, 色を少し濃くして読みやすく -->
+                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate font-bold opacity-90">${subText}</div>
+                
+                ${log.memo ? `<div class="mt-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 px-2 py-1.5 rounded-lg inline-block max-w-full"><i class="ph-bold ph-note-pencil mr-1 opacity-70"></i>${escapeHtml(log.memo)}</div>` : ''}
             </div>
         `;
         

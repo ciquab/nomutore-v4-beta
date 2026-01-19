@@ -140,6 +140,8 @@ body {
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid rgba(255, 255, 255, 0.5);
     box-shadow: 0 -10px 40px rgba(0,0,0,0.05);
+    /* Z-Index Hierarchy: Level 1 */
+    z-index: 50; 
 }
 .dark .floating-nav {
     background: rgba(15, 23, 42, 0.9);
@@ -214,9 +216,56 @@ body {
     animation-fill-mode: forwards;
 }
 
-/* style.css の末尾に追加 */
-
 select:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* === UI Polish Improvements (v5 Prep) === 
+   モーダル階層とリストアニメーションの強化
+*/
+
+/* Z-Index Hierarchy Management */
+/* Action Menu: Level 2 */
+#action-menu-modal { z-index: 100 !important; }
+
+/* Input Modals: Level 3 */
+#beer-modal, 
+#check-modal, 
+#exercise-modal, 
+#settings-modal, 
+#help-modal { 
+    z-index: 200 !important; 
+}
+
+/* Immersive/Critical Modals: Level 4 */
+#timer-modal { z-index: 300 !important; }
+#rollover-modal { z-index: 350 !important; }
+
+/* Notifications/Overlays: Level 5 */
+#message-box { z-index: 9999 !important; }
+#global-error-overlay { z-index: 10000 !important; }
+
+/* List Item Entry Animation */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.log-item {
+    animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0; /* 初期状態は非表示（animationDelayで順次表示） */
+}
+
+/* Sticky Header Background Fix */
+/* スクロール時に後ろの要素が透けすぎないように補正 */
+.sticky-header-bg {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
