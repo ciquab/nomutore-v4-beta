@@ -58,7 +58,7 @@
                 </button>
 
                 <button onclick="UI.toggleTheme()" class="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-yellow-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition flex-shrink-0">
-                    <i class="ph-fill ph-moon-stars text-lg"></i>
+                    <i id="theme-icon" class="ph-fill ph-moon-stars text-lg transition-colors"></i>
                 </button>
             </div>
         </div>
@@ -145,14 +145,14 @@
 
             <button onclick="UI.openManualInput()" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 transition active:scale-95">
                 <span class="text-2xl">📝</span>
-                <span class="text-[10px] font-bold text-gray-600 dark:text-gray-300">運動（手動入力）</span>
+                <span class="text-[10px] font-bold text-gray-600 dark:text-gray-300">運動<br>（手動入力）</span>
             </button>
         </div>
     </section>
 
     <section class="px-1">
         <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider ml-1">ストップウォッチ</h3>
-        <button onclick="UI.openTimer()" class="w-full group relative overflow-hidden rounded-3xl p-6 bg-base-900 dark:bg-white text-left shadow-xl transition-transform active:scale-95">
+        <button onclick="UI.openTimer(true)" class="w-full group relative overflow-hidden rounded-3xl p-6 bg-base-900 dark:bg-white text-left shadow-xl transition-transform active:scale-95">
             <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/30 rounded-full blur-3xl"></div>
             <div class="relative z-10 flex items-center justify-between">
                 <div>
@@ -255,13 +255,21 @@
                 </div>
                 
                 <div class="mb-2">
-                    <label class="text-xs font-bold text-gray-500 mb-1 block">Period Mode</label>
-                    <select id="setting-period-mode" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold mb-1 text-sm">
-                        <option value="weekly">Weekly (Reset on Mon)</option>
-                        <option value="monthly">Monthly (Reset on 1st)</option>
-                        <option value="permanent">Permanent (Endless)</option>
-                    </select>
-                </div>
+    <label class="text-xs font-bold text-gray-500 mb-1 block">Period Mode</label>
+    <select id="setting-period-mode" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold mb-1 text-sm">
+        <option value="weekly">Weekly (Reset on Mon)</option>
+        <option value="monthly">Monthly (Reset on 1st)</option>
+        <option value="custom">Custom (Fixed Days)</option> <option value="permanent">Permanent (Endless)</option>
+    </select>
+</div>
+
+<div id="setting-period-duration-container" class="mb-2 hidden">
+    <label class="text-xs font-bold text-gray-500 mb-1 block flex justify-between">
+        <span>Duration (Days)</span>
+        <span class="text-indigo-500 text-[10px]">Short-term Challenge</span>
+    </label>
+    <input type="number" id="setting-period-duration" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl p-3 font-bold text-sm" placeholder="14" min="1">
+</div>
             </div>
 
             <div class="glass-panel p-6 rounded-3xl mb-4">
@@ -674,10 +682,10 @@
     
     <section class="text-center space-y-3">
         <span class="px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 text-[10px] font-bold uppercase tracking-widest">Concept</span>
-        <h4 class="text-2xl font-black text-base-900 dark:text-white">
-            飲んだら、動いて返す。<br>
-            <span class="text-indigo-500">「実質ゼロ」</span>を目指そう。
-        </h4>
+        <h4 class="text-xl font-black text-base-900 dark:text-white leading-tight">
+    飲んだら、動いて返す。<br>
+    <span class="text-indigo-500">「実質ゼロ」</span>を目指そう。
+</h4>
         <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
             Nomutoreは、飲酒摂取カロリーを「借金」、運動消費カロリーを「返済」と捉え、<br>
             <strong class="text-base-800 dark:text-gray-200">「美味しいビールを、罪悪感なく飲み続ける」</strong>ためのツールです。
@@ -700,7 +708,7 @@
                     </li>
                     <li class="flex gap-2">
                         <span class="text-emerald-500 font-bold">● Zen:</span>
-                        <span>収支がプラスになると液体が消え、オーブが緑に輝きます。これは「貯金」がある状態です。</span>
+                        <span>収支がプラスになると液体が消え、オーブが黄金に輝きます。これは「貯金」がある状態です。</span>
                     </li>
                 </ul>
             </div>
@@ -856,9 +864,9 @@
                     <span class="text-xs font-bold text-amber-900 dark:text-amber-100">ビールを記録</span>
                 </button>
                 
-                <button onclick="UI.handleActionSelect('timer')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition group h-28">
-                    <i class="ph-fill ph-timer text-4xl group-hover:scale-110 transition duration-300"></i>
-                    <span class="text-xs font-bold">ストップウォッチ開始</span>
+                <button onclick="UI.handleActionSelect('check')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition group h-24">
+                    <span class="text-2xl group-hover:scale-110 transition duration-300">✅</span>
+                    <span class="text-xs font-bold text-emerald-800 dark:text-emerald-200">体調を記録</span>
                 </button>
 
                 <button onclick="UI.handleActionSelect('exercise')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition group h-24">
@@ -866,9 +874,9 @@
                     <span class="text-xs font-bold text-gray-600 dark:text-gray-300">運動を記録</span>
                 </button>
                 
-                <button onclick="UI.handleActionSelect('check')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition group h-24">
-                    <span class="text-2xl group-hover:scale-110 transition duration-300">✅</span>
-                    <span class="text-xs font-bold text-emerald-800 dark:text-emerald-200">体調を記録</span>
+　　　　　　　　<button onclick="UI.handleActionSelect('timer')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition group h-28">
+                    <i class="ph-fill ph-timer text-4xl group-hover:scale-110 transition duration-300"></i>
+                    <span class="text-xs font-bold">ストップウォッチ<br>開始</span>
                 </button>
             </div>
             

@@ -16,6 +16,7 @@ export const APP = {
         
         PERIOD_MODE: 'hazy_payback_balance_mode',
         PERIOD_START: 'hazy_payback_period_start',
+        PERIOD_DURATION: 'hazy_payback_period_duration',
         CHECK_SCHEMA: 'hazy_payback_check_schema',
         ORB_STYLE: 'hazy_payback_orb_style',
         UNIT_MODE: 'hazy_payback_unit_mode',
@@ -28,6 +29,7 @@ export const APP = {
         THEME: 'system',
         DEFAULT_RECORD_EXERCISE: 'walking',
         PERIOD_MODE: 'weekly',
+        PERIOD_DURATION: 14,
         ORB_STYLE: 'lager',
         UNIT_MODE: 'kcal'
     },

@@ -151,10 +151,32 @@ export const toggleDryDay = (isDry) => {
 
 export const applyTheme = (themeName) => {
     const root = document.documentElement;
-    if (themeName === 'dark') root.classList.add('dark');
-    else if (themeName === 'light') root.classList.remove('dark');
-    else {
-        if (window.matchMedia('(prefers-color-scheme: dark)').matches) root.classList.add('dark');
-        else root.classList.remove('dark');
+    let isDark = themeName === 'dark';
+
+    // System設定の場合の判定
+    if (themeName === 'system') {
+        isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    // 1. HTMLタグのクラス切り替え
+    if (isDark) {
+        root.classList.add('dark');
+        root.classList.remove('light'); // lightクラスがある場合も除去
+    } else {
+        root.classList.remove('dark');
+        root.classList.add('light'); // 明示的にlightを入れる（Tailwind設定次第だが安全策）
+    }
+
+    // 2. アイコンの切り替え (新規追加)
+    // index.html でアイコンに id="theme-icon" を振った前提
+    const icon = document.getElementById('theme-icon');
+    if (icon) {
+        if (isDark) {
+            // ダークモード: 黄色い月
+            icon.className = 'ph-fill ph-moon-stars text-lg text-yellow-400 transition-colors';
+        } else {
+            // ライトモード: オレンジの太陽
+            icon.className = 'ph-fill ph-sun text-lg text-orange-500 transition-colors';
+        }
     }
 };

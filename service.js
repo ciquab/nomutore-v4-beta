@@ -228,14 +228,17 @@ export const Service = {
      * 期間開始日の計算 (月曜始まり対応)
      */
     calculatePeriodStart: (mode) => {
-        const now = dayjs();
-        if (mode === 'weekly') {
-            return getStartOfWeek(now).valueOf(); // 月曜始まり
-        } else if (mode === 'monthly') {
-            return now.startOf('month').valueOf();
-        }
-        return 0; // Permanent
-    },
+    const now = dayjs();
+    if (mode === 'weekly') {
+        return getStartOfWeek(now).valueOf();
+    } else if (mode === 'monthly') {
+        return now.startOf('month').valueOf();
+    } else if (mode === 'custom') {
+        // ★追加: Customモードは「今日」を開始日とする
+        return now.startOf('day').valueOf();
+    }
+    return 0; // Permanent
+},
 
     /**
      * 【新規実装】期間ロールオーバーのチェックと実行
@@ -271,7 +274,21 @@ export const Service = {
                 shouldRollover = true;
                 nextStart = currentMonthStart.valueOf();
             }
+        } else if (mode === 'custom') {
+        // ★追加: Customモードの期限判定
+        const duration = parseInt(localStorage.getItem(APP.STORAGE_KEYS.PERIOD_DURATION)) || 14;
+        
+        // 開始日 + 設定日数 = 終了予定日
+        // 例: 開始 1日 + 14日 = 15日 (15日の00:00)
+        // もし現在(now)が 終了予定日以降ならリセット
+        const limitDate = startDate.add(duration, 'day');
+        
+        if (now.isAfter(limitDate) || now.isSame(limitDate)) {
+            shouldRollover = true;
+            // 次の開始日は、前の期間の終了時点（＝予定日）とする
+            nextStart = limitDate.valueOf();
         }
+    }
 
         if (shouldRollover) {
     console.log(`[Service] Rollover detected. Mode: ${mode}`);

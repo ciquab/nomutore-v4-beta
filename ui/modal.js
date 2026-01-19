@@ -53,7 +53,7 @@ export const handleActionSelect = (type) => {
     } else if (type === 'check') {
         openCheckModal(dateStr);
     } else if (type === 'timer') { // ★追加
-        openTimer();
+        openTimer(true); // 自動開始フラグをON
     }
 };
 
@@ -378,9 +378,22 @@ export const handleSaveManualExercise = () => {
     }));
 };
 
-export const openTimer = () => {
+export const openTimer = (autoStart = false) => {
     Timer.init();
     toggleModal('timer-modal', true);
+
+    // すでに計測中の場合は何もしない（二重起動防止）
+    const isRunning = localStorage.getItem(APP.STORAGE_KEYS.TIMER_START);
+    
+    if (autoStart && !isRunning) {
+        // モーダルが開くアニメーションを少し待ってから開始ボタンを押す
+        setTimeout(() => {
+            const toggleBtn = document.getElementById('btn-timer-toggle');
+            if (toggleBtn) {
+                toggleBtn.click(); // Timer.toggle() を直接呼ぶより、ボタンクリックを模倣する方が安全
+            }
+        }, 300);
+    }
 };
 
 export const closeTimer = () => {
@@ -397,7 +410,35 @@ export const closeTimer = () => {
 export const renderSettings = () => {
     const currentMode = localStorage.getItem(APP.STORAGE_KEYS.PERIOD_MODE) || 'weekly';
     const periodSel = document.getElementById('setting-period-mode');
-    if (periodSel) periodSel.value = currentMode;
+    // ★追加: 期間設定の読み込み
+    const durationInput = document.getElementById('setting-period-duration');
+    const durationContainer = document.getElementById('setting-period-duration-container');
+    const savedDuration = localStorage.getItem(APP.STORAGE_KEYS.PERIOD_DURATION) || APP.DEFAULTS.PERIOD_DURATION;
+
+    if (periodSel) {
+        periodSel.value = currentMode;
+        
+        // イベントリスナー定義 (モード変更時の表示切替)
+        periodSel.onchange = () => {
+            if (periodSel.value === 'custom') {
+                durationContainer.classList.remove('hidden');
+            } else {
+                durationContainer.classList.add('hidden');
+            }
+        };
+        
+        // 初期表示状態の設定
+        if (currentMode === 'custom') {
+            durationContainer.classList.remove('hidden');
+        } else {
+            durationContainer.classList.add('hidden');
+        }
+    }
+    
+    if (durationInput) {
+        durationInput.value = savedDuration;
+    }
+
     renderCheckEditor();
 };
 
@@ -479,6 +520,13 @@ export const handleSaveSettings = async () => {
     try {
         const periodSel = document.getElementById('setting-period-mode');
         const newMode = periodSel ? periodSel.value : 'weekly';
+
+        // ★追加: 日数の保存
+        const durationInput = document.getElementById('setting-period-duration');
+        if (durationInput && durationInput.value) {
+            localStorage.setItem(APP.STORAGE_KEYS.PERIOD_DURATION, durationInput.value);
+        }
+
         await Service.updatePeriodSettings(newMode);
 
         const w = document.getElementById('weight-input').value;
