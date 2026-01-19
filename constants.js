@@ -118,7 +118,31 @@ Object.keys(CALORIES.STYLES).forEach(style => {
     STYLE_COLOR_MAP[style] = STYLE_METADATA[style] ? STYLE_METADATA[style].color : 'gold';
 });
 
-export const EXERCISE = { 'stepper': { label: 'ステッパー', mets: 6.0, icon: '🏃‍♀️' }, 'walking': { label: 'ウォーキング (通勤等)', mets: 3.5, icon: '🚶' }, 'brisk_walking': { label: '早歩き', mets: 4.5, icon: '👟' }, 'cycling': { label: '自転車 (ゆっくり)', mets: 4.0, icon: '🚲' }, 'training': { label: '筋トレ (パーソナル等)', mets: 5.0, icon: '🏋️' }, 'running': { label: 'ランニング', mets: 7.0, icon: '💨' }, 'hiit': { label: 'HIIT (高強度)', mets: 8.0, icon: '🔥' }, 'yoga': { label: 'ヨガ (ストレッチ)', mets: 2.5, icon: '🧘' }, 'cleaning': { label: '部屋の掃除', mets: 3.0, icon: '🧹' } };
+export const EXERCISE = {
+    // 1. ビアギークの基本（最強の動機づけ）
+    'beer_walk': { label: 'ビア散歩 (飲みに行く)', mets: 3.5, icon: '🍺' },
+    
+    // 2. 自宅マシン（制作者様推奨：動画見ながらOK）
+    'stepper': { label: 'ステッパー (自宅)', mets: 6.0, icon: '👣' },
+    'cycling': { label: 'エアロバイク・自転車', mets: 4.0, icon: '🚲' }, // 軽い負荷を想定
+
+    // 3. 生活・ながら運動
+    'walking': { label: '通勤・徒歩移動', mets: 3.5, icon: '🚶' },
+    'gaming': { label: 'フィットネスゲーム', mets: 4.0, icon: '🎮' },
+    'housework': { label: '家事・掃除・育児', mets: 3.3, icon: '🧹' }, 
+    
+    // 4. メンテナンス
+    'stretch': { label: 'ストレッチ・ヨガ', mets: 2.5, icon: '🧘' },
+    
+    // 5. 少し頑張る時
+    'brisk_walking': { label: '早歩き・急ぎ移動', mets: 4.5, icon: '👟' },
+    'training': { label: '筋トレ (自重・ジム)', mets: 5.0, icon: '💪' },
+    
+    // 6. ガチ勢向け（優先度低）
+    'running': { label: 'ランニング', mets: 7.0, icon: '🏃' },
+    'hiit': { label: 'HIIT (高強度)', mets: 8.0, icon: '🔥' }
+};
+
 export const SIZE_DATA = { '350': { label: '350ml (缶)', ratio: 1.0 }, '500': { label: '500ml (ロング缶)', ratio: 1.43 }, '473': { label: '473ml (USパイント)', ratio: 1.35 }, '568': { label: '568ml (UKパイント)', ratio: 1.62 }, '250': { label: '250ml (小グラス)', ratio: 0.71 }, '1000': { label: '1L (マース)', ratio: 2.86 } };
 
 export const ALCOHOL_CONSTANTS = {

@@ -131,27 +131,27 @@
     </div>
 
     <section class="px-1">
-        <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider ml-1">Quick Log</h3>
+        <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider ml-1">記録メニュー</h3>
         <div class="grid grid-cols-3 gap-3">
             <button onclick="UI.openBeerModal()" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 hover:bg-amber-100 transition active:scale-95">
                 <span class="text-2xl">🍺</span>
-                <span class="text-[10px] font-bold text-amber-900 dark:text-amber-100">Drink</span>
+                <span class="text-[10px] font-bold text-amber-900 dark:text-amber-100">ビール</span>
             </button>
 
             <button onclick="UI.openCheckModal()" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 hover:bg-emerald-100 transition active:scale-95">
                 <span class="text-2xl">✅</span>
-                <span class="text-[10px] font-bold text-emerald-900 dark:text-emerald-100">Health</span>
+                <span class="text-[10px] font-bold text-emerald-900 dark:text-emerald-100">体調</span>
             </button>
 
             <button onclick="UI.openManualInput()" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 transition active:scale-95">
                 <span class="text-2xl">📝</span>
-                <span class="text-[10px] font-bold text-gray-600 dark:text-gray-300">Exercise</span>
+                <span class="text-[10px] font-bold text-gray-600 dark:text-gray-300">運動（手動入力）</span>
             </button>
         </div>
     </section>
 
     <section class="px-1">
-        <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider ml-1">Workout Timer</h3>
+        <h3 class="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider ml-1">ストップウォッチ</h3>
         <button onclick="UI.openTimer()" class="w-full group relative overflow-hidden rounded-3xl p-6 bg-base-900 dark:bg-white text-left shadow-xl transition-transform active:scale-95">
             <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/30 rounded-full blur-3xl"></div>
             <div class="relative z-10 flex items-center justify-between">
@@ -160,8 +160,8 @@
                         <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
                         <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Immersive Mode</span>
                     </div>
-                    <h3 class="text-xl font-black text-white dark:text-base-900">Start Workout</h3>
-                    <p class="text-[10px] font-bold text-gray-500">Live tracking & Beer conversion</p>
+                    <h3 class="text-xl font-black text-white dark:text-base-900">運動計測スタート</h3>
+                    <p class="text-[10px] font-bold text-gray-500">リアルタイムでカロリーを計算＆ビールに換算</p>
                 </div>
                 <div class="w-12 h-12 rounded-full bg-white/10 dark:bg-base-900/10 flex items-center justify-center border border-white/20 dark:border-base-900/20">
                     <i class="ph-fill ph-play text-2xl text-white dark:text-base-900 ml-0.5"></i>
@@ -621,13 +621,13 @@
             <div class="w-16 h-16 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center mb-4">
                 <i class="ph-fill ph-calendar-check text-3xl text-indigo-600 dark:text-indigo-400"></i>
             </div>
-            <h3 class="font-black text-2xl mb-2 text-base-900 dark:text-white">Period Complete!</h3>
+            <h3 class="font-black text-2xl mb-2 text-base-900 dark:text-white">期間終了！</h3>
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                Good job! Your current period has ended.<br>
-                Records will be archived, and you can start fresh with a clean slate.
+                お疲れ様でした！今期の記録を締め切りました。<br>
+                実績はアーカイブに保存されます。また新しい気持ちでスタートしましょう！
             </p>
             <button onclick="document.dispatchEvent(new Event('confirm-rollover'))" class="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-500/30">
-                Start New Period
+                新しい期間を始める
             </button>
         </div>
     </div>
@@ -729,13 +729,26 @@
                     <p class="text-gray-500 mt-1">「Preset」からスタイル選ぶか、「Custom」で度数(ABV)と量を直接入力。銘柄名を入れて🔍を押すとUntappdで検索も可能です。</p>
                 </div>
             </div>
+            
             <div class="flex gap-4">
                 <div class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-xl shrink-0">⏱️</div>
                 <div class="text-xs">
-                    <h5 class="font-bold text-sm">ワークアウト・タイマー</h5>
+                    <h5 class="font-bold text-sm">ストップウォッチ</h5>
                     <p class="text-gray-500 mt-1">運動開始時にスタート。リアルタイムで「ビール何本分返済したか」が表示され、没入感を高めます。</p>
                 </div>
             </div>
+
+            <div class="flex gap-4">
+                <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xl shrink-0">📝</div>
+                <div class="text-xs">
+                    <h5 class="font-bold text-sm">日常の動きを記録 (手動)</h5>
+                    <p class="text-gray-500 mt-1 leading-relaxed">
+                        ジムに行かなくてもOK。<span class="text-indigo-600 dark:text-indigo-400 font-bold">「通勤」「ビア散歩」「家事」</span>なども立派な運動です。<br>
+                        あとから手動入力でカロリーに変換しましょう。
+                    </p>
+                </div>
+            </div>
+
             <div class="flex gap-4">
                 <div class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-xl shrink-0">✅</div>
                 <div class="text-xs">
@@ -758,10 +771,19 @@
                     <br>・3日継続: <strong>1.1x</strong> / 7日: <strong>1.2x</strong> / 14日: <strong>1.3x</strong>
                 </p>
             </div>
+            
             <div class="space-y-2">
                 <h5 class="font-black text-indigo-600 dark:text-indigo-400 text-sm">🐣 ルーキーモード</h5>
                 <p class="text-[11px] text-indigo-800/80 dark:text-indigo-300/80 leading-relaxed">
                     利用開始から14日間は、ランク判定が「休肝成功率」になります。まずは 25% 以上の成功率（たまご卒業）を目指しましょう！
+                </p>
+            </div>
+
+            <div class="space-y-2 pt-4 border-t border-indigo-200 dark:border-indigo-800/50">
+                <h5 class="font-black text-indigo-600 dark:text-indigo-400 text-sm">🔄 期間リセット (Period)</h5>
+                <p class="text-[11px] text-indigo-800/80 dark:text-indigo-300/80 leading-relaxed">
+                    飲みすぎても大丈夫。デフォルト設定では<strong>「毎週月曜日」</strong>に記録がリセットされ、借金もゼロになります。<br>
+                    1週間単位で帳尻を合わせればOKです。（設定で月次・無期限に変更可）
                 </p>
             </div>
         </div>
@@ -823,7 +845,7 @@
             <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-6 sm:hidden"></div>
             
             <div class="text-center mb-6">
-                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">What to do?</span>
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">クイックメニュー</span>
                 <h3 id="action-menu-date-label" class="text-2xl font-black text-base-900 dark:text-white mt-1">Today</h3>
                 <input type="hidden" id="action-menu-target-date">
             </div>
@@ -831,22 +853,22 @@
             <div class="grid grid-cols-2 gap-3 mb-6">
                 <button onclick="UI.handleActionSelect('beer')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition group h-28">
                     <span class="text-4xl group-hover:scale-110 transition duration-300 filter drop-shadow-sm">🍺</span>
-                    <span class="text-xs font-bold text-amber-900 dark:text-amber-100">Log Drink</span>
+                    <span class="text-xs font-bold text-amber-900 dark:text-amber-100">ビールを記録</span>
                 </button>
                 
                 <button onclick="UI.handleActionSelect('timer')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition group h-28">
                     <i class="ph-fill ph-timer text-4xl group-hover:scale-110 transition duration-300"></i>
-                    <span class="text-xs font-bold">Start Timer</span>
+                    <span class="text-xs font-bold">ストップウォッチ開始</span>
                 </button>
 
                 <button onclick="UI.handleActionSelect('exercise')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition group h-24">
                     <span class="text-2xl group-hover:scale-110 transition duration-300">📝</span>
-                    <span class="text-xs font-bold text-gray-600 dark:text-gray-300">Manual Input</span>
+                    <span class="text-xs font-bold text-gray-600 dark:text-gray-300">運動を記録</span>
                 </button>
                 
                 <button onclick="UI.handleActionSelect('check')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition group h-24">
                     <span class="text-2xl group-hover:scale-110 transition duration-300">✅</span>
-                    <span class="text-xs font-bold text-emerald-800 dark:text-emerald-200">Daily Check</span>
+                    <span class="text-xs font-bold text-emerald-800 dark:text-emerald-200">体調を記録</span>
                 </button>
             </div>
             
