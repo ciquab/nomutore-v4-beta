@@ -9,6 +9,7 @@ import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 let timerInterval = null;
 let isRunning = false;
 let lastBurnedKcal = 0; // ★修正: 整数Countではなく、小数のKcalで管理
+let accumulatedTime = 0;
 
 // 内部関数: 時間整形
 const formatTime = (ms) => {
