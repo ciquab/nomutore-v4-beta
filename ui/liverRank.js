@@ -9,7 +9,6 @@ export function renderLiverRank(checks, logs) {
     const card = DOM.elements['liver-rank-card'] || document.getElementById('liver-rank-card');
     if(!card) return;
 
-    // Rankに応じたカラーパレット定義
     let theme = {
         bg: "bg-gray-50", darkBg: "dark:bg-gray-800/50",
         text: "text-gray-800", darkText: "dark:text-white",
@@ -49,7 +48,6 @@ export function renderLiverRank(checks, logs) {
         };
     }
 
-    // プログレス計算
     let progressPercent = 0;
     let nextText = "Max Level";
     
@@ -64,8 +62,9 @@ export function renderLiverRank(checks, logs) {
         }
     }
 
-    // HTML生成
-    card.className = `glass-panel p-4 rounded-2xl relative overflow-hidden group cursor-pointer transition hover:border-opacity-50 flex flex-col justify-between h-full min-h-[130px] ${theme.bg} ${theme.darkBg}`;
+    // 【修正ポイント】構造を checkStatus.js と完全に一致させる
+    // min-h-[140px] に固定し、flex-col justify-between で配置
+    card.className = `glass-panel p-4 rounded-2xl relative overflow-hidden group cursor-pointer transition hover:border-opacity-50 flex flex-col justify-between h-full min-h-[140px] ${theme.bg} ${theme.darkBg}`;
     
     card.innerHTML = `
         <div class="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition transform group-hover:scale-110 duration-500">
@@ -73,18 +72,20 @@ export function renderLiverRank(checks, logs) {
         </div>
         
         <div class="relative z-10 flex flex-col h-full justify-between">
+            <!-- Header Section -->
             <div>
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="text-[10px] font-bold uppercase tracking-widest opacity-60 ${theme.text} ${theme.darkText}">Liver Rank</span>
+                <div class="flex items-center gap-2 mb-1.5 h-4"> <!-- 高さ固定 -->
+                    <span class="text-[10px] font-bold uppercase tracking-widest opacity-60 ${theme.text} ${theme.darkText}">LIVER RANK</span>
                 </div>
                 
-                <div class="flex flex-col items-start">
+                <div class="flex flex-col items-start min-h-[3.5rem] justify-center"> <!-- 高さ確保 -->
                     <span class="text-3xl font-black ${theme.text} ${theme.darkText} leading-none tracking-tight">${gradeData.rank}</span>
                     <span class="text-xs font-bold opacity-80 ${theme.text} ${theme.darkText} mt-1">${gradeData.label}</span>
                 </div>
             </div>
 
-            <div class="mt-3">
+            <!-- Footer Section -->
+            <div class="mt-2">
                 <div class="flex justify-between items-end mb-1">
                     <span class="text-[10px] font-bold opacity-60 ${theme.text} ${theme.darkText}">Progress</span>
                     <span class="text-[10px] font-bold ${theme.text} ${theme.darkText}">${Math.round(progressPercent)}%</span>

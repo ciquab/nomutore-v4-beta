@@ -9,7 +9,8 @@ html, body {
 }
 
 body { 
-    padding-bottom: 7rem; /* Floating Bar Space */
+    /* 余白は .tab-content で管理するため、bodyは最小限に */
+    padding-bottom: 0; 
     background-color: #f8fafc; /* base-50 */
     color: #1e293b; /* base-800 */
 }
@@ -25,7 +26,12 @@ body {
 .dark .log-container::-webkit-scrollbar-thumb { background-color: #475569; }
 
 /* --- Animations --- */
-.tab-content { display: none; animation: fadeIn 0.3s ease-out; }
+.tab-content { 
+    display: none; 
+    animation: fadeIn 0.3s ease-out; 
+    /* 【修正】すべてのタブで下部余白を強制統一 (32 * 0.25rem = 8rem) */
+    padding-bottom: 8rem !important; 
+}
 .tab-content.active { display: block; }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
