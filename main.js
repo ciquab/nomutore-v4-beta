@@ -95,7 +95,7 @@ const initApp = async () => {
             console.log('First run detected. Opening settings...');
             setTimeout(() => {
                 UI.switchTab('settings');
-                UI.showMessage('Welcome! Please configure your settings.', 'success');
+                UI.showMessage('ようこそ！まずは設定を入力しましょう！', 'success');
             }, 300);
         }
 

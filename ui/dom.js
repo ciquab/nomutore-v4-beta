@@ -1,6 +1,26 @@
 import { APP } from '../constants.js';
 import confetti from 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/+esm';
 
+// Web Share APIラッパー
+const shareContent = async (text) => {
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: 'Nomutore Log',
+                text: text,
+                // url: window.location.href // PWAのURLを含める場合はここ
+            });
+        } catch (err) {
+            console.log('Share canceled or failed', err);
+        }
+    } else {
+        // Fallback: クリップボードコピー
+        navigator.clipboard.writeText(text).then(() => {
+            alert('クリップボードにコピーしました！SNSに貼り付けてください。');
+        });
+    }
+};
+
 export const DOM = {
     isInitialized: false,
     elements: {},
@@ -8,7 +28,7 @@ export const DOM = {
         if (DOM.isInitialized) return;
         
         const ids = [
-            // --- Modals & Inputs (Existing v3) ---
+            // --- Modals & Inputs ---
             'message-box', 'drinking-section', 
             'beer-date', 'beer-select', 'beer-size', 'beer-count',
             'beer-input-preset', 'beer-input-custom',
@@ -20,41 +40,28 @@ export const DOM = {
             'setting-mode-1', 'setting-mode-2', 'setting-base-exercise', 'theme-input','setting-default-record-exercise',
             'home-mode-select', 
             
-            // --- New v4 Orb Mapping ---
-            // 'tank-liquid' は JS(beerTank.js) が高さを操作する対象。
-            // v4では front liquid を操作対象としてマッピングする。
-            'tank-liquid',      // Maps to #orb-liquid-front
-            'tank-liquid-back', // New: Maps to #orb-liquid-back (for future parity)
-            
-            'tank-empty-icon', 
-            'tank-cans',        // Maps to the new balance display text
-            'tank-minutes',     // Maps to the minutes text
-            'tank-message',     // Maps to the message area below orb
+            'tank-liquid', 'tank-liquid-back',
+            'tank-empty-icon', 'tank-cans', 'tank-minutes', 'tank-message',
 
-            // --- Log List & History ---
             'log-list', 'history-base-label',
 
-            // --- Rank & Check ---
             'liver-rank-card', 'rank-title', 'dry-count', 'rank-progress', 'rank-next-msg',
             'check-status', 
             
-            // --- Weekly / Heatmap ---
             'streak-count', 'streak-badge',
             'heatmap-grid', 'heatmap-period-label', 'heatmap-prev', 'heatmap-next',
             'balanceChart', 'chart-filters',
 
             // --- Modals (Outer) ---
-            'beer-modal', 'check-modal', 'exercise-modal', 'settings-modal', 'profile-modal', 'log-detail-modal', 'help-modal',
-            'global-error-overlay', 'error-details', 'swipe-coach-mark'
+            'beer-modal', 'check-modal', 'exercise-modal', 'settings-modal', 'help-modal',
+            'global-error-overlay', 'error-details', 'swipe-coach-mark',
+            'check-library-modal', // ★追加
+            'action-menu-modal'    // ★追加
         ];
 
-        // IDマッピングの実行
         ids.forEach(id => {
             const el = document.getElementById(id);
-            // v4への移行期間中、一部IDが存在しない場合があるため警告は出さない
             if (el) DOM.elements[id] = el;
-            
-            // v4マッピング補完: tank-liquid が見つからない場合(IDが変わった場合)、orb-liquid-frontを探す
             if (id === 'tank-liquid' && !el) {
                 DOM.elements['tank-liquid'] = document.getElementById('orb-liquid-front');
             }
@@ -64,7 +71,6 @@ export const DOM = {
     }
 };
 
-// --- 以下、既存のHelper関数群は変更なし ---
 export const escapeHtml = (str) => {
     if(typeof str !== 'string') return str;
     return str.replace(/[&<>"']/g, function(m) {
@@ -100,22 +106,54 @@ export const showConfetti = () => {
     });
 };
 
-export const showMessage = (text, type = 'info') => {
+// --- Phase 1.5 Update: Action Button Support ---
+export const showMessage = (text, type = 'info', action = null) => {
     const box = DOM.elements['message-box'] || document.getElementById('message-box');
-    if (!box) return; // ガード
+    if (!box) return;
 
-    box.textContent = text;
-    box.className = `fixed top-6 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-lg z-[9999] transition-all duration-300 text-sm font-bold flex items-center gap-2 ${
-        type === 'error' ? 'bg-red-500 text-white' : 
-        type === 'success' ? 'bg-emerald-500 text-white' : 
-        'bg-indigo-600 text-white'
-    }`;
+    // 基本スタイル
+    const baseClass = "fixed top-6 left-1/2 transform -translate-x-1/2 pl-6 pr-2 py-2 rounded-full shadow-lg z-[9999] transition-all duration-300 text-sm font-bold flex items-center gap-3";
+    let colorClass = 'bg-indigo-600 text-white';
+    if (type === 'error') colorClass = 'bg-red-500 text-white';
+    if (type === 'success') colorClass = 'bg-emerald-500 text-white';
+
+    box.className = `${baseClass} ${colorClass}`;
     
+    // コンテンツ生成 (テキスト + 任意のボタン)
+    let content = `<span>${text}</span>`;
+    
+    // シェアボタンの追加
+    if (action && action.type === 'share') {
+        const shareText = action.text || text;
+        // onclick属性に直接関数を入れるため、一意なIDでイベントリスナーを後付けする
+        const btnId = `msg-btn-share-${Date.now()}`;
+        content += `
+            <button id="${btnId}" class="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-full text-xs transition flex items-center gap-1">
+                <i class="ph-bold ph-share-network"></i> Share
+            </button>
+        `;
+        
+        // メッセージ表示後にイベントバインド
+        setTimeout(() => {
+            const btn = document.getElementById(btnId);
+            if(btn) {
+                btn.onclick = () => shareContent(shareText);
+            }
+        }, 0);
+    } else {
+        // ボタンがない場合はpaddingを調整 (右側も広く)
+        box.className = box.className.replace('pr-2', 'pr-6');
+    }
+
+    box.innerHTML = content;
+    
+    // 表示アニメーション
     box.classList.remove('translate-y-[-150%]', 'opacity-0');
     
+    // 自動非表示 (ボタンがある場合は少し長く)
     setTimeout(() => {
         box.classList.add('translate-y-[-150%]', 'opacity-0');
-    }, 3000);
+    }, action ? 5000 : 3000);
 };
 
 export const toggleDryDay = (isDry) => {
@@ -125,13 +163,11 @@ export const toggleDryDay = (isDry) => {
     const label = section.querySelector('span');
     const hint = section.querySelector('p');
 
-    // 以前の状態をリセット
     section.classList.remove('bg-orange-50', 'border-orange-100', 'bg-emerald-50', 'border-emerald-100');
     if (label) label.classList.remove('text-orange-800', 'text-emerald-800');
     if (hint) hint.classList.remove('text-orange-600/70', 'text-emerald-600/70');
 
     if (isDry) {
-        // --- 休肝日モード (Green) ---
         section.classList.add('bg-emerald-50', 'border-emerald-100');
         if (label) label.classList.add('text-emerald-800');
         if (hint) {
@@ -139,7 +175,6 @@ export const toggleDryDay = (isDry) => {
             hint.textContent = "Great! Keeping your liver healthy. ✨";
         }
     } else {
-        // --- 飲酒モード (Orange) ---
         section.classList.add('bg-orange-50', 'border-orange-100');
         if (label) label.classList.add('text-orange-800');
         if (hint) {
@@ -153,29 +188,23 @@ export const applyTheme = (themeName) => {
     const root = document.documentElement;
     let isDark = themeName === 'dark';
 
-    // System設定の場合の判定
     if (themeName === 'system') {
         isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
 
-    // 1. HTMLタグのクラス切り替え
     if (isDark) {
         root.classList.add('dark');
-        root.classList.remove('light'); // lightクラスがある場合も除去
+        root.classList.remove('light');
     } else {
         root.classList.remove('dark');
-        root.classList.add('light'); // 明示的にlightを入れる（Tailwind設定次第だが安全策）
+        root.classList.add('light');
     }
 
-    // 2. アイコンの切り替え (新規追加)
-    // index.html でアイコンに id="theme-icon" を振った前提
     const icon = document.getElementById('theme-icon');
     if (icon) {
         if (isDark) {
-            // ダークモード: 黄色い月
             icon.className = 'ph-fill ph-moon-stars text-lg text-yellow-400 transition-colors';
         } else {
-            // ライトモード: オレンジの太陽
             icon.className = 'ph-fill ph-sun text-lg text-orange-500 transition-colors';
         }
     }

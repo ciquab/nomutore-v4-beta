@@ -11,7 +11,7 @@ export const Calc = {
         const age = (profile && profile.age) ? profile.age : APP.DEFAULTS.AGE;
         const gender = (profile && profile.gender) ? profile.gender : APP.DEFAULTS.GENDER;
 
-        const k = 1000 / 4.186;
+        const k = 1000 / 4.186; // kJ -> kcal conversion roughly
         
         if(gender === 'male') {
             return ((0.0481 * weight) + (0.0234 * height) - (0.0138 * age) - 0.4235) * k;
@@ -19,27 +19,6 @@ export const Calc = {
             return ((0.0481 * weight) + (0.0234 * height) - (0.0138 * age) - 0.9708) * k;
         }
     },
-
-    /**
-     * 【エイリアス】BMR計算 (Plan上の名称統一用)
-     */
-    calculateBMR: (profile) => {
-        return Calc.getBMR(profile);
-    },
-    
-    /**
-     * 消費カロリーレート計算
-     */
-    burnRate: (mets, profile) => {
-        const bmr = Calc.getBMR(profile);
-        const netMets = Math.max(0, mets - 1);
-        const rate = (bmr / 24 * netMets) / 60;
-        return (rate && rate > 0.1) ? rate : 0.1;
-    },
-
-    // ----------------------------------------------------------------------
-    // 集約された計算ロジック
-    // ----------------------------------------------------------------------
 
     calculateAlcoholCalories: (ml, abv, carbPer100ml) => {
         const _ml = ml || 0;
@@ -60,9 +39,9 @@ export const Calc = {
     },
 
     calculateExerciseBurn: (mets, minutes, profile) => {
-    const _mets = mets || 6.0; // ★引数が空の場合のデフォルト値を設定
-    const rate = Calc.burnRate(_mets, profile);
-    return (minutes || 0) * rate;
+        const _mets = mets || 6.0;
+        const rate = Calc.burnRate(_mets, profile);
+        return (minutes || 0) * rate;
     },
 
     calculateExerciseCredit: (baseKcal, streak) => {
@@ -73,7 +52,13 @@ export const Calc = {
         };
     },
     
-    // ----------------------------------------------------------------------
+    burnRate: (mets, profile) => {
+        const bmr = Calc.getBMR(profile);
+        const netMets = Math.max(0, mets - 1);
+        // (BMR / 24時間) * METs = 時給カロリー -> /60 で分給
+        const rate = (bmr / 24 * netMets) / 60;
+        return (rate && rate > 0.1) ? rate : 0.1;
+    },
 
     getTankDisplayData: (currentKcal, currentMode, settings, profile) => {
         const modes = settings.modes || { mode1: APP.DEFAULTS.MODE1, mode2: APP.DEFAULTS.MODE2 };
@@ -89,10 +74,7 @@ export const Calc = {
         const baseExData = EXERCISE[baseEx] || EXERCISE['stepper'];
         
         const colorKey = STYLE_COLOR_MAP[targetStyle] || 'gold';
-        
-        // ★修正: モードに関係なく、スタイルに対応した色を適用する
         const liquidColor = BEER_COLORS[colorKey] || BEER_COLORS['gold']; 
-            
         const isHazy = colorKey === 'hazy';
 
         return {
@@ -119,9 +101,6 @@ export const Calc = {
         return (kcal / safeUnit).toFixed(1);
     },
 
-    /**
-     * ストリーク計算 (修正版: チェック内容を最優先する)
-     */
     getCurrentStreak: (logs, checks, profile, referenceDate = null) => {
         const safeLogs = Array.isArray(logs) ? logs : [];
         const safeChecks = Array.isArray(checks) ? checks : [];
@@ -175,29 +154,25 @@ export const Calc = {
             const dateStr = checkDate.format('YYYY-MM-DD');
             const dayLogs = logMap.get(dateStr) || { hasBeer: false, hasExercise: false };
             
-            // ★修正: map.get() ではなく、データが存在するか(.has)を確認してから判定
             const hasCheck = checkMap.has(dateStr);
-            const isDryCheckValue = checkMap.get(dateStr); // true:休肝日, false:飲酒
+            const isDryCheckValue = checkMap.get(dateStr); 
 
-            // --- 判定ロジック (優先順位順) ---
-
-            // 1. 明確な「ビール記録」がある場合 -> 飲酒日 (Streak終了)
+            // ビールを飲んだらストップ
             if (dayLogs.hasBeer) {
                 break;
             }
 
-            // 2. 明確な「健康チェック」があり、かつ「飲んだ(false)」の場合 -> 飲酒日 (Streak終了)
-            // ※ここが以前のコードと違う点です。
+            // チェック済みで、かつ休肝日でない（飲んでないけど休肝日チェックもしてない、はOKとするか？
+            // ここでは「休肝日チェックがFalse（飲んだ）」ならストップとする
             if (hasCheck && isDryCheckValue === false) {
                 break;
             }
 
-            // 3. 上記に該当しない場合は「休肝日」としてカウント
-            // (ビール記録なし AND (チェック記録なし OR チェック記録が休肝日))
+            // ここまで来たらセーフ
             streak++;
             checkDate = checkDate.subtract(1, 'day');
             
-            if (streak > 3650) break; // 無限ループ防止
+            if (streak > 3650) break; 
         }
 
         return streak;
@@ -303,14 +278,12 @@ export const Calc = {
         const totalKcal = beerLogs.reduce((sum, l) => sum + Math.abs(l.kcal || 0), 0);
 
         const styleCounts = {};
-        const statsMap = new Map(); // ★詳細集計用マップ
+        const statsMap = new Map(); 
 
         beerLogs.forEach(l => {
-            // Style集計
             const s = l.style || 'Unknown';
             styleCounts[s] = (styleCounts[s] || 0) + (l.count || 1);
 
-            // 銘柄別集計 (Key: Brewery + Name)
             const brewery = l.brewery ? l.brewery.trim() : 'Unknown';
             const brand = l.brand ? l.brand.trim() : (l.name || 'Unknown Beer');
             const key = `${brewery}|${brand}`;
@@ -340,11 +313,10 @@ export const Calc = {
             .sort((a, b) => b[1] - a[1])
             .map(([style, count]) => ({ style, count }));
 
-        // ★追加: 銘柄リストの生成
         const beerStats = Array.from(statsMap.values()).map(item => ({
             ...item,
             averageRating: item.ratings.length ? (item.ratings.reduce((a,b)=>a+b,0) / item.ratings.length) : 0
-        })).sort((a, b) => b.count - a.count); // デフォルトは杯数順
+        })).sort((a, b) => b.count - a.count); 
 
         return {
             totalCount,
@@ -354,7 +326,47 @@ export const Calc = {
             topStyles,
             uniqueBeersCount: uniqueBeers,
             logsCount: beerLogs.length,
-            beerStats: beerStats // ★これを返すように修正
+            beerStats: beerStats 
         };
+    },
+
+    // --- Phase 1.5 Add: SNS Share Text Generator ---
+    generateShareText: (log, balanceKcal = 0) => {
+        const hashtags = APP.HASHTAGS;
+        const balance = Math.round(balanceKcal);
+        let text = '';
+
+        if (log.type === 'beer') {
+            const name = log.brand || log.name;
+            const amount = log.rawAmount || log.size || 350;
+            const count = log.count > 1 ? `x${log.count}` : '';
+            const kcal = Math.abs(Math.round(log.kcal));
+            
+            // 飲酒報告
+            text = `🍺 ${name} (${amount}ml${count}) を飲んで ${kcal}kcal の借金を背負いました...💸\n`;
+            if (balance < 0) {
+                text += `現在の借金総額: ${Math.abs(balance)}kcal 😱\n`;
+            } else {
+                text += `でも貯金があるから実質ゼロカロリー！✨ (+${balance}kcal)\n`;
+            }
+
+        } else if (log.type === 'exercise') {
+            const name = log.name;
+            const mins = log.minutes;
+            const kcal = Math.round(log.kcal);
+            
+            // 運動報告
+            text = `🏃‍♀️ ${name}を${mins}分やって、${kcal}kcal 返済しました！\n`;
+            if (balance >= 0) {
+                text += `ついに借金完済！今夜のビールが美味い！🍻\n`;
+            } else {
+                text += `完済まであと ${Math.abs(balance)}kcal... 頑張るぞ💪\n`;
+            }
+        } else if (log.isDryDay) {
+            // 休肝日
+            text = `🍵 今日は休肝日！肝臓をいたわっています。\n`;
+        }
+
+        return `${text} ${hashtags}`;
     }
 };

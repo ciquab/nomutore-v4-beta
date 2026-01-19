@@ -33,18 +33,49 @@ export const APP = {
         ORB_STYLE: 'lager',
         UNIT_MODE: 'kcal'
     },
-    TANK_MAX_CANS: 3.0
+    TANK_MAX_CANS: 3.0,
+    HASHTAGS: '#Nomutore #飲んだら動く' // SNSシェア用
 };
 
-// 【新規】デイリーチェック項目の定義 (v4 Schema)
-// drinking_only: true の項目は「休肝日OFF」の時のみ表示される
-export const CHECK_SCHEMA = [
-    { id: 'waistEase', label: '腹周りの余裕', icon: '👖', type: 'boolean', desc: 'ウエストにゆとりを感じる' },
-    { id: 'footLightness', label: '足取りが軽い', icon: '🦶', type: 'boolean', desc: '下半身のむくみがない' },
-    // 以下は飲酒時のみ推奨
-    { id: 'waterOk', label: 'チェイサー', icon: '💧', type: 'boolean', desc: 'お酒と同量の水を飲んだ', drinking_only: true },
-    { id: 'fiberOk', label: '野菜摂取', icon: '🥗', type: 'boolean', desc: '飲酒前に食物繊維をとった', drinking_only: true }
-];
+// --- Daily Check Library & Presets (Phase 1.5 New) ---
+
+// デフォルト（初期状態）
+export const CHECK_DEFAULT_IDS = ['waistEase', 'footLightness', 'waterOk', 'fiberOk'];
+
+// 項目ライブラリ（カテゴリー別）
+export const CHECK_LIBRARY = {
+    general: [
+        { id: 'waistEase', label: '腹周りの余裕', icon: '👖', desc: 'ベルトやズボンがきつくない' },
+        { id: 'footLightness', label: '足取りが軽い', icon: '🦶', desc: 'むくみや重さを感じない' },
+        { id: 'sleepQuality', label: '睡眠の質', icon: '💤', desc: '朝スッキリ起きられた' },
+        { id: 'mood', label: '気分が良い', icon: '✨', desc: 'ストレスを感じていない' }
+    ],
+    diet: [
+        { id: 'noSnack', label: '間食抜き', icon: '🈲', desc: 'お菓子・つまみを我慢した' },
+        { id: 'vegeFirst', label: 'ベジファースト', icon: '🥗', desc: '野菜から先に食べた' },
+        { id: 'proteinOk', label: 'たんぱく質', icon: '🍗', desc: '体重×1g以上摂取した' },
+        { id: 'calorieLimit', label: '腹八分目', icon: '🍽️', desc: '食べ過ぎなかった' }
+    ],
+    alcohol: [
+        { id: 'waterOk', label: 'チェイサー', icon: '💧', desc: 'お酒と同量の水を飲んだ', drinking_only: true },
+        { id: 'fiberOk', label: '飲酒前繊維', icon: '🥦', desc: '飲む前に食物繊維をとった', drinking_only: true },
+        { id: 'supplement', label: 'サプリ摂取', icon: '💊', desc: 'ウコン/ヘパリーゼ等を飲んだ', drinking_only: true },
+        { id: 'finishTime', label: '早めの切り上げ', icon: '🕙', desc: '寝る2時間前に飲み終えた', drinking_only: true }
+    ],
+    muscle: [
+        { id: 'musclePain', label: '筋肉痛あり', icon: '💥', desc: '良いトレーニングができた' },
+        { id: 'stretch', label: 'ストレッチ', icon: '🧘', desc: '運動前後のケアをした' },
+        { id: 'stepsGoal', label: '歩数達成', icon: '👟', desc: '目標歩数を超えた' }
+    ]
+};
+
+// プリセット定義
+export const CHECK_PRESETS = {
+    'default': { label: '基本セット', icon: '🔰', ids: ['waistEase', 'footLightness', 'waterOk', 'fiberOk'] },
+    'diet': { label: 'ガチダイエット', icon: '📉', ids: ['waistEase', 'noSnack', 'vegeFirst', 'calorieLimit', 'fiberOk'] },
+    'muscle': { label: '筋トレ・ボディメイク', icon: '💪', ids: ['proteinOk', 'musclePain', 'sleepQuality', 'waterOk'] },
+    'liver': { label: '肝臓いたわり', icon: '🏥', ids: ['waterOk', 'fiberOk', 'supplement', 'finishTime', 'sleepQuality'] }
+};
 
 export const CALORIES = { 
     STYLES: { 
@@ -85,6 +116,7 @@ export const BEER_COLORS = {
     'white': 'linear-gradient(to top, #fcd34d, #fef3c7)',
     'hazy': 'linear-gradient(to top, #ca8a04, #facc15)',
     'red': 'linear-gradient(to top, #991b1b, #ef4444)',
+    'green': 'linear-gradient(to top, #86efac, #bbf7d0)'
 };
 
 export const STYLE_METADATA = {

@@ -308,18 +308,28 @@
                 </div>
             </div>
 
+            <!-- Daily Checks (Updated Phase 1.5) -->
             <div class="glass-panel p-6 rounded-3xl mb-4">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-black flex items-center gap-2">
                         <i class="ph-fill ph-check-square-offset text-emerald-500"></i>
                         Daily Checks
                     </h2>
-                    <button onclick="addNewCheckItem()" class="text-[10px] font-bold bg-indigo-100 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-200 transition">
-                        + Add Custom
+                </div>
+                
+                <!-- ★変更: ライブラリとカスタムの2つのボタンを配置 -->
+                <div class="flex gap-2 mb-4">
+                    <button onclick="import('./ui/modal.js').then(m => m.openCheckLibrary())" class="flex-1 py-3 bg-indigo-100 text-indigo-600 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-indigo-200 transition">
+                        <i class="ph-bold ph-list-plus"></i> Open Library
+                    </button>
+                    <button onclick="addNewCheckItem()" class="flex-1 py-3 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-gray-50 transition dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700">
+                        <i class="ph-bold ph-pencil-simple"></i> Custom
                     </button>
                 </div>
+
                 <div id="check-editor-list">
-                    </div>
+                    <!-- JS Injected -->
+                </div>
             </div>
 
             <div class="glass-panel p-6 rounded-3xl mb-4">
@@ -428,6 +438,49 @@
         <div class="flex gap-4">
             <button onclick="location.reload()" class="bg-white text-black px-6 py-2 rounded font-bold">Reload</button>
             <button id="btn-copy-error" class="border border-white px-6 py-2 rounded font-bold">Copy Log</button>
+        </div>
+    </div>
+
+<!-- Check Library Modal (Phase 1.5 New) -->
+    <div id="check-library-modal" class="fixed inset-0 z-[250] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div class="bg-base-50 dark:bg-base-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] transform transition-all scale-95 opacity-0 duration-200">
+            <div class="p-4 border-b border-base-200 dark:border-base-800 flex justify-between items-center bg-white dark:bg-base-900 z-20">
+                <div>
+                    <h3 class="font-black text-lg">Check Library</h3>
+                    <p class="text-[10px] text-gray-400">Select items to track daily</p>
+                </div>
+                <button onclick="UI.closeModal('check-library-modal')" class="w-8 h-8 rounded-full bg-base-200 dark:bg-base-800 flex items-center justify-center">✕</button>
+            </div>
+            
+            <!-- Presets Section -->
+            <div class="p-4 bg-white dark:bg-base-900 border-b border-base-200 dark:border-base-800 z-20">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Quick Presets</p>
+                <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    <button onclick="applyPreset('default')" class="flex-shrink-0 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs font-bold whitespace-nowrap hover:bg-indigo-100 hover:text-indigo-600 transition">
+                        🔰 基本セット
+                    </button>
+                    <button onclick="applyPreset('diet')" class="flex-shrink-0 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs font-bold whitespace-nowrap hover:bg-orange-100 hover:text-orange-600 transition">
+                        📉 ガチダイエット
+                    </button>
+                    <button onclick="applyPreset('muscle')" class="flex-shrink-0 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs font-bold whitespace-nowrap hover:bg-red-100 hover:text-red-600 transition">
+                        💪 筋トレ
+                    </button>
+                    <button onclick="applyPreset('liver')" class="flex-shrink-0 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs font-bold whitespace-nowrap hover:bg-emerald-100 hover:text-emerald-600 transition">
+                        🏥 肝臓ケア
+                    </button>
+                </div>
+            </div>
+
+            <!-- Library Content -->
+            <div id="library-content" class="p-4 overflow-y-auto flex-1">
+                <!-- JSでライブラリ一覧生成 -->
+            </div>
+
+            <div class="p-4 border-t border-base-200 dark:border-base-800 bg-white dark:bg-base-900 z-20">
+                <button onclick="applyLibraryChanges()" class="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 transition">
+                    Save Selection
+                </button>
+            </div>
         </div>
     </div>
 
