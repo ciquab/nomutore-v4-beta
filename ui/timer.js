@@ -2,7 +2,7 @@ import { APP, EXERCISE, BEER_COLORS } from '../constants.js'; // BEER_COLORSを�
 import { Calc } from '../logic.js';
 import { Store } from '../store.js';
 import { StateManager } from './state.js';
-import { toggleModal } from './dom.js';
+import { toggleModal, DOM } from './dom.js';
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
 // タイマー状態
@@ -60,16 +60,117 @@ export const Timer = {
     start: () => {
         if (isRunning) return;
         
-        const now = Date.now();
-        localStorage.setItem(APP.STORAGE_KEYS.TIMER_START, now);
+        const select = document.getElementById('timer-exercise-select');
+        const exerciseKey = select ? select.value : 'other';
+        const mets = EXERCISE[exerciseKey] ? EXERCISE[exerciseKey].mets : 3.0;
         
+        // 開始時間を記録
+        const startTime = Date.now() - accumulatedTime;
+        
+        // UI切り替え
         isRunning = true;
-        // 開始時にリセットせず、続きから計算するため lastBurnedKcal はリセットしない
-        Timer.startLoop();
         Timer.updateUI(true);
+
+        // ループ処理
+        timerInterval = setInterval(() => {
+            const now = Date.now();
+            const diff = now - startTime;
+            accumulatedTime = diff; // 累積時間を更新
+
+            // 1. 時間表示の更新
+            const timeStr = formatTime(diff);
+            const display = document.getElementById('timer-display');
+            if(display) display.textContent = timeStr;
+
+            // 2. カロリー計算
+            // (1時間あたりの消費kcal / 3600秒 * 経過秒数)
+            // 簡易計算: 体重60kg想定 (本来は profile.weight を使うべきですが、リアルタイム性重視で固定値または簡易計算)
+            const weight = 60; 
+            const hours = diff / 1000 / 60 / 60;
+            const burned = mets * weight * hours * 1.05; // 1.05は係数
+            
+            // カロリー表示更新
+            const kcalEl = document.getElementById('timer-kcal');
+            if(kcalEl) kcalEl.textContent = burned.toFixed(1);
+
+            // -------------------------------------------------------
+            // ★改良点1: ビールゲージ(円)の更新
+            // -------------------------------------------------------
+            // 140kcal(ビール1本)ごとに1周回るようにする
+            Timer.updateRing(burned);
+
+            // -------------------------------------------------------
+            // ★改良点2: 泡の演出 (アンビエントバブル)
+            // -------------------------------------------------------
+            // 燃焼カロリーに応じた泡 (既存ロジック)
+            if (burned - lastBurnedKcal > 0.1) { 
+                // カロリーが増えたら泡を出す（強度が強いとたくさん出る）
+                Timer.createBubble(); 
+                lastBurnedKcal = burned;
+            }
+
+            // 【追加】強度が低くても寂しくないよう、ランダムで「背景の泡」を出す
+            // 10%の確率で、小さい泡をゆっくり飛ばす
+            if (Math.random() < 0.1) {
+                Timer.createBubble(true); // true = ambient(小さい泡)
+            }
+
+        }, 100); // 0.1秒ごとに更新
+    },
+
+    /* ============================================================
+       ★追加: 円グラフ(ビールゲージ)を更新する関数
+       ============================================================ */
+    updateRing: (burnedKcal) => {
+        const ring = document.getElementById('timer-ring');
+        if (!ring) return;
+
+        // ビール1本(350ml) ≈ 140kcal と仮定して進捗率を計算
+        const TARGET_KCAL = 140;
+        const progress = (burnedKcal % TARGET_KCAL) / TARGET_KCAL * 100;
         
-        // ★演出: 開始時に景気付けの泡を出す
-        setTimeout(() => Timer.createBubble(BEER_COLORS['gold']), 100);
+        // CSSの conic-gradient を使って円グラフを描画
+        // 黄色(#f59e0b) から 透明へ
+        ring.style.background = `conic-gradient(
+            #f59e0b 0%, 
+            #f59e0b ${progress}%, 
+            transparent ${progress}%, 
+            transparent 100%
+        )`;
+    },
+
+    /* ============================================================
+       ★修正: createBubble関数 (大小の泡を作り分ける)
+       ============================================================ */
+    createBubble: (isAmbient = false) => {
+        const container = document.getElementById('timer-bubble-container');
+        if (!container) return;
+
+        const b = document.createElement('div');
+        b.className = 'absolute rounded-full bg-yellow-400/30 backdrop-blur-sm pointer-events-none animate-float-up';
+        
+        // サイズ設定
+        const size = isAmbient 
+            ? Math.random() * 10 + 5   // アンビエント: 5px〜15px (小さめ)
+            : Math.random() * 30 + 10; // 通常: 10px〜40px (大きめ)
+            
+        b.style.width = `${size}px`;
+        b.style.height = `${size}px`;
+        
+        // 位置設定 (左右ランダム)
+        b.style.left = `${Math.random() * 100}%`;
+        b.style.bottom = '-20px';
+        
+        // アニメーション速度 (小さい泡はゆっくり)
+        const duration = isAmbient ? (Math.random() * 3 + 4) : (Math.random() * 2 + 2);
+        b.style.animationDuration = `${duration}s`;
+
+        container.appendChild(b);
+
+        // アニメーション終了後に削除
+        setTimeout(() => {
+            if(b.parentNode) b.parentNode.removeChild(b);
+        }, duration * 1000);
     },
 
     pause: () => {
