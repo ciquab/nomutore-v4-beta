@@ -364,6 +364,29 @@ export const Service = {
             showMessage('📝 記録を更新しました', 'success');
         } else {
             await db.logs.add(logData);
+
+            // ---------------------------------------------------
+            // ★追加: 休肝日チェックの強制解除ロジック (ここから)
+            // ---------------------------------------------------
+            const ts = dayjs(data.timestamp);
+            const start = ts.startOf('day').valueOf();
+            const end = ts.endOf('day').valueOf();
+            
+            // その日のチェックデータを検索
+            const existingCheck = await db.checks.where('timestamp')
+                .between(start, end, true, true)
+                .first();
+
+            // 休肝日(isDryDay: true)になっていたら解除する
+            if (existingCheck && existingCheck.isDryDay) {
+                await db.checks.update(existingCheck.id, { isDryDay: false });
+                // ユーザーに通知（控えめなinfoメッセージで）
+                showMessage('🍺 飲酒記録のため、休肝日を解除しました', 'info');
+            }
+            // ---------------------------------------------------
+            // ★追加終了
+            // ---------------------------------------------------
+
             if (Math.abs(kcal) > 500) {
                 showMessage(`🍺 記録完了！ ${Math.round(Math.abs(kcal))}kcalの借金です😱`, 'error');
             } else {
