@@ -60,20 +60,25 @@ export const Timer = {
     // ★重要: constantsの色を使って背景グラデーションを作る
     setRandomBeerBackground: () => {
         // BEER_COLORSが定義されていなければ安全策でゴールドを使用
-        const colors = (typeof BEER_COLORS !== 'undefined') ? BEER_COLORS : { 'Golden Ale': '#facc15' };
-        const styleNames = Object.keys(colors);
+        const colors = (typeof BEER_COLORS !== 'undefined') ? BEER_COLORS : { 'Golden Ale': 'linear-gradient(to top, #eab308, #facc15)' };
         
-        // ランダムにキーを選択
-        const randomName = styleNames[Math.floor(Math.random() * styleNames.length)];
-        const baseColor = colors[randomName];
+        // BEER_COLORSの値がすでに linear-gradient 文字列の場合はそのまま使う
+        // 単色ヘックスコードの場合はグラデーション化する処理を入れる
+        const styleKeys = Object.keys(colors);
+        const randomKey = styleKeys[Math.floor(Math.random() * styleKeys.length)];
+        let backgroundStyle = colors[randomKey];
+
+        // もし単色コード(#...)ならグラデーションに変換（念のためのフォールバック）
+        if (backgroundStyle.startsWith('#')) {
+            backgroundStyle = `linear-gradient(to bottom right, ${backgroundStyle}, #1a1a1a)`;
+        }
         
-        currentBeerStyleName = randomName;
+        currentBeerStyleName = randomKey;
 
         const modal = document.getElementById('timer-modal');
         if (modal) {
-            // ベース色から、少し暗い色へ流れるグラデーションを作成して「液体感」を出す
-            // baseColorが単色ヘックスコード前提
-            modal.style.background = `linear-gradient(to bottom right, ${baseColor}, #1a1a1a)`;
+            // 背景グラデーションを適用
+            modal.style.background = backgroundStyle;
         }
     },
 
@@ -134,7 +139,7 @@ export const Timer = {
         Timer.updateRing(burned);
 
         if (isRunning) {
-            // カロリー消費の泡
+            // カロリー消費の泡 (0.1kcalごと)
             if (burned - lastBurnedKcal > 0.1) { 
                 Timer.createBubble(); 
                 lastBurnedKcal = burned;
@@ -154,7 +159,6 @@ export const Timer = {
         const progress = (burnedKcal % TARGET_KCAL) / TARGET_KCAL * 100;
         
         // ★修正: 背景がビール色なので、リング（進捗）は「白（泡）」にする
-        // これで「グラスに泡が溜まっていく」表現になります
         const ringColor = 'rgba(255, 255, 255, 0.9)'; 
 
         ring.style.background = `conic-gradient(
@@ -167,6 +171,7 @@ export const Timer = {
 
     // ★修正: 泡は「白」にする（リアルな気泡表現）
     createBubble: (isAmbient = false) => {
+        // ★ここを修正！ id="timer-bubbles-container" (複数形sあり) に合わせる
         const container = document.getElementById('timer-bubbles-container');
         if (!container) return;
 
