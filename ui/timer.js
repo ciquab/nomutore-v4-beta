@@ -1,12 +1,14 @@
 import { APP, EXERCISE } from '../constants.js';
 import { Calc } from '../logic.js';
 import { Store } from '../store.js';
+import { StateManager } from './state.js';
 import { toggleModal } from './dom.js';
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
 // タイマー状態
 let timerInterval = null;
 let isRunning = false;
+let lastBurnedCount = 0;
 
 // 内部関数: 時間整形
 const formatTime = (ms) => {
@@ -125,8 +127,11 @@ export const Timer = {
         if (timerInterval) cancelAnimationFrame(timerInterval);
         localStorage.removeItem(APP.STORAGE_KEYS.TIMER_START);
         localStorage.removeItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
+        lastBurnedCount = 0; // ★追加
         
         // UI Reset
+        const container = document.getElementById('timer-bubbles-container');
+        if (container) container.innerHTML = ''; // 泡を消去
         const display = document.getElementById('timer-display');
         const kcalEl = document.getElementById('timer-kcal');
         const beerEl = document.getElementById('timer-beer');
@@ -169,15 +174,61 @@ export const Timer = {
             const type = typeSelect.value;
             const mets = EXERCISE[type] ? EXERCISE[type].mets : 3.0;
             const minutes = totalMs / 60000;
-            
             const burned = Calc.calculateExerciseBurn(mets, minutes, profile);
-            kcalEl.textContent = Math.floor(burned);
             
-            // ビール換算 (350ml Lager基準)
-            // convertKcalToBeerCount は本数文字列を返す
-            const beers = Calc.convertKcalToBeerCount(burned, '国産ピルスナー');
+            // 1. 基本的な数値の表示
+            kcalEl.textContent = Math.floor(burned);
+
+            // 2. 現在の基準ビール設定と同期したデータを取得
+            const settings = { modes: Store.getModes(), baseExercise: Store.getBaseExercise() };
+            const tankData = Calc.getTankDisplayData(0, StateManager.beerMode, settings, profile);
+
+            // 3. 基準ビールに合わせた杯数換算
+            const beers = Calc.convertKcalToBeerCount(burned, tankData.targetStyle);
             beerEl.textContent = beers;
+
+            // ★ここから if (display) 以降を挿入
+            // 4. 動的な鼓動（パルス）演出
+            if (display) {
+                // 運動強度(mets)に応じてパルスの速さを変える
+                const speed = Math.max(0.8, 3.5 - (mets / 3)); 
+                display.style.animation = `timer-pulse ${speed}s ease-in-out infinite`;
+                // ビールの色に合わせて光らせる
+                display.style.textShadow = `0 0 20px ${tankData.liquidColor}`;
+            }
+
+            // 5. カロリー燃焼に連動したバブル演出
+            if (Math.floor(burned) > lastBurnedCount) {
+                Timer.createBubble(tankData.liquidColor);
+                lastBurnedCount = Math.floor(burned);
+            }
         }
+    },
+
+    /**
+     * ★新規追加: 泡の生成
+     */
+    createBubble: (color) => {
+        const container = document.getElementById('timer-bubbles-container');
+        if (!container) return;
+
+        const bubble = document.createElement('div');
+        const size = Math.random() * 15 + 5;
+        const left = Math.random() * 100;
+        const duration = Math.random() * 2 + 2;
+
+        bubble.className = "absolute rounded-full pointer-events-none";
+        bubble.style.width = `${size}px`;
+        bubble.style.height = `${size}px`;
+        bubble.style.left = `${left}%`;
+        bubble.style.bottom = `-20px`;
+        bubble.style.background = color;
+        bubble.style.opacity = "0.6";
+        bubble.style.filter = "blur(1px)";
+        bubble.style.animation = `timer-bubble-up ${duration}s ease-in forwards`;
+
+        container.appendChild(bubble);
+        setTimeout(() => bubble.remove(), duration * 1000);
     },
 
     updateUI: (running) => {
