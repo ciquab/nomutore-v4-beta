@@ -287,12 +287,22 @@ export const openCheckModal = async (dateStr) => {
     };
     
     setCheck('check-is-dry', false);
-    syncDryDayUI(false); // 初期状態は飲酒モード(オレンジ)
+    syncDryDayUI(false);
     
     const wEl = document.getElementById('check-weight');
     if(wEl) wEl.value = '';
 
-    // 5. データ復元 & 整合性チェック (★ここを修正)
+    // ★追加: 制御用変数の定義
+    const isDryInput = document.getElementById('check-is-dry');
+    const dryLabelContainer = isDryInput ? isDryInput.closest('#drinking-section') : null; // closest('label')だと範囲が狭いのでsection全体を取得
+    const dryLabelText = dryLabelContainer ? dryLabelContainer.querySelector('span.font-bold') : null;
+
+    // ★追加: 初期化（前回開いた時の無効化状態をリセット）
+    if (dryLabelText) dryLabelText.innerHTML = "Is today a Dry Day?";
+    if (isDryInput) isDryInput.disabled = false;
+    if (dryLabelContainer) dryLabelContainer.classList.remove('opacity-50', 'pointer-events-none');
+
+    // 5. データ復元 & 整合性チェック
     try {
         const start = d.startOf('day').valueOf();
         const end = d.endOf('day').valueOf();
@@ -330,9 +340,9 @@ export const openCheckModal = async (dateStr) => {
             setCheck('check-is-dry', false); // 強制OFF
             syncDryDayUI(false);             // UIも飲酒モードへ
             
+            // 定義した変数を使って操作
             if (isDryInput) isDryInput.disabled = true;
             
-            // 視覚的な無効化と理由表示
             if (dryLabelContainer) {
                 dryLabelContainer.classList.add('opacity-50', 'pointer-events-none');
             }
