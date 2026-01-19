@@ -573,56 +573,73 @@
     </div>
 
     <div id="timer-modal" class="fixed inset-0 z-[200] hidden items-center justify-center bg-base-900 text-white transition-opacity duration-300">
-    <div id="timer-bubbles-container" class="absolute inset-0 overflow-hidden pointer-events-none opacity-40 z-0"></div>
-    
-    <div class="relative z-10 w-full max-w-md h-full flex flex-col justify-center p-8 text-center">
+        <div id="timer-bubbles-container" class="absolute inset-0 overflow-hidden pointer-events-none opacity-40 z-0"></div>
         
-        <button onclick="UI.closeTimer()" class="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition z-50 cursor-pointer">✕</button>
-
-        <div class="absolute top-8 left-0 right-0 flex justify-center">
-            <div class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                <span class="text-xs font-bold tracking-widest uppercase opacity-70">Live Recording</span>
-            </div>
-        </div>
-
-        <div class="flex flex-col items-center justify-center py-10 relative">
-            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full border-2 border-indigo-500/30 animate-pulse pointer-events-none"></div>
-            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full border border-indigo-500/10 animate-spin-slow pointer-events-none"></div>
-
-            <div id="timer-display" class="text-7xl font-black font-mono tracking-tighter mb-6 tabular-nums relative z-10">00:00</div>
+        <div class="relative z-10 w-full max-w-md h-full flex flex-col justify-center p-8 text-center">
             
-            <div class="flex items-center gap-6 text-sm font-bold opacity-80 relative z-10">
-                <span class="flex items-center gap-1"><i class="ph-fill ph-fire text-orange-500"></i> <span id="timer-kcal">0</span> kcal</span>
-                <span class="flex items-center gap-1"><i class="ph-fill ph-beer-bottle text-yellow-400"></i> <span id="timer-beer">0.0</span> cans</span>
-            </div>
-        </div>
+            <button onclick="UI.closeTimer()" class="absolute top-6 right-6 w-10 h-10 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center hover:bg-black/30 transition z-50 cursor-pointer text-white border border-white/10">✕</button>
 
-        <div class="space-y-8 mt-8">
-            <div class="relative w-full max-w-xs mx-auto">
-                <div class="bg-white/10 rounded-2xl flex items-center w-full overflow-hidden border border-white/10 hover:bg-white/15 transition relative">
-                    <select id="timer-exercise-select" class="w-full bg-transparent text-white font-bold text-center appearance-none p-4 outline-none cursor-pointer relative z-20">
-                    </select>
-                    <div class="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-white/50 z-10">
-                        <i class="ph-bold ph-caret-down"></i>
+            <div class="absolute top-8 left-0 right-0 flex justify-center">
+                <div class="flex items-center gap-2 bg-black/20 backdrop-blur-sm px-3 py-1 rounded-full border border-white/5">
+                    <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                    <span class="text-xs font-bold tracking-widest uppercase opacity-90 text-white shadow-sm">Live Recording</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col items-center justify-center py-6 relative">
+                <div class="relative w-80 h-80 flex items-center justify-center">
+                    
+                    <div class="absolute inset-0 rounded-full border-[8px] border-white/10"></div>
+
+                    <div id="timer-ring" class="absolute inset-0 rounded-full transition-all duration-300" 
+                         style="-webkit-mask-image: radial-gradient(transparent 67%, black 69%); mask-image: radial-gradient(transparent 67%, black 69%);">
+                    </div>
+
+                    <div class="z-10 flex flex-col items-center">
+                        <div id="timer-display" class="text-7xl font-black font-mono tracking-tighter mb-4 tabular-nums relative z-10 text-white drop-shadow-md">00:00</div>
+                        
+                        <div class="flex items-center gap-5 text-sm font-bold opacity-100 relative z-10 bg-black/30 px-5 py-2 rounded-full backdrop-blur-md border border-white/10 shadow-lg">
+                            <span class="flex items-center gap-1.5">
+                                <i class="ph-fill ph-fire text-white text-base"></i> 
+                                <span id="timer-kcal" class="tabular-nums text-white">0.0</span>
+                                <span class="text-[10px] text-white/70">kcal</span>
+                            </span>
+                            <span class="w-px h-3 bg-white/30"></span>
+                            <span class="flex items-center gap-1.5">
+                                <i class="ph-fill ph-beer-bottle text-white text-base"></i> 
+                                <span id="timer-beer" class="tabular-nums text-white">0.0</span>
+                                <span class="text-[10px] text-white/70">cans</span>
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="flex justify-center gap-8 items-center">
-                <button id="btn-timer-toggle" class="w-20 h-20 rounded-full bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-500/40 transition-all active:scale-95 border-4 border-base-900 cursor-pointer z-10">
-                    <i id="icon-timer-toggle" class="ph-fill ph-play text-3xl ml-1"></i>
-                </button>
+            <div class="space-y-8 mt-4">
+                <div class="relative w-full max-w-xs mx-auto">
+                    <div class="bg-black/20 backdrop-blur-md rounded-2xl flex items-center w-full overflow-hidden border border-white/10 hover:bg-black/30 transition relative shadow-lg">
+                        <select id="timer-exercise-select" class="w-full bg-transparent text-white font-bold text-center appearance-none p-4 outline-none cursor-pointer relative z-20 text-shadow-sm">
+                        </select>
+                        <div class="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-white/70 z-10">
+                            <i class="ph-bold ph-caret-down"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-center gap-8 items-center">
+                    <button id="btn-timer-toggle" class="w-20 h-20 rounded-full bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center shadow-xl shadow-black/20 transition-all active:scale-95 border-4 border-white/20 cursor-pointer z-10">
+                        <i id="icon-timer-toggle" class="ph-fill ph-play text-3xl ml-1 text-white"></i>
+                    </button>
+                    
+                    <button id="btn-timer-finish" class="hidden w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center shadow-xl shadow-black/20 transition-all active:scale-95 border-4 border-white/20 cursor-pointer z-10">
+                        <i class="ph-fill ph-check text-2xl text-white"></i>
+                    </button>
+                </div>
                 
-                <button id="btn-timer-finish" class="hidden w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-600 flex items-center justify-center shadow-xl shadow-emerald-500/40 transition-all active:scale-95 border-4 border-base-900 cursor-pointer z-10">
-                    <i class="ph-fill ph-check text-2xl"></i>
-                </button>
+                <p class="text-[10px] text-white/50 mt-4 font-bold drop-shadow-sm">Don't close the browser completely.</p>
             </div>
-            
-            <p class="text-[10px] opacity-40 mt-4">Don't close the browser completely.</p>
         </div>
     </div>
-</div>
 
     <div id="rollover-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div class="bg-white dark:bg-base-900 w-full max-w-sm rounded-3xl p-6 relative flex flex-col items-center text-center shadow-2xl">
