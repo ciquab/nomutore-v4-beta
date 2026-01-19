@@ -144,7 +144,7 @@ export const UI = {
 
         // 2. バリデーション (元のまま)
         if (!date || !minutes || minutes <= 0) {
-            showMessage('Date and Minutes are required.', 'error');
+            showMessage('日付と時間を入力してください', 'error');
             return;
         }
 
@@ -160,6 +160,22 @@ export const UI = {
         // ★修正点2: 今回は「モーダル」なので、保存後に閉じる必要があります
         closeModal('exercise-modal');
     });
+
+        // ★ここに追加: 運動の削除ボタンの処理
+        bind('btn-delete-exercise', 'click', async () => {
+            const idVal = document.getElementById('editing-exercise-id').value;
+            
+            // IDがない（新規作成時など）場合は何もしない
+            if (!idVal) return;
+
+            if (confirm('この運動記録を削除しますか？')) {
+                // Service.deleteLog は削除後に自動で refresh-ui を発行します
+                await Service.deleteLog(parseInt(idVal));
+                
+                // モーダルを閉じる
+                closeModal('exercise-modal');
+            }
+        });
 
         bind('btn-save-check', 'click', () => {
             const date = document.getElementById('check-date').value;
