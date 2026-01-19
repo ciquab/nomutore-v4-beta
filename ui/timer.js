@@ -1,15 +1,15 @@
-import { APP, EXERCISE, BEER_COLORS } from '../constants.js'; // BEER_COLORSを追加インポート
+import { APP, EXERCISE, BEER_COLORS } from '../constants.js'; 
 import { Calc } from '../logic.js';
 import { Store } from '../store.js';
-import { StateManager } from './state.js';
-import { toggleModal, DOM } from './dom.js';
+import { toggleModal } from './dom.js';
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
 // タイマー状態
 let timerInterval = null;
 let isRunning = false;
-let lastBurnedKcal = 0; // ★修正: 整数Countではなく、小数のKcalで管理
+let lastBurnedKcal = 0;
 let accumulatedTime = 0;
+let currentBeerStyleName = null; // 現在のスタイル名を保持
 
 // 内部関数: 時間整形
 const formatTime = (ms) => {
@@ -38,15 +38,42 @@ export const Timer = {
         const start = localStorage.getItem(APP.STORAGE_KEYS.TIMER_START);
         const accumulated = parseInt(localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED)) || 0;
         
+        // スタイルが未設定ならランダム設定
+        if (!currentBeerStyleName) {
+            Timer.setRandomBeerBackground();
+        }
+
         if (start) {
-            isRunning = true;
-            Timer.startLoop(); 
-            Timer.updateUI(true);
+            Timer.start(); 
             toggleModal('timer-modal', true);
         } else if (accumulated > 0) {
             isRunning = false;
             Timer.updateUI(false);
-            Timer.tick(); 
+            
+            const totalMs = accumulated;
+            const display = document.getElementById('timer-display');
+            if(display) display.textContent = formatTime(totalMs);
+            Timer.updateCalculations(totalMs);
+        }
+    },
+
+    // ★重要: constantsの色を使って背景グラデーションを作る
+    setRandomBeerBackground: () => {
+        // BEER_COLORSが定義されていなければ安全策でゴールドを使用
+        const colors = (typeof BEER_COLORS !== 'undefined') ? BEER_COLORS : { 'Golden Ale': '#facc15' };
+        const styleNames = Object.keys(colors);
+        
+        // ランダムにキーを選択
+        const randomName = styleNames[Math.floor(Math.random() * styleNames.length)];
+        const baseColor = colors[randomName];
+        
+        currentBeerStyleName = randomName;
+
+        const modal = document.getElementById('timer-modal');
+        if (modal) {
+            // ベース色から、少し暗い色へ流れるグラデーションを作成して「液体感」を出す
+            // baseColorが単色ヘックスコード前提
+            modal.style.background = `linear-gradient(to bottom right, ${baseColor}, #1a1a1a)`;
         }
     },
 
@@ -59,116 +86,114 @@ export const Timer = {
     },
 
     start: () => {
-        if (isRunning) return;
+        if (isRunning && timerInterval) return;
         
-        const select = document.getElementById('timer-exercise-select');
-        const exerciseKey = select ? select.value : 'other';
-        const mets = EXERCISE[exerciseKey] ? EXERCISE[exerciseKey].mets : 3.0;
+        // 背景セット（まだ無ければ）
+        if (!currentBeerStyleName) Timer.setRandomBeerBackground();
+
+        const now = Date.now();
+        const startTimestamp = now - accumulatedTime;
         
-        // 開始時間を記録
-        const startTime = Date.now() - accumulatedTime;
+        localStorage.setItem(APP.STORAGE_KEYS.TIMER_START, startTimestamp);
         
-        // UI切り替え
         isRunning = true;
         Timer.updateUI(true);
 
-        // ループ処理
         timerInterval = setInterval(() => {
-            const now = Date.now();
-            const diff = now - startTime;
-            accumulatedTime = diff; // 累積時間を更新
+            const currentNow = Date.now();
+            const diff = currentNow - startTimestamp;
+            accumulatedTime = diff; 
 
-            // 1. 時間表示の更新
-            const timeStr = formatTime(diff);
             const display = document.getElementById('timer-display');
-            if(display) display.textContent = timeStr;
+            if(display) display.textContent = formatTime(diff);
 
-            // 2. カロリー計算
-            // (1時間あたりの消費kcal / 3600秒 * 経過秒数)
-            // 簡易計算: 体重60kg想定 (本来は profile.weight を使うべきですが、リアルタイム性重視で固定値または簡易計算)
-            const weight = 60; 
-            const hours = diff / 1000 / 60 / 60;
-            const burned = mets * weight * hours * 1.05; // 1.05は係数
-            
-            // カロリー表示更新
-            const kcalEl = document.getElementById('timer-kcal');
-            if(kcalEl) kcalEl.textContent = burned.toFixed(1);
+            Timer.updateCalculations(diff);
 
-            // -------------------------------------------------------
-            // ★改良点1: ビールゲージ(円)の更新
-            // -------------------------------------------------------
-            // 140kcal(ビール1本)ごとに1周回るようにする
-            Timer.updateRing(burned);
+        }, 100); 
+    },
 
-            // -------------------------------------------------------
-            // ★改良点2: 泡の演出 (アンビエントバブル)
-            // -------------------------------------------------------
-            // 燃焼カロリーに応じた泡 (既存ロジック)
+    updateCalculations: (diffMs) => {
+        const select = document.getElementById('timer-exercise-select');
+        const exerciseKey = select ? select.value : 'other';
+        const mets = EXERCISE[exerciseKey] ? EXERCISE[exerciseKey].mets : 3.0;
+
+        const profile = Store.getProfile(); 
+        const minutes = diffMs / 1000 / 60;
+        
+        const burned = Calc.calculateExerciseBurn(mets, minutes, profile);
+        
+        const kcalEl = document.getElementById('timer-kcal');
+        if(kcalEl) kcalEl.textContent = burned.toFixed(1);
+
+        const beerEl = document.getElementById('timer-beer');
+        if(beerEl) {
+            const cans = burned / 140;
+            beerEl.textContent = cans.toFixed(1);
+        }
+
+        Timer.updateRing(burned);
+
+        if (isRunning) {
+            // カロリー消費の泡
             if (burned - lastBurnedKcal > 0.1) { 
-                // カロリーが増えたら泡を出す（強度が強いとたくさん出る）
                 Timer.createBubble(); 
                 lastBurnedKcal = burned;
             }
-
-            // 【追加】強度が低くても寂しくないよう、ランダムで「背景の泡」を出す
-            // 10%の確率で、小さい泡をゆっくり飛ばす
-            if (Math.random() < 0.1) {
-                Timer.createBubble(true); // true = ambient(小さい泡)
+            // アンビエント泡 (背景が液体になったので、少し多めに出す)
+            if (Math.random() < 0.3) {
+                Timer.createBubble(true);
             }
-
-        }, 100); // 0.1秒ごとに更新
+        }
     },
 
-    /* ============================================================
-       ★追加: 円グラフ(ビールゲージ)を更新する関数
-       ============================================================ */
     updateRing: (burnedKcal) => {
         const ring = document.getElementById('timer-ring');
         if (!ring) return;
 
-        // ビール1本(350ml) ≈ 140kcal と仮定して進捗率を計算
         const TARGET_KCAL = 140;
         const progress = (burnedKcal % TARGET_KCAL) / TARGET_KCAL * 100;
         
-        // CSSの conic-gradient を使って円グラフを描画
-        // 黄色(#f59e0b) から 透明へ
+        // ★修正: 背景がビール色なので、リング（進捗）は「白（泡）」にする
+        // これで「グラスに泡が溜まっていく」表現になります
+        const ringColor = 'rgba(255, 255, 255, 0.9)'; 
+
         ring.style.background = `conic-gradient(
-            #f59e0b 0%, 
-            #f59e0b ${progress}%, 
+            ${ringColor} 0%, 
+            ${ringColor} ${progress}%, 
             transparent ${progress}%, 
             transparent 100%
         )`;
     },
 
-    /* ============================================================
-       ★修正: createBubble関数 (大小の泡を作り分ける)
-       ============================================================ */
+    // ★修正: 泡は「白」にする（リアルな気泡表現）
     createBubble: (isAmbient = false) => {
-        const container = document.getElementById('timer-bubble-container');
+        const container = document.getElementById('timer-bubbles-container');
         if (!container) return;
 
         const b = document.createElement('div');
-        b.className = 'absolute rounded-full bg-yellow-400/30 backdrop-blur-sm pointer-events-none animate-float-up';
+        b.className = 'absolute rounded-full backdrop-blur-sm pointer-events-none animate-float-up';
         
-        // サイズ設定
+        // 色は白固定
+        b.style.backgroundColor = '#ffffff';
+        
+        // 透明度で奥行きを出す
+        b.style.opacity = isAmbient ? (Math.random() * 0.3 + 0.1).toString() : '0.6';
+        
         const size = isAmbient 
-            ? Math.random() * 10 + 5   // アンビエント: 5px〜15px (小さめ)
-            : Math.random() * 30 + 10; // 通常: 10px〜40px (大きめ)
+            ? Math.random() * 8 + 3 
+            : Math.random() * 20 + 8;
             
         b.style.width = `${size}px`;
         b.style.height = `${size}px`;
-        
-        // 位置設定 (左右ランダム)
         b.style.left = `${Math.random() * 100}%`;
         b.style.bottom = '-20px';
         
-        // アニメーション速度 (小さい泡はゆっくり)
-        const duration = isAmbient ? (Math.random() * 3 + 4) : (Math.random() * 2 + 2);
+        const duration = isAmbient ? (Math.random() * 4 + 5) : (Math.random() * 2 + 2);
         b.style.animationDuration = `${duration}s`;
+        b.style.zIndex = "1";
 
         container.appendChild(b);
 
-        // アニメーション終了後に削除
         setTimeout(() => {
             if(b.parentNode) b.parentNode.removeChild(b);
         }, duration * 1000);
@@ -177,16 +202,12 @@ export const Timer = {
     pause: () => {
         if (!isRunning) return;
 
-        const now = Date.now();
-        const start = parseInt(localStorage.getItem(APP.STORAGE_KEYS.TIMER_START));
-        const accumulated = parseInt(localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED)) || 0;
-        
-        const currentSession = now - start;
-        localStorage.setItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED, accumulated + currentSession);
+        localStorage.setItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED, accumulatedTime);
         localStorage.removeItem(APP.STORAGE_KEYS.TIMER_START);
 
         isRunning = false;
-        if (timerInterval) cancelAnimationFrame(timerInterval);
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = null;
         
         Timer.updateUI(false);
     },
@@ -194,7 +215,7 @@ export const Timer = {
     finish: async () => {
         Timer.pause();
         
-        const totalMs = parseInt(localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED)) || 0;
+        const totalMs = accumulatedTime;
         const minutes = Math.round(totalMs / 60000);
 
         if (minutes > 0) {
@@ -218,112 +239,32 @@ export const Timer = {
     },
 
     reset: () => {
-        isRunning = false;
-        if (timerInterval) cancelAnimationFrame(timerInterval);
+        Timer.pause();
         localStorage.removeItem(APP.STORAGE_KEYS.TIMER_START);
         localStorage.removeItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
-        lastBurnedKcal = 0; // リセット
+        
+        accumulatedTime = 0;
+        lastBurnedKcal = 0;
+        currentBeerStyleName = null; // スタイルリセット
         
         const container = document.getElementById('timer-bubbles-container');
         if (container) container.innerHTML = '';
+        
         const display = document.getElementById('timer-display');
         const kcalEl = document.getElementById('timer-kcal');
         const beerEl = document.getElementById('timer-beer');
+        const ring = document.getElementById('timer-ring');
         
+        // モーダルの背景色リセット
+        const modal = document.getElementById('timer-modal');
+        if (modal) modal.style.background = ''; // デフォルト(CSS定義)に戻す
+
         if (display) display.textContent = '00:00';
-        if (kcalEl) kcalEl.textContent = '0';
+        if (kcalEl) kcalEl.textContent = '0.0';
         if (beerEl) beerEl.textContent = '0.0';
+        if (ring) ring.style.background = 'transparent';
         
         Timer.updateUI(false);
-    },
-
-    startLoop: () => {
-        const loop = () => {
-            if (!isRunning) return;
-            Timer.tick();
-            timerInterval = requestAnimationFrame(loop);
-        };
-        timerInterval = requestAnimationFrame(loop);
-    },
-
-    tick: () => {
-        const startStr = localStorage.getItem(APP.STORAGE_KEYS.TIMER_START);
-        const accStr = localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
-        
-        let totalMs = 0;
-        if (accStr) totalMs += parseInt(accStr, 10);
-        if (startStr) totalMs += (Date.now() - parseInt(startStr, 10));
-
-        const display = document.getElementById('timer-display');
-        const kcalEl = document.getElementById('timer-kcal');
-        const beerEl = document.getElementById('timer-beer');
-        const typeSelect = document.getElementById('timer-exercise-select');
-
-        if (display) display.textContent = formatTime(totalMs);
-
-        if (kcalEl && beerEl && typeSelect) {
-            const profile = Store.getProfile();
-            const type = typeSelect.value;
-            const mets = EXERCISE[type] ? EXERCISE[type].mets : 3.0;
-            const minutes = totalMs / 60000;
-            const burned = Calc.calculateExerciseBurn(mets, minutes, profile);
-            
-            kcalEl.textContent = Math.floor(burned);
-
-            const settings = { modes: Store.getModes(), baseExercise: Store.getBaseExercise() };
-            const tankData = Calc.getTankDisplayData(0, StateManager.beerMode, settings, profile);
-
-            const beers = Calc.convertKcalToBeerCount(burned, tankData.targetStyle);
-            beerEl.textContent = beers;
-
-            if (display) {
-                const speed = Math.max(0.8, 3.5 - (mets / 3)); 
-                display.style.animation = `timer-pulse ${speed}s ease-in-out infinite`;
-                // 色適用を安全に
-                const glowColor = tankData.liquidColor.includes('gradient') ? '#fbbf24' : tankData.liquidColor;
-                display.style.textShadow = `0 0 20px ${glowColor}`;
-            }
-
-            // ★修正: 泡の発生判定 (0.1kcalごとに発生させる)
-            // 前回記録したカロリーと、現在のカロリーの差が 0.1 以上あれば泡を出す
-            if (burned - lastBurnedKcal >= 0.1) {
-                Timer.createBubble(tankData.liquidColor);
-                lastBurnedKcal = burned;
-            }
-        }
-    },
-
-    createBubble: (color) => {
-        const container = document.getElementById('timer-bubbles-container');
-        if (!container) return;
-
-        // グラデーション文字列そのままだと background に適用できない場合があるためチェック
-        // ただし CSS background は gradient を受け付けるので、z-index等の問題の可能性が高い
-        // 念のため安全な色指定を行う
-        const safeColor = color || '#fbbf24';
-
-        const bubble = document.createElement('div');
-        const size = Math.random() * 20 + 10; // 少し大きく
-        const left = Math.random() * 90 + 5;  // 画面端すぎないように
-        const duration = Math.random() * 3 + 2;
-
-        bubble.className = "absolute rounded-full pointer-events-none";
-        bubble.style.width = `${size}px`;
-        bubble.style.height = `${size}px`;
-        bubble.style.left = `${left}%`;
-        bubble.style.bottom = `-30px`; // スタート位置
-        
-        bubble.style.background = safeColor;
-        
-        bubble.style.opacity = "0.7";
-        bubble.style.filter = "blur(1px)";
-        // z-index問題を回避するため、コンテナ内での表示を強制
-        bubble.style.zIndex = "1"; 
-        
-        bubble.style.animation = `timer-bubble-up ${duration}s ease-in forwards`;
-
-        container.appendChild(bubble);
-        setTimeout(() => bubble.remove(), duration * 1000);
     },
 
     updateUI: (running) => {
@@ -331,27 +272,26 @@ export const Timer = {
         const icon = document.getElementById('icon-timer-toggle');
         const finishBtn = document.getElementById('btn-timer-finish');
         const select = document.getElementById('timer-exercise-select');
-        const wrapper = select ? select.parentElement : null; // 親のdiv
+        const wrapper = select ? select.parentElement : null;
 
         if (running) {
+            // 背景が濃いビール色になるため、ボタンは「白」系にして視認性を確保
             toggleBtn.classList.remove('bg-indigo-500', 'hover:bg-indigo-600');
-            toggleBtn.classList.add('bg-yellow-500', 'hover:bg-yellow-600', 'shadow-yellow-500/50');
+            toggleBtn.classList.add('bg-white', 'text-yellow-600', 'hover:bg-gray-100');
             icon.className = 'ph-fill ph-pause text-3xl';
             finishBtn.classList.add('hidden');
             
             if(select) {
                 select.disabled = true;
-                // ★追加: 無効化されていることを視覚的に分かるようにする
                 select.classList.add('opacity-50', 'cursor-not-allowed');
                 if(wrapper) wrapper.classList.add('opacity-50');
             }
         } else {
-            toggleBtn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600', 'shadow-yellow-500/50');
-            toggleBtn.classList.add('bg-indigo-500', 'hover:bg-indigo-600');
+            toggleBtn.classList.remove('bg-white', 'text-yellow-600', 'hover:bg-gray-100');
+            toggleBtn.classList.add('bg-indigo-500', 'text-white', 'hover:bg-indigo-600');
             icon.className = 'ph-fill ph-play text-3xl';
             
-            const acc = localStorage.getItem(APP.STORAGE_KEYS.TIMER_ACCUMULATED);
-            if (acc && parseInt(acc) > 0) {
+            if (accumulatedTime > 0) {
                 finishBtn.classList.remove('hidden');
             } else {
                 finishBtn.classList.add('hidden');
