@@ -659,10 +659,32 @@
                 </div>
             </div>
             <div>
-                <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Activity</label>
-                <select id="exercise-select" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl px-3 py-3 text-sm font-bold"></select>
+        <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Activity</label>
+        <select id="exercise-select" class="w-full bg-base-50 dark:bg-base-900 border-0 rounded-xl px-3 py-3 text-sm font-bold"></select>
+    </div>
+
+    <label class="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl cursor-pointer border border-orange-100 dark:border-orange-800/50 transition">
+        <div class="flex items-center gap-2">
+            <span class="text-xl">🔥</span>
+            <div class="flex flex-col">
+                <span class="text-xs font-bold text-orange-800 dark:text-orange-200">Apply Streak Bonus</span>
+                <span class="text-[10px] text-orange-600/70 dark:text-orange-400/70">継続ボーナスを適用する</span>
             </div>
-            <button id="btn-save-exercise" class="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg">Save Workout</button>
+        </div>
+        <div class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="manual-apply-bonus" class="sr-only peer" checked>
+            <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500"></div>
+        </div>
+    </label>
+            <div class="flex gap-3">
+    <button id="btn-delete-exercise" class="hidden w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-500 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 transition">
+        <i class="ph-bold ph-trash text-xl"></i>
+    </button>
+
+    <button id="btn-save-exercise" class="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:bg-indigo-700 transition">
+        Record
+    </button>
+</div>
         </div>
     </div>
 </div>

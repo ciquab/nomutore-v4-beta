@@ -126,41 +126,42 @@ export const UI = {
         
         bind('btn-search-untappd', 'click', searchUntappd);
 
-        // 運動記録の保存
-        bind('btn-save-exercise', 'click', async () => {
-            // ID重複が解消されたので、正しくタブ内の要素が取得されます
-            const date = document.getElementById('manual-date').value;
-            const minutes = parseInt(document.getElementById('manual-minutes').value, 10);
-            const key = document.getElementById('exercise-select').value;
-            const applyBonus = document.getElementById('manual-bonus').checked;
-            
-            const idField = document.getElementById('editing-exercise-id');
-            const editId = idField && idField.value ? parseInt(idField.value) : null;
+        // --- 運動の保存処理 ---
+    bind('btn-save-exercise', 'click', async () => {
+        // 1. 各値の取得
+        const date = document.getElementById('manual-date').value;
+        const minutes = parseInt(document.getElementById('manual-minutes').value, 10);
+        const key = document.getElementById('exercise-select').value;
+        
+        const idField = document.getElementById('editing-exercise-id');
+        const editId = idField && idField.value ? parseInt(idField.value) : null;
 
-            if (!date || !minutes || minutes <= 0) {
-                showMessage('Date and Minutes are required.', 'error');
-                return;
-            }
+        // ★修正点1: エラーの原因だったIDを修正
+        // 元: document.getElementById('manual-bonus').checked;
+        // 今: document.getElementById('manual-apply-bonus')...
+        const bonusEl = document.getElementById('manual-apply-bonus');
+        const applyBonus = bonusEl ? bonusEl.checked : true;
 
-            if (editId) {
-                // 編集時
-                await Service.saveExerciseLog(key, minutes, date, applyBonus, editId);
-                showMessage('Workout Updated!', 'success');
-            } else {
-                // 新規作成時
-                await Service.saveExerciseLog(key, minutes, date, applyBonus);
-                showMessage('Workout Logged!', 'success');
-            }
-            
-            // フォームクリア
-            document.getElementById('manual-minutes').value = '';
-            if(idField) idField.value = '';
-            
-            // ★変更点: モーダルではないので、閉じる処理(toggleModal)は削除しました
-            // 代わりにキーボードを閉じるためにフォーカスを外すなどの工夫があっても良いですが、必須ではありません
+        // 2. バリデーション (元のまま)
+        if (!date || !minutes || minutes <= 0) {
+            showMessage('Date and Minutes are required.', 'error');
+            return;
+        }
 
-            refreshUI();
-        });
+        // 3. 保存処理 (元の引数の渡し方を維持)
+        if (editId) {
+            // 編集時 (引数5つ)
+            await Service.saveExerciseLog(key, minutes, date, applyBonus, editId);
+            showMessage('Workout Updated!', 'success');
+        } else {
+            // 新規時 (引数4つ)
+            await Service.saveExerciseLog(key, minutes, date, applyBonus);
+            showMessage('Workout Logged!', 'success');
+        }
+        
+        // ★修正点2: 今回は「モーダル」なので、保存後に閉じる必要があります
+        closeModal('exercise-modal');
+    });
 
         bind('btn-save-check', 'click', () => {
             const date = document.getElementById('check-date').value;

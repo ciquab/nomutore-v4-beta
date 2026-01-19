@@ -166,14 +166,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ★追加: マニュアル入力の保存ボタンに機能を紐付け
-    const btnSaveExerciseManual = document.getElementById('btn-save-exercise');
-    if (btnSaveExerciseManual) {
-        btnSaveExerciseManual.onclick = () => {
-            import('./ui/modal.js').then(m => m.handleSaveManualExercise());
-        };
-    }
-
     document.addEventListener('bulk-delete', async () => {
         const checkboxes = document.querySelectorAll('.log-checkbox:checked');
         const ids = Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));

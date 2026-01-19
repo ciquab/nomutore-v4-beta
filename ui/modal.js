@@ -360,18 +360,27 @@ export const openCheckModal = async (dateStr) => {
 
 // ★修正: dateStrを受け取れるように変更
 export const openManualInput = (dateStr = null, log = null) => {
-    // フォームリセット
+    // 1. 要素取得
     const idField = document.getElementById('editing-exercise-id');
     const minField = document.getElementById('manual-minutes');
+    const dateField = document.getElementById('manual-date');
+    const bonusCheck = document.getElementById('manual-apply-bonus');
+    
+    // ★修正1: IDを index.html / index.js と一致させる
+    const saveBtn = document.getElementById('btn-save-exercise'); 
+    const deleteBtn = document.getElementById('btn-delete-exercise');
+
+    // 2. リセット
     if(idField) idField.value = '';
     if(minField) minField.value = '';
     
     // 日付セット
     const targetDate = dateStr || (log ? dayjs(log.timestamp).format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'));
-    document.getElementById('manual-date').value = targetDate;
+    if(dateField) dateField.value = targetDate;
 
-    // 編集モードの場合、既存データをセット
+    // 3. モード別表示切り替え
     if (log) {
+        // === 編集モード ===
         if(idField) idField.value = log.id;
         if(minField) minField.value = log.minutes || 30;
         
@@ -379,37 +388,38 @@ export const openManualInput = (dateStr = null, log = null) => {
         if (typeSel && log.exerciseKey) {
             typeSel.value = log.exerciseKey;
         }
-    }
 
-    // モーダルを表示
-    toggleModal('exercise-modal', true);
-};
+        // 保存ボタンを「Update」に変更
+        if (saveBtn) saveBtn.textContent = 'Update';
 
-/**
- * マニュアル入力保存ボタンのハンドラ
- */
-export const handleSaveManualExercise = () => {
-    const id = document.getElementById('editing-exercise-id').value;
-    const exerciseKey = document.getElementById('exercise-select').value;
-    const minutes = parseInt(document.getElementById('manual-minutes').value);
-    const date = document.getElementById('manual-date').value;
-    const applyBonus = document.getElementById('manual-bonus').checked;
-
-    if (!minutes || minutes <= 0) {
-        alert('時間を入力してください');
-        return;
-    }
-
-    // イベントを発火 (main.js がこれを受け取って Service を呼ぶ)
-    document.dispatchEvent(new CustomEvent('save-exercise', {
-        detail: {
-            exerciseKey,
-            minutes,
-            date,
-            applyBonus,
-            id: id ? parseInt(id) : null
+        // ★修正2: 削除ボタンは「表示するだけ」。onclickイベントは index.js で定義済みなので削除。
+        if (deleteBtn) {
+            deleteBtn.classList.remove('hidden');
         }
-    }));
+
+        // ボーナスチェック復元
+        if (bonusCheck) {
+            const hasBonus = (log.applyBonus !== undefined) 
+                ? log.applyBonus 
+                : (log.memo && log.memo.includes('Bonus'));
+            bonusCheck.checked = !!hasBonus;
+        }
+
+    } else {
+        // === 新規作成モード ===
+        if (saveBtn) saveBtn.textContent = 'Record';
+        
+        // ★修正3: 削除ボタンを隠す
+        if (deleteBtn) {
+            deleteBtn.classList.add('hidden');
+        }
+
+        // ボーナスデフォルトON
+        if (bonusCheck) bonusCheck.checked = true;
+    }
+
+    // 4. モーダルを表示
+    toggleModal('exercise-modal', true);
 };
 
 export const openTimer = (autoStart = false) => {
