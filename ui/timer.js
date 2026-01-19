@@ -127,21 +127,19 @@ export const Timer = {
 
         const beerEl = document.getElementById('timer-beer');
         if(beerEl) {
-            const cans = burned / 140;
-            // ★修正: 動作確認用に桁数を増やしました (0.000)
-            // これなら数秒で数字が増えるのが確認できます
-            beerEl.textContent = cans.toFixed(3);
+            // ★修正: ml換算 (140kcal = 350ml -> 1kcal = 2.5ml)
+            const ml = burned * 2.5;
+            // mlは整数表示で十分スピード感が出る
+            beerEl.textContent = Math.floor(ml);
         }
 
         Timer.updateRing(burned);
 
         if (isRunning) {
-            // カロリー消費の泡
             if (burned - lastBurnedKcal > 0.1) { 
                 Timer.createBubble(); 
                 lastBurnedKcal = burned;
             }
-            // アンビエント泡
             if (Math.random() < 0.3) {
                 Timer.createBubble(true);
             }
@@ -275,9 +273,11 @@ export const Timer = {
         const wrapper = select ? select.parentElement : null;
 
         if (running) {
-            toggleBtn.classList.remove('bg-indigo-500', 'hover:bg-indigo-600');
-            toggleBtn.classList.add('bg-white', 'text-yellow-600', 'hover:bg-gray-100');
+            // ★修正: 実行中（一時停止ボタン）
+            // 色は白のまま、アイコンだけPauseに変える
+            // 視覚的な変化として、少し透明度を下げるなどしても良いが、シンプルに保つ
             icon.className = 'ph-fill ph-pause text-3xl';
+            
             finishBtn.classList.add('hidden');
             
             if(select) {
@@ -286,12 +286,13 @@ export const Timer = {
                 if(wrapper) wrapper.classList.add('opacity-50');
             }
         } else {
-            toggleBtn.classList.remove('bg-white', 'text-yellow-600', 'hover:bg-gray-100');
-            toggleBtn.classList.add('bg-indigo-500', 'text-white', 'hover:bg-indigo-600');
-            icon.className = 'ph-fill ph-play text-3xl';
+            // ★修正: 停止中（再開ボタン）
+            icon.className = 'ph-fill ph-play text-3xl ml-1';
             
             if (accumulatedTime > 0) {
+                // 完了ボタンを表示
                 finishBtn.classList.remove('hidden');
+                // 並んだ時にバランスが良いよう、再開ボタンのデザインは変えない
             } else {
                 finishBtn.classList.add('hidden');
             }
