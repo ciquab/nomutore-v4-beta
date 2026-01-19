@@ -152,11 +152,9 @@ export const UI = {
         if (editId) {
             // 編集時 (引数5つ)
             await Service.saveExerciseLog(key, minutes, date, applyBonus, editId);
-            showMessage('Workout Updated!', 'success');
         } else {
             // 新規時 (引数4つ)
             await Service.saveExerciseLog(key, minutes, date, applyBonus);
-            showMessage('Workout Logged!', 'success');
         }
         
         // ★修正点2: 今回は「モーダル」なので、保存後に閉じる必要があります
