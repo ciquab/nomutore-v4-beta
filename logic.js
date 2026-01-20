@@ -101,6 +101,7 @@ export const Calc = {
         return (kcal / safeUnit).toFixed(1);
     },
 
+    // ★修正: ストリーク判定ロジックをv3仕様（完済＝成功）に修正
     getCurrentStreak: (logs, checks, profile, referenceDate = null) => {
         const safeLogs = Array.isArray(logs) ? logs : [];
         const safeChecks = Array.isArray(checks) ? checks : [];
@@ -134,11 +135,27 @@ export const Calc = {
         const logMap = new Map();
         const checkMap = new Map();
         
+        // ログを日付ごとにマッピングし、収支(balance)を計算
         safeLogs.forEach(l => {
             const d = dayjs(l.timestamp).format('YYYY-MM-DD');
-            if (!logMap.has(d)) logMap.set(d, { hasBeer: false, hasExercise: false });
-            if (l.type === 'beer') logMap.get(d).hasBeer = true;
-            if (l.type === 'exercise') logMap.get(d).hasExercise = true;
+            if (!logMap.has(d)) logMap.set(d, { hasBeer: false, hasExercise: false, balance: 0 });
+            
+            const entry = logMap.get(d);
+            if (l.type === 'beer') entry.hasBeer = true;
+            if (l.type === 'exercise') entry.hasExercise = true;
+            
+            // 収支計算 (DBのkcalは ビール:負, 運動:正 で保存されている前提)
+            if (l.kcal !== undefined) {
+                entry.balance += l.kcal;
+            } else if (l.type === 'exercise') {
+                // kcalがない場合のフォールバック計算
+                const mets = EXERCISE[l.exerciseKey] ? EXERCISE[l.exerciseKey].mets : 3.0;
+                const burn = Calc.calculateExerciseBurn(mets, l.minutes, profile);
+                entry.balance += burn;
+            } else if (l.type === 'beer') {
+                // ビールでkcalがない場合（通常ありえないが念のため）
+                entry.balance -= 140; 
+            }
         });
         
         safeChecks.forEach(c => {
@@ -152,25 +169,35 @@ export const Calc = {
             }
 
             const dateStr = checkDate.format('YYYY-MM-DD');
-            const dayLogs = logMap.get(dateStr) || { hasBeer: false, hasExercise: false };
-            
-            const hasCheck = checkMap.has(dateStr);
-            const isDryCheckValue = checkMap.get(dateStr); 
+            const dayLogs = logMap.get(dateStr) || { hasBeer: false, hasExercise: false, balance: 0 };
+            const isDry = checkMap.get(dateStr); // true | false | undefined
 
-            // ビールを飲んだらストップ
-            if (dayLogs.hasBeer) {
-                break;
+            // --- 判定ロジック ---
+
+            // 1. 休肝日チェックがONなら継続 (最強)
+            if (isDry === true) {
+                streak++;
+                checkDate = checkDate.subtract(1, 'day');
+                continue;
             }
 
-            // チェック済みで、かつ休肝日でない（飲んでないけど休肝日チェックもしてない、はOKとするか？
-            // ここでは「休肝日チェックがFalse（飲んだ）」ならストップとする
-            if (hasCheck && isDryCheckValue === false) {
-                break;
+            // 2. ビールを飲んでいない（かつ休肝日NGとも言っていない）なら継続
+            if (!dayLogs.hasBeer && isDry !== false) {
+                streak++;
+                checkDate = checkDate.subtract(1, 'day');
+                continue;
             }
 
-            // ここまで来たらセーフ
-            streak++;
-            checkDate = checkDate.subtract(1, 'day');
+            // 3. ビールを飲んだが、運動で完済している (Balance >= 0) なら継続！ (v3仕様復活)
+            // ※端数計算の誤差を許容するため -5kcal 程度までセーフとするか、厳密に0とするか。ここでは厳密に >= 0
+            if (dayLogs.hasBeer && dayLogs.balance >= 0) {
+                streak++;
+                checkDate = checkDate.subtract(1, 'day');
+                continue;
+            }
+
+            // ここまで来たらストリーク終了
+            break;
             
             if (streak > 3650) break; 
         }
