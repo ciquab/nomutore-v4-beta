@@ -1,20 +1,149 @@
 import { APP } from '../constants.js';
 import confetti from 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/+esm';
 
-// Web Share APIラッパー
+// --- Sound & Haptics Engine ---
+
+const AudioEngine = {
+    ctx: null,
+    
+    init: () => {
+        if (!AudioEngine.ctx) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                AudioEngine.ctx = new AudioContext();
+            }
+        }
+    },
+
+    resume: () => {
+        if (AudioEngine.ctx && AudioEngine.ctx.state === 'suspended') {
+            AudioEngine.ctx.resume().catch(() => {});
+        }
+    },
+
+    playTone: (freq, type, duration, startTime = 0, vol = 0.1) => {
+        if (!AudioEngine.ctx) AudioEngine.init();
+        const ctx = AudioEngine.ctx;
+        if (!ctx) return;
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + startTime);
+
+        gain.gain.setValueAtTime(vol, ctx.currentTime + startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startTime + duration);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(ctx.currentTime + startTime);
+        osc.stop(ctx.currentTime + startTime + duration);
+    },
+
+    // 🍺 乾杯音 (Clink)
+    playBeer: () => {
+        // カチン！という鋭い音
+        AudioEngine.playTone(1500, 'sine', 0.8, 0, 0.1);
+        AudioEngine.playTone(2200, 'triangle', 0.6, 0.02, 0.05); 
+    },
+
+    // 🏃‍♀️ 達成音
+    playSuccess: () => {
+        AudioEngine.playTone(880, 'sine', 0.15, 0, 0.1);
+        AudioEngine.playTone(1109, 'sine', 0.15, 0.1, 0.1);
+        AudioEngine.playTone(1318, 'sine', 0.4, 0.2, 0.1);
+    },
+
+    // ✅ チェック音
+    playPop: () => {
+        AudioEngine.playTone(600, 'sine', 0.1, 0, 0.1);
+    },
+    
+    // 🗑️ 削除音
+    playDelete: () => {
+        AudioEngine.playTone(150, 'sawtooth', 0.2, 0, 0.1);
+    },
+
+    // ⚠️ エラー音
+    playError: () => {
+        AudioEngine.playTone(150, 'sawtooth', 0.3, 0, 0.1);
+        AudioEngine.playTone(100, 'sawtooth', 0.3, 0.1, 0.1);
+    }
+};
+
+const Haptics = {
+    light: () => { if (navigator.vibrate) navigator.vibrate(10); },
+    medium: () => { if (navigator.vibrate) navigator.vibrate(20); },
+    success: () => { if (navigator.vibrate) navigator.vibrate([10, 30, 10]); },
+    error: () => { if (navigator.vibrate) navigator.vibrate([50, 50, 50]); }
+};
+
+export const Feedback = {
+    beer: () => {
+        AudioEngine.playBeer();
+        Haptics.success();
+    },
+    success: () => {
+        AudioEngine.playSuccess();
+        Haptics.success();
+    },
+    check: () => {
+        AudioEngine.playPop();
+        Haptics.light();
+    },
+    delete: () => {
+        AudioEngine.playDelete();
+        Haptics.medium();
+    },
+    error: () => {
+        AudioEngine.playError();
+        Haptics.error();
+    },
+    tap: () => { Haptics.light(); },
+    initAudio: () => { AudioEngine.init(); AudioEngine.resume(); }
+};
+
+// --- Toast Animation Helper (New) ---
+export const showToastAnimation = () => {
+    // 既存のアニメーションがあれば削除
+    const existing = document.getElementById('toast-animation-layer');
+    if (existing) existing.remove();
+
+    // オーバーレイ作成
+    const overlay = document.createElement('div');
+    overlay.id = 'toast-animation-layer';
+    overlay.className = "fixed inset-0 pointer-events-none flex items-center justify-center z-[10001] overflow-hidden";
+    
+    // 左右のグラスとテキスト
+    overlay.innerHTML = `
+        <div class="text-[8rem] animate-clink-left absolute translate-x-[-100vw]">🍺</div>
+        <div class="text-[8rem] animate-clink-right absolute translate-x-[100vw] scale-x-[-1]">🍺</div>
+        <div class="absolute text-4xl font-black text-white drop-shadow-lg animate-toast-text opacity-0" style="animation-delay: 0.5s">Cheers!</div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // アニメーション終了後に削除 (1.5s後)
+    setTimeout(() => {
+        if (overlay) overlay.remove();
+    }, 1500);
+};
+
+// --- Existing DOM Logic ---
+
 const shareContent = async (text) => {
     if (navigator.share) {
         try {
             await navigator.share({
                 title: 'Nomutore Log',
                 text: text,
-                // url: window.location.href // PWAのURLを含める場合はここ
             });
         } catch (err) {
             console.log('Share canceled or failed', err);
         }
     } else {
-        // Fallback: クリップボードコピー
         navigator.clipboard.writeText(text).then(() => {
             alert('クリップボードにコピーしました！SNSに貼り付けてください。');
         });
@@ -28,7 +157,6 @@ export const DOM = {
         if (DOM.isInitialized) return;
         
         const ids = [
-            // --- Modals & Inputs ---
             'message-box', 'drinking-section', 
             'beer-date', 'beer-select', 'beer-size', 'beer-count',
             'beer-input-preset', 'beer-input-custom',
@@ -52,11 +180,10 @@ export const DOM = {
             'heatmap-grid', 'heatmap-period-label', 'heatmap-prev', 'heatmap-next',
             'balanceChart', 'chart-filters',
 
-            // --- Modals (Outer) ---
             'beer-modal', 'check-modal', 'exercise-modal', 'settings-modal', 'help-modal',
             'global-error-overlay', 'error-details', 'swipe-coach-mark',
-            'check-library-modal', // ★追加
-            'action-menu-modal'    // ★追加
+            'check-library-modal',
+            'action-menu-modal'
         ];
 
         ids.forEach(id => {
@@ -66,6 +193,14 @@ export const DOM = {
                 DOM.elements['tank-liquid'] = document.getElementById('orb-liquid-front');
             }
         });
+
+        const enableAudio = () => {
+            Feedback.initAudio();
+            document.removeEventListener('click', enableAudio);
+            document.removeEventListener('touchstart', enableAudio);
+        };
+        document.addEventListener('click', enableAudio, { once: true });
+        document.addEventListener('touchstart', enableAudio, { once: true });
 
         DOM.isInitialized = true;
     }
@@ -82,6 +217,8 @@ export const toggleModal = (modalId, show = true) => {
     const el = DOM.elements[modalId] || document.getElementById(modalId);
     if (!el) return;
     
+    if (show) Feedback.tap();
+
     if (show) {
         el.classList.remove('hidden');
         el.classList.add('flex');
@@ -106,12 +243,10 @@ export const showConfetti = () => {
     });
 };
 
-// --- Phase 1.5 Update: Action Button Support ---
 export const showMessage = (text, type = 'info', action = null) => {
     const box = DOM.elements['message-box'] || document.getElementById('message-box');
     if (!box) return;
 
-    // 基本スタイル
     const baseClass = "fixed top-6 left-1/2 transform -translate-x-1/2 pl-6 pr-2 py-2 rounded-full shadow-lg z-[9999] transition-all duration-300 text-sm font-bold flex items-center gap-3";
     let colorClass = 'bg-indigo-600 text-white';
     if (type === 'error') colorClass = 'bg-red-500 text-white';
@@ -119,44 +254,40 @@ export const showMessage = (text, type = 'info', action = null) => {
 
     box.className = `${baseClass} ${colorClass}`;
     
-    // コンテンツ生成 (テキスト + 任意のボタン)
     let content = `<span>${text}</span>`;
     
-    // シェアボタンの追加
     if (action && action.type === 'share') {
         const shareText = action.text || text;
-        // onclick属性に直接関数を入れるため、一意なIDでイベントリスナーを後付けする
         const btnId = `msg-btn-share-${Date.now()}`;
         content += `
             <button id="${btnId}" class="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-full text-xs transition flex items-center gap-1">
                 <i class="ph-bold ph-share-network"></i> Share
             </button>
         `;
-        
-        // メッセージ表示後にイベントバインド
         setTimeout(() => {
             const btn = document.getElementById(btnId);
             if(btn) {
-                btn.onclick = () => shareContent(shareText);
+                btn.onclick = () => {
+                    Feedback.tap();
+                    shareContent(shareText);
+                };
             }
         }, 0);
     } else {
-        // ボタンがない場合はpaddingを調整 (右側も広く)
         box.className = box.className.replace('pr-2', 'pr-6');
     }
 
     box.innerHTML = content;
     
-    // 表示アニメーション
     box.classList.remove('translate-y-[-150%]', 'opacity-0');
-    
-    // 自動非表示 (ボタンがある場合は少し長く)
     setTimeout(() => {
         box.classList.add('translate-y-[-150%]', 'opacity-0');
     }, action ? 5000 : 3000);
 };
 
 export const toggleDryDay = (isDry) => {
+    Feedback.tap();
+
     const section = document.getElementById('drinking-section');
     if (!section) return;
 
