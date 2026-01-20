@@ -52,19 +52,19 @@ const AudioEngine = {
         const t = ctx.currentTime;
 
         // グラスの響きを構成する成分（周波数Hz, 持続秒数, 音量）
-        // 2つのグラス（低めと高め）がぶつかった想定の和音構成
+        // 余韻(d)を全体的に短縮しました (例: 1.2s -> 0.6s)
         const partials = [
             // Glass 1 (Main)
-            { f: 1400, d: 1.2, v: 0.15 }, // 基音 (Fundamental)
-            { f: 3600, d: 0.3, v: 0.08 }, // 倍音1 (Attack)
-            { f: 6200, d: 0.1, v: 0.04 }, // 倍音2 (Click)
+            { f: 1400, d: 0.6, v: 0.15 }, // 基音 (Fundamental)
+            { f: 3600, d: 0.2, v: 0.08 }, // 倍音1 (Attack)
+            { f: 6200, d: 0.08, v: 0.04 }, // 倍音2 (Click)
 
             // Glass 2 (Harmony/Dissonance)
-            { f: 1650, d: 1.0, v: 0.12 }, // 基音 (2nd glass)
-            { f: 4100, d: 0.2, v: 0.06 }, // 倍音1
+            { f: 1650, d: 0.5, v: 0.12 }, // 基音 (2nd glass)
+            { f: 4100, d: 0.15, v: 0.06 }, // 倍音1
             
             // Impact Transient (衝突瞬間の高音ノイズ成分)
-            { f: 8000, d: 0.05, v: 0.03 } 
+            { f: 8000, d: 0.04, v: 0.03 } 
         ];
 
         partials.forEach(p => {
