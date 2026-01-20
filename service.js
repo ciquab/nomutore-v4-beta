@@ -2,7 +2,7 @@ import { db, Store } from './store.js';
 import { Calc } from './logic.js';
 import { APP, EXERCISE, STYLE_SPECS } from './constants.js';
 // UIオブジェクトではなく、機能を直接インポート
-import { showMessage, showConfetti } from './ui/dom.js';
+import { showMessage, showConfetti, Feedback, showToastAnimation } from './ui/dom.js';
 import dayjs from 'https://cdn.jsdelivr.net/npm/dayjs@1.11.10/+esm';
 
 // ヘルパー: 月曜始まりの週頭を取得
@@ -358,8 +358,14 @@ export const Service = {
 
             if (Math.abs(kcal) > 500) {
                 showMessage(`🍺 記録完了！ ${Math.round(Math.abs(kcal))}kcalの借金です😱`, 'error', shareAction);
+                Feedback.beer();
+                // ★追加: 飲みすぎでも乾杯！
+                showToastAnimation(); 
             } else {
                 showMessage('🍺 記録しました！', 'success', shareAction);
+                Feedback.beer();
+                // ★追加: 飲みすぎでも乾杯！
+                showToastAnimation(); 
             }
             
             // Untappd連携
@@ -424,6 +430,8 @@ export const Service = {
             
             showMessage(`🏃‍♀️ ${Math.round(minutes)}分の運動を記録しました！`, 'success', shareAction);
             showConfetti();
+            Feedback.success();
+
         }
 
         await Service.recalcImpactedHistory(ts);
@@ -439,12 +447,14 @@ export const Service = {
             
             await db.logs.delete(parseInt(id));
             showMessage('削除しました', 'success');
+            Feedback.delete();
             
             await Service.recalcImpactedHistory(ts);
             document.dispatchEvent(new CustomEvent('refresh-ui'));
         } catch (e) {
             console.error(e);
             showMessage('削除に失敗しました', 'error');
+            Feedback.error();
         }
     },
 
@@ -461,12 +471,14 @@ export const Service = {
 
             await db.logs.bulkDelete(ids);
             showMessage(`${ids.length}件削除しました`, 'success');
+            Feedback.delete();
             
             await Service.recalcImpactedHistory(oldestTs);
             document.dispatchEvent(new CustomEvent('refresh-ui'));
         } catch (e) {
             console.error(e);
             showMessage('一括削除に失敗しました', 'error');
+            Feedback.error();
         }
     },
 
@@ -493,6 +505,7 @@ export const Service = {
         if (existing) {
             await db.checks.update(existing.id, data);
             showMessage('✅ デイリーチェックを更新しました', 'success');
+            Feedback.check(); 
         } else {
             await db.checks.add(data);
             
@@ -505,6 +518,7 @@ export const Service = {
             
             showMessage('✅ デイリーチェックを記録しました', 'success', shareAction);
             showConfetti();
+            Feedback.check();
         }
         
         if (formData.weight) {

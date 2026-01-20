@@ -9,8 +9,7 @@ html, body {
 }
 
 body { 
-    /* 余白は .tab-content で管理するため、bodyは最小限に */
-    padding-bottom: 0; 
+    padding-bottom: 7rem; /* Floating Bar Space */
     background-color: #f8fafc; /* base-50 */
     color: #1e293b; /* base-800 */
 }
@@ -29,7 +28,6 @@ body {
 .tab-content { 
     display: none; 
     animation: fadeIn 0.3s ease-out; 
-    /* 【修正】すべてのタブで下部余白を強制統一 (32 * 0.25rem = 8rem) */
     padding-bottom: 8rem !important; 
 }
 .tab-content.active { display: block; }
@@ -248,6 +246,9 @@ select:disabled {
 #timer-modal { z-index: 300 !important; }
 #rollover-modal { z-index: 350 !important; }
 
+/* Toast/Animation Overlay: Level 6 (New) */
+#toast-animation-layer { z-index: 10001 !important; }
+
 /* Notifications/Overlays: Level 5 */
 #message-box { z-index: 9999 !important; }
 #global-error-overlay { z-index: 10000 !important; }
@@ -270,7 +271,6 @@ select:disabled {
 }
 
 /* Sticky Header Background Fix */
-/* スクロール時に後ろの要素が透けすぎないように補正 */
 .sticky-header-bg {
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
