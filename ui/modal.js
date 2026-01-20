@@ -644,7 +644,40 @@ export const handleSaveSettings = async () => {
     }
 };
 
-export const openHelp = () => toggleModal('help-modal', true);
+/* --- Help Modal Logic --- */
+
+// ★修正: 初回起動モード(isFirstTime)をサポート
+export const openHelp = (isFirstTime = false) => {
+    toggleModal('help-modal', true);
+    
+    // ボタンのテキストと挙動を切り替える
+    // help-modal内のボタンは onclick="UI.closeModal('help-modal')" になっているので、
+    // それを上書きするのではなく、閉じた後のコールバックを仕込む方が安全だが、
+    // ここではDOM操作でボタンのonclickを書き換える
+    
+    const footerBtn = document.querySelector('#help-modal button.w-full'); // 下部の大きなボタン
+    
+    if (footerBtn) {
+        if (isFirstTime) {
+            footerBtn.textContent = "Start Setup";
+            footerBtn.onclick = () => {
+                toggleModal('help-modal', false);
+                // 設定タブへ移動
+                // index.js経由でUI.switchTabを呼ぶ必要があるが、
+                // modal.jsはUIモジュールの一部なので、DOM操作でタブ切り替えをエミュレートするか、
+                // window.UIオブジェクト（main.jsで登録）を利用する
+                if (window.UI && window.UI.switchTab) {
+                    window.UI.switchTab('settings');
+                    showMessage('まずは体重と目標を設定しましょう！', 'info');
+                }
+            };
+        } else {
+            footerBtn.textContent = "OK, Let's Drink!";
+            footerBtn.onclick = () => toggleModal('help-modal', false);
+        }
+    }
+};
+
 export const openLogDetail = (id) => { /* TODO: 実装が必要であれば */ };
 export const updateModeSelector = () => { /* Header selector update logic if separated */ };
 

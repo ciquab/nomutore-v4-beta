@@ -55,52 +55,55 @@ const setupLifecycleListeners = () => {
    App Initialization
    ========================================================================== */
 
-// ★修正: async関数全体を try-catch で囲む
+// ★修正: 初期化ロジックを分離し、エラーハンドリングを強化
 const initApp = async () => {
     try {
         console.log('App Initializing...');
         
-        // 初回起動判定
+        // 1. Init DOM Elements
+        UI.initDOM(); 
+        
+        // 2. Setup Event Listeners
+        setupLifecycleListeners();
+        setupGlobalListeners();
+
+        // 3. Migration & Initial Data Logic
         let isFirstRun = false;
+        // データ移行処理（あれば実行）
         if (Store.migrateV3ToV4) {
             isFirstRun = await Store.migrateV3ToV4();
         }
 
-        UI.init();
+        // 4. Load & Verify Data
+        updateBeerSelectOptions(); 
+        UI.applyTheme(localStorage.getItem(APP.STORAGE_KEYS.THEME) || 'system');
 
+        // 当日のチェックレコードを確保（なければ作成）
         await Service.ensureTodayCheckRecord();
 
+        // 期間リセットの確認
         const rolledOver = await Service.checkPeriodRollover();
         if (rolledOver) {
             toggleModal('rollover-modal', true);
         }
 
-        UI.setFetchAllDataHandler(async () => {
-            return await Service.getAllDataForUI();
-        });
-
-        UI.setFetchLogsHandler(async (offset, limit) => {
-            return await Service.getLogsWithPagination(offset, limit);
-        });
-        
-        generateSettingsOptions();
-
+        // 5. Initial Render
         await refreshUI();
 
-        if (!isResuming) setupLifecycleListeners();
-        
-        showSwipeCoachMark();
-        
-        if (isFirstRun) {
-            console.log('First run detected. Opening settings...');
-            setTimeout(() => {
-                UI.switchTab('settings');
-                UI.showMessage('ようこそ！まずは設定を入力しましょう！', 'success');
-            }, 300);
+        // 6. Restore Timer State
+        if (localStorage.getItem(APP.STORAGE_KEYS.TIMER_START)) {
+            UI.openTimer();
+        }
+
+        // 7. Onboarding Check
+        const hasWeight = localStorage.getItem(APP.STORAGE_KEYS.WEIGHT);
+        if (isFirstRun || !hasWeight) {
+            // 初回起動時はヘルプ（ガイド）を開く
+            setTimeout(() => UI.openHelp(true), 500);
         }
 
     } catch (e) {
-        // ★追加: 致命的なエラーが発生した場合、エラー画面を表示する
+        // 致命的なエラーが発生した場合、エラー画面を表示する
         console.error('Critical Initialization Error:', e);
         import('./errorHandler.js').then(m => m.showErrorOverlay(
             `初期化に失敗しました。\n${e.message}`, 
@@ -109,6 +112,46 @@ const initApp = async () => {
         ));
     }
 };
+
+// DOM構築完了後に実行
+document.addEventListener('DOMContentLoaded', initApp);
+
+/* ==========================================================================
+   Global Event Listeners (Swipe, etc)
+   ========================================================================== */
+
+const setupGlobalListeners = () => {
+    // Swipe
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, {passive: true});
+
+    document.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, {passive: true});
+
+    // Coach Mark Logic (初回のみ)
+    const KEY = 'nomutore_coach_shown_v4';
+    if (!localStorage.getItem(KEY)) {
+        showSwipeCoachMark();
+    }
+};
+
+const showSwipeCoachMark = () => {
+    const KEY = 'nomutore_seen_swipe_hint';
+    if (localStorage.getItem(KEY)) return;
+    const el = document.getElementById('swipe-coach-mark');
+    if (!el) return;
+    el.classList.remove('hidden');
+    requestAnimationFrame(() => el.classList.remove('opacity-0'));
+    setTimeout(() => {
+        el.classList.add('opacity-0');
+        setTimeout(() => el.classList.add('hidden'), 1000);
+        localStorage.setItem(KEY, 'true');
+    }, 3000);
+};
+
 
 /* ==========================================================================
    Event Bindings (Global)
@@ -261,21 +304,6 @@ const generateSettingsOptions = () => {
     if(defRecSet) defRecSet.value = Store.getDefaultRecordExercise();
 }
 
-const showSwipeCoachMark = () => {
-    const KEY = 'nomutore_seen_swipe_hint';
-    if (localStorage.getItem(KEY)) return;
-    const el = document.getElementById('swipe-coach-mark');
-    if (!el) return;
-    el.classList.remove('hidden');
-    requestAnimationFrame(() => el.classList.remove('opacity-0'));
-    setTimeout(() => {
-        el.classList.add('opacity-0');
-        setTimeout(() => el.classList.add('hidden'), 1000);
-        localStorage.setItem(KEY, 'true');
-    }, 3000);
-};
-
-// main.js
 
 /* ==========================================================================
    Swipe Navigation (v3 Spec Restored)
@@ -300,6 +328,3 @@ const handleSwipe = () => {
         }
     }
 };
-
-document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, false);
-document.addEventListener('touchend', e => { touchEndX = e.changedTouches[0].screenX; handleSwipe(); }, false);

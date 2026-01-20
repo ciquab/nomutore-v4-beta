@@ -1,10 +1,10 @@
 {
-    "name": "ノムトレ - 借金返済ダイエット",
-    "short_name": "ノムトレ",
-    "description": "飲んだら動く！ビールと運動の健康管理アプリ",
+    "name": "NOMUTORE - 借金返済ビールダイエット",
+    "short_name": "NOMUTORE",
+    "description": "飲んだら借金、動いて返済。ビール摂取カロリーを運動で帳消しにする、飲兵衛のためのスタイリッシュな健康管理ゲーム。",
     "start_url": "./index.html",
     "display": "standalone",
-    "background_color": "#f3f4f6",
+    "background_color": "#f8fafc",
     "theme_color": "#4F46E5",
     "orientation": "portrait",
     "icons": [
