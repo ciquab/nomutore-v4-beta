@@ -525,6 +525,18 @@ export const renderSettings = () => {
     }
     if (durationInput) durationInput.value = savedDuration;
 
+    // ★追加: プロフィール値の反映
+    const profile = Store.getProfile();
+    const wInput = document.getElementById('weight-input');
+    const hInput = document.getElementById('height-input');
+    const aInput = document.getElementById('age-input');
+    const gInput = document.getElementById('gender-input');
+
+    if (wInput) wInput.value = profile.weight;
+    if (hInput) hInput.value = profile.height;
+    if (aInput) aInput.value = profile.age;
+    if (gInput) gInput.value = profile.gender;
+
     // ★修正: 設定画面のプルダウン選択肢生成ロジックを追加
     const mode1Sel = document.getElementById('setting-mode-1');
     const mode2Sel = document.getElementById('setting-mode-2');
