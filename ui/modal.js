@@ -35,6 +35,81 @@ export const handleActionSelect = (type) => {
     else if (type === 'timer') openTimer(true);
 };
 
+/* --- ★追加: モーダルのイベントリスナーを一括設定 (2重登録防止) --- */
+export const setupModalListeners = () => {
+    // ヘルパー: onclickプロパティに代入することで、既存のリスナーを上書き・重複防止する
+    const bindClick = (id, handler) => {
+        const el = document.getElementById(id);
+        if (el) el.onclick = handler;
+    };
+
+    // 1. Beer Modal
+    bindClick('btn-save-beer', async () => {
+        const data = getBeerFormData();
+        if (!data.brand && !data.brewery && !data.isCustom) {
+            alert('銘柄名を入力するか、プリセットを選択してください');
+            return;
+        }
+        const id = document.getElementById('editing-log-id').value;
+        await Service.saveBeerLog(data, id);
+        toggleModal('beer-modal', false);
+    });
+
+    bindClick('btn-save-beer-next', async () => {
+        const data = getBeerFormData();
+        await Service.saveBeerLog(data, null); // 新規登録のみ
+        // 閉じるのではなく、フォームをリセットして継続
+        resetBeerForm(true); 
+        showMessage('続けて記録できます', 'info');
+    });
+
+    // 2. Exercise Modal
+    bindClick('btn-save-exercise', async () => {
+        const typeSel = document.getElementById('exercise-select');
+        const minInput = document.getElementById('manual-minutes');
+        const dateInput = document.getElementById('manual-date');
+        const bonusCheck = document.getElementById('manual-apply-bonus');
+        
+        if (!typeSel.value || !minInput.value) {
+            alert('運動内容と時間を入力してください');
+            return;
+        }
+        
+        const id = document.getElementById('editing-exercise-id').value;
+        await Service.saveExerciseLog(
+            typeSel.value, 
+            parseFloat(minInput.value), 
+            dateInput.value, 
+            bonusCheck.checked, 
+            id
+        );
+        toggleModal('exercise-modal', false);
+    });
+
+    // 3. Check Modal
+    bindClick('btn-save-check', async () => {
+        const dateInput = document.getElementById('check-date');
+        const isDryInput = document.getElementById('check-is-dry');
+        const weightInput = document.getElementById('check-weight');
+        
+        const data = {
+            date: dateInput.value,
+            isDryDay: isDryInput.checked,
+            weight: weightInput.value
+        };
+
+        // チェックボックスの状態を収集
+        const schema = JSON.parse(localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA) || '[]');
+        schema.forEach(item => {
+            const cb = document.getElementById(`check-${item.id}`);
+            if (cb) data[item.id] = cb.checked;
+        });
+
+        await Service.saveDailyCheck(data);
+        toggleModal('check-modal', false);
+    });
+};
+
 /* --- Beer Modal Logic --- */
 
 export const getBeerFormData = () => {
@@ -285,6 +360,8 @@ export const openCheckModal = async (dateStr) => {
 
 /* --- Exercise Modal Logic --- */
 
+/* --- Exercise Modal Logic --- */
+
 export const openManualInput = (dateStr = null, log = null) => {
     const idField = document.getElementById('editing-exercise-id');
     const minField = document.getElementById('manual-minutes');
@@ -298,10 +375,22 @@ export const openManualInput = (dateStr = null, log = null) => {
     const targetDate = dateStr || (log ? dayjs(log.timestamp).format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'));
     if(dateField) dateField.value = targetDate;
 
+    // ★修正: 運動リストの生成（空の場合のみ）
+    const typeSel = document.getElementById('exercise-select');
+    if (typeSel) {
+        // 一度空にしてから再生成（重複防止＆確実な生成）
+        typeSel.innerHTML = '';
+        Object.keys(EXERCISE).forEach(k => {
+            const o = document.createElement('option');
+            o.value = k;
+            o.textContent = EXERCISE[k].icon + ' ' + EXERCISE[k].label;
+            typeSel.appendChild(o);
+        });
+    }
+
     if (log) {
         if(idField) idField.value = log.id;
         if(minField) minField.value = log.minutes || 30;
-        const typeSel = document.getElementById('exercise-select');
         if (typeSel && log.exerciseKey) typeSel.value = log.exerciseKey;
         
         if (saveBtn) saveBtn.textContent = 'Update Workout';
@@ -314,6 +403,9 @@ export const openManualInput = (dateStr = null, log = null) => {
     } else {
         if (saveBtn) saveBtn.textContent = 'Save Workout';
         
+        // デフォルト選択
+        if (typeSel) typeSel.value = localStorage.getItem(APP.STORAGE_KEYS.DEFAULT_RECORD_EXERCISE) || APP.DEFAULTS.DEFAULT_RECORD_EXERCISE;
+
         if (deleteBtn) deleteBtn.classList.add('hidden');
         if (bonusCheck) bonusCheck.checked = true;
     }
@@ -766,4 +858,5 @@ export const adjustBeerCount = (delta) => {
     let v = parseInt(el.value) || 1;
     v = Math.max(1, v + delta);
     el.value = v;
+
 };
