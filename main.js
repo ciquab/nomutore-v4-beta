@@ -113,9 +113,6 @@ const initApp = async () => {
     }
 };
 
-// DOM構築完了後に実行
-document.addEventListener('DOMContentLoaded', initApp);
-
 /* ==========================================================================
    Global Event Listeners (Swipe, etc)
    ========================================================================== */
@@ -327,4 +324,5 @@ const handleSwipe = () => {
             UI.switchTab(tabs[currentIndex - 1]);
         }
     }
+
 };
