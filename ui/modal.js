@@ -17,7 +17,6 @@ export const openActionMenu = (dateStr = null) => {
     const label = document.getElementById('action-menu-date-label');
     if(label) label.textContent = dayjs(targetDate).format('MM/DD (ddd)');
     
-    // 隠しフィールドがある場合（index.htmlに追加が必要だが、ない場合はselectedDateステートで動作するようフォールバック）
     const hiddenDate = document.getElementById('action-menu-target-date');
     if(hiddenDate) hiddenDate.value = targetDate;
 
@@ -26,7 +25,6 @@ export const openActionMenu = (dateStr = null) => {
 
 export const handleActionSelect = (type) => {
     const hiddenDate = document.getElementById('action-menu-target-date');
-    // 隠しフィールドがない場合はStateManagerから取得
     const dateStr = hiddenDate ? hiddenDate.value : (StateManager.selectedDate || getTodayString());
     
     toggleModal('action-menu-modal', false);
@@ -69,7 +67,7 @@ export const getBeerFormData = () => {
         isCustom,
         abv: customAbv,
         ml: customMl,
-        type: 'brew', // Custom時のデフォルト
+        type: 'brew',
         useUntappd
     };
 };
@@ -89,7 +87,6 @@ export const resetBeerForm = (keepDate = false) => {
     const untappdCheck = document.getElementById('untappd-check');
     if(untappdCheck) untappdCheck.checked = false;
     
-    // Reset tabs
     switchBeerInputTab('preset');
 };
 
@@ -134,6 +131,12 @@ export const openBeerModal = (e, dateStr = null, log = null) => {
         if (log) { delBtn.classList.remove('hidden'); delBtn.classList.add('flex'); }
         else { delBtn.classList.add('hidden'); delBtn.classList.remove('flex'); }
     }
+    
+    const saveBtn = document.getElementById('btn-save-beer');
+    if (saveBtn) {
+        saveBtn.textContent = log ? 'Update Drink' : 'Save Drink';
+    }
+
     toggleModal('beer-modal', true);
 };
 
@@ -168,12 +171,11 @@ export const openCheckModal = async (dateStr) => {
     const container = document.getElementById('check-items-container');
     if (container) {
         container.innerHTML = '';
-        let schema = CHECK_SCHEMA; // Default Fallback
+        let schema = CHECK_SCHEMA;
         try {
             const stored = localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA);
             if (stored) schema = JSON.parse(stored);
             else {
-                // 初回起動時などで未保存の場合、デフォルトIDからスキーマを構築して保存
                 schema = getActiveSchemaFromIds(CHECK_DEFAULT_IDS);
                 localStorage.setItem(APP.STORAGE_KEYS.CHECK_SCHEMA, JSON.stringify(schema));
             }
@@ -209,8 +211,6 @@ export const openCheckModal = async (dateStr) => {
 
     const isDryCheck = document.getElementById('check-is-dry');
     if (isDryCheck) {
-        // リスナー重複防止のために一度cloneNode等するのがベストだが、ここではシンプルに毎回追加（少し無駄だが動作する）
-        // 厳密には `onclick` で上書きする方が安全
         isDryCheck.onclick = (e) => syncDryDayUI(e.target.checked);
     }
 
@@ -219,18 +219,21 @@ export const openCheckModal = async (dateStr) => {
         if(el) el.checked = !!val;
     };
     
-    // Reset
+    // Reset to initial state
     setCheck('check-is-dry', false);
     syncDryDayUI(false);
     
     const wEl = document.getElementById('check-weight');
     if(wEl) wEl.value = '';
 
+    // Reset button text to default
+    const saveBtn = document.getElementById('btn-save-check');
+    if (saveBtn) saveBtn.textContent = 'Save Check';
+
     const isDryInput = document.getElementById('check-is-dry');
     const dryLabelContainer = isDryInput ? isDryInput.closest('#drinking-section') : null;
     const dryLabelText = dryLabelContainer ? dryLabelContainer.querySelector('span.font-bold') : null;
 
-    // Reset Lock State
     if (dryLabelText) dryLabelText.innerHTML = "Is today a Dry Day?";
     if (isDryInput) isDryInput.disabled = false;
     if (dryLabelContainer) dryLabelContainer.classList.remove('opacity-50', 'pointer-events-none');
@@ -239,7 +242,6 @@ export const openCheckModal = async (dateStr) => {
         const start = d.startOf('day').valueOf();
         const end = d.endOf('day').valueOf();
         
-        // 並列取得
         const [existingLogs, beerLogs] = await Promise.all([
             db.checks.where('timestamp').between(start, end, true, true).toArray(),
             db.logs.where('timestamp').between(start, end, true, true).filter(l => l.type === 'beer').toArray()
@@ -252,7 +254,6 @@ export const openCheckModal = async (dateStr) => {
             setCheck('check-is-dry', existing.isDryDay);
             syncDryDayUI(existing.isDryDay);
             
-            // スキーマに合わせてチェックボックスを埋める
             let schema = CHECK_SCHEMA;
             try {
                 const s = localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA);
@@ -265,9 +266,11 @@ export const openCheckModal = async (dateStr) => {
                 }
             });
             if(wEl) wEl.value = existing.weight || '';
+
+            // ★修正: データが存在する場合は Update Check に変更
+            if (saveBtn) saveBtn.textContent = 'Update Check';
         }
 
-        // ビール記録がある場合、休肝日を強制OFF＆ロック
         if (hasBeer) {
             setCheck('check-is-dry', false); 
             syncDryDayUI(false);             
@@ -300,14 +303,17 @@ export const openManualInput = (dateStr = null, log = null) => {
         if(minField) minField.value = log.minutes || 30;
         const typeSel = document.getElementById('exercise-select');
         if (typeSel && log.exerciseKey) typeSel.value = log.exerciseKey;
-        if (saveBtn) saveBtn.textContent = 'Update';
+        
+        if (saveBtn) saveBtn.textContent = 'Update Workout';
+        
         if (deleteBtn) deleteBtn.classList.remove('hidden');
         if (bonusCheck) {
             const hasBonus = (log.applyBonus !== undefined) ? log.applyBonus : (log.memo && log.memo.includes('Bonus'));
             bonusCheck.checked = !!hasBonus;
         }
     } else {
-        if (saveBtn) saveBtn.textContent = 'Record';
+        if (saveBtn) saveBtn.textContent = 'Save Workout';
+        
         if (deleteBtn) deleteBtn.classList.add('hidden');
         if (bonusCheck) bonusCheck.checked = true;
     }
@@ -339,18 +345,15 @@ export const closeTimer = () => {
 
 /* --- Check Library Logic (Phase 1.5 New) --- */
 
-// ライブラリからIDリストに基づいてSchemaオブジェクトを生成するヘルパー
 const getActiveSchemaFromIds = (ids) => {
     const activeSchema = [];
     ids.forEach(id => {
         let item = null;
-        // ライブラリを走査してIDに一致する定義を探す
         Object.values(CHECK_LIBRARY).forEach(category => {
             const found = category.find(i => i.id === id);
             if (found) item = found;
         });
         
-        // ライブラリになければ（カスタム項目）、現在のスキーマから探す（または維持する）
         if (!item) {
             try {
                 const current = JSON.parse(localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA) || '[]');
@@ -365,7 +368,6 @@ const getActiveSchemaFromIds = (ids) => {
     return activeSchema;
 };
 
-// 現在アクティブな項目IDのリストを取得
 const getCurrentActiveIds = () => {
     try {
         const schema = JSON.parse(localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA) || '[]');
@@ -375,7 +377,6 @@ const getCurrentActiveIds = () => {
     }
 };
 
-// ライブラリモーダルのレンダリング
 window.renderCheckLibrary = () => {
     const container = document.getElementById('library-content');
     if (!container) return;
@@ -383,7 +384,6 @@ window.renderCheckLibrary = () => {
 
     const activeIds = new Set(getCurrentActiveIds());
 
-    // カテゴリごとに表示
     const categories = {
         'general': '基本・メンタル',
         'diet': 'ダイエット・食事',
@@ -415,12 +415,10 @@ window.renderCheckLibrary = () => {
                 const checkbox = document.getElementById(`lib-chk-${item.id}`);
                 if (checkbox) {
                     checkbox.checked = !checkbox.checked;
-                    // クラス更新
                     btn.className = checkbox.checked
                         ? 'p-3 rounded-xl border-2 cursor-pointer transition flex items-center gap-3 bg-indigo-50 border-indigo-500 dark:bg-indigo-900/30 dark:border-indigo-500'
                         : 'p-3 rounded-xl border-2 cursor-pointer transition flex items-center gap-3 bg-white border-gray-100 dark:bg-gray-800 dark:border-gray-700 hover:border-gray-300';
                     
-                    // アイコン切り替え
                     const iconArea = btn.querySelector('.check-icon');
                     if (iconArea) {
                         iconArea.innerHTML = checkbox.checked 
@@ -450,11 +448,9 @@ window.renderCheckLibrary = () => {
 };
 
 window.applyLibraryChanges = () => {
-    // チェックされているIDを収集
     const checkedInputs = document.querySelectorAll('#library-content input[type="checkbox"]:checked');
     const selectedIds = Array.from(checkedInputs).map(input => input.value);
     
-    // 現在のスキーマから「カスタム項目（ライブラリにないもの）」を退避して維持する
     let currentSchema = [];
     try {
         currentSchema = JSON.parse(localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA) || '[]');
@@ -465,14 +461,13 @@ window.applyLibraryChanges = () => {
 
     const customItems = currentSchema.filter(item => !libraryIds.has(item.id));
 
-    // ライブラリから選択された項目 + カスタム項目 で新しいスキーマを作成
     const newSchemaFromLibrary = getActiveSchemaFromIds(selectedIds);
     const finalSchema = [...newSchemaFromLibrary, ...customItems];
 
     localStorage.setItem(APP.STORAGE_KEYS.CHECK_SCHEMA, JSON.stringify(finalSchema));
     
     toggleModal('check-library-modal', false);
-    renderCheckEditor(); // 設定画面のリスト更新
+    renderCheckEditor(); 
     showMessage('チェック項目を更新しました', 'success');
 };
 
@@ -484,10 +479,6 @@ window.applyPreset = (presetKey) => {
 
     const selectedIds = preset.ids;
     
-    // UI上のチェックボックスを同期して保存処理を呼ぶ
-    // （モーダルが開かれていない場合でも動くように、直接ロジックを再利用）
-    
-    // 現在のスキーマからカスタム項目退避
     let currentSchema = [];
     try {
         currentSchema = JSON.parse(localStorage.getItem(APP.STORAGE_KEYS.CHECK_SCHEMA) || '[]');
@@ -496,13 +487,11 @@ window.applyPreset = (presetKey) => {
     Object.values(CHECK_LIBRARY).flat().forEach(i => libraryIds.add(i.id));
     const customItems = currentSchema.filter(item => !libraryIds.has(item.id));
 
-    // 新しいスキーマ
     const newSchemaFromLibrary = getActiveSchemaFromIds(selectedIds);
     const finalSchema = [...newSchemaFromLibrary, ...customItems];
 
     localStorage.setItem(APP.STORAGE_KEYS.CHECK_SCHEMA, JSON.stringify(finalSchema));
     
-    // UI更新（もし開いていれば）
     if(document.getElementById('check-library-modal') && !document.getElementById('check-library-modal').classList.contains('hidden')) {
         window.renderCheckLibrary();
     }
@@ -557,7 +546,6 @@ const renderCheckEditor = () => {
         const div = document.createElement('div');
         div.className = "flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mb-2";
         
-        // 削除ボタン (ライブラリ管理になるので、個別削除も可能にする)
         const deleteBtn = `<button onclick="deleteCheckItem(${index})" class="text-red-500 hover:bg-red-100 p-1 rounded"><i class="ph-bold ph-trash"></i></button>`;
 
         div.innerHTML = `
@@ -638,10 +626,8 @@ export const handleSaveSettings = async () => {
         const theme = document.getElementById('theme-input').value;
         localStorage.setItem(APP.STORAGE_KEYS.THEME, theme);
 
-        // Headerのドロップダウンも更新
         const headerSel = document.getElementById('header-mode-select');
         if(headerSel) {
-            // mode1, mode2のラベルを更新（valueはそのまま）
             headerSel.options[0].text = m1;
             headerSel.options[1].text = m2;
         }
