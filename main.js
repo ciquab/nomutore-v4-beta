@@ -61,7 +61,7 @@ const initApp = async () => {
         console.log('App Initializing...');
         
         // 1. Init DOM Elements
-        UI.initDOM(); 
+        UI.init(); 
         
         // 2. Setup Event Listeners
         setupLifecycleListeners();

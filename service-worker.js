@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nomutorev4.1.1'; // Updated Version
+const CACHE_NAME = 'nomutorev4.1.2'; // Updated Version
 // アプリケーションを構成する全ファイル
 const APP_SHELL = [
     './',
