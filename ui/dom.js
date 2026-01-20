@@ -43,10 +43,48 @@ const AudioEngine = {
     },
 
     // 🍺 乾杯音 (Clink)
+    // ★修正: リアルなグラス音の合成ロジック
+    // 複数の正弦波（Sine wave）を重ねて、ガラス特有の不協和音と共鳴を再現します
     playBeer: () => {
-        // カチン！という鋭い音
-        AudioEngine.playTone(1500, 'sine', 0.8, 0, 0.1);
-        AudioEngine.playTone(2200, 'triangle', 0.6, 0.02, 0.05); 
+        if (!AudioEngine.ctx) AudioEngine.init();
+        const ctx = AudioEngine.ctx;
+        if (!ctx) return;
+        const t = ctx.currentTime;
+
+        // グラスの響きを構成する成分（周波数Hz, 持続秒数, 音量）
+        // 2つのグラス（低めと高め）がぶつかった想定の和音構成
+        const partials = [
+            // Glass 1 (Main)
+            { f: 1400, d: 1.2, v: 0.15 }, // 基音 (Fundamental)
+            { f: 3600, d: 0.3, v: 0.08 }, // 倍音1 (Attack)
+            { f: 6200, d: 0.1, v: 0.04 }, // 倍音2 (Click)
+
+            // Glass 2 (Harmony/Dissonance)
+            { f: 1650, d: 1.0, v: 0.12 }, // 基音 (2nd glass)
+            { f: 4100, d: 0.2, v: 0.06 }, // 倍音1
+            
+            // Impact Transient (衝突瞬間の高音ノイズ成分)
+            { f: 8000, d: 0.05, v: 0.03 } 
+        ];
+
+        partials.forEach(p => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            osc.type = 'sine'; // ガラス音は正弦波が最適
+            osc.frequency.setValueAtTime(p.f, t);
+            
+            // エンベロープ（音量変化）の設定
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(p.v, t + 0.005); // 5msで急激に立ち上がり（打撃感）
+            gain.gain.exponentialRampToValueAtTime(0.001, t + p.d); // 余韻を残して減衰
+            
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            osc.start(t);
+            osc.stop(t + p.d);
+        });
     },
 
     // 🏃‍♀️ 達成音
