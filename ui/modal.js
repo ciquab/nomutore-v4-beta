@@ -400,7 +400,7 @@ window.renderCheckLibrary = () => {
         section.innerHTML = `<h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 sticky top-0 bg-white dark:bg-base-900 py-2 z-10">${label}</h4>`;
         
         const grid = document.createElement('div');
-        grid.className = "grid grid-cols-2 gap-2";
+        grid.className = "grid grid-cols-1 sm:grid-cols-2 gap-2";
 
         items.forEach(item => {
             const isActive = activeIds.has(item.id);
