@@ -525,6 +525,44 @@ export const renderSettings = () => {
     }
     if (durationInput) durationInput.value = savedDuration;
 
+    // ★修正: 設定画面のプルダウン選択肢生成ロジックを追加
+    const mode1Sel = document.getElementById('setting-mode-1');
+    const mode2Sel = document.getElementById('setting-mode-2');
+    // STYLE_METADATAがなければCALORIES.STYLESをフォールバックとして使う
+    const source = (typeof STYLE_METADATA !== 'undefined') ? STYLE_METADATA : CALORIES.STYLES;
+    const styles = Object.keys(source || {});
+    
+    [mode1Sel, mode2Sel].forEach(sel => {
+        if (sel && sel.children.length === 0) {
+            styles.forEach(style => {
+                const opt = document.createElement('option');
+                opt.value = style;
+                opt.textContent = style;
+                sel.appendChild(opt);
+            });
+        }
+    });
+    
+    if(mode1Sel) mode1Sel.value = localStorage.getItem(APP.STORAGE_KEYS.MODE1) || APP.DEFAULTS.MODE1;
+    if(mode2Sel) mode2Sel.value = localStorage.getItem(APP.STORAGE_KEYS.MODE2) || APP.DEFAULTS.MODE2;
+
+    const baseExSel = document.getElementById('setting-base-exercise');
+    const defRecExSel = document.getElementById('setting-default-record-exercise');
+    
+    [baseExSel, defRecExSel].forEach(sel => {
+        if (sel && sel.children.length === 0) {
+            Object.entries(EXERCISE).forEach(([key, val]) => {
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = val.label;
+                sel.appendChild(opt);
+            });
+        }
+    });
+
+    if(baseExSel) baseExSel.value = localStorage.getItem(APP.STORAGE_KEYS.BASE_EXERCISE) || APP.DEFAULTS.BASE_EXERCISE;
+    if(defRecExSel) defRecExSel.value = localStorage.getItem(APP.STORAGE_KEYS.DEFAULT_RECORD_EXERCISE) || APP.DEFAULTS.DEFAULT_RECORD_EXERCISE;
+
     renderCheckEditor();
 };
 
