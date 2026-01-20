@@ -718,7 +718,7 @@ export const openHelp = (isFirstTime = false) => {
                 // window.UIオブジェクト（main.jsで登録）を利用する
                 if (window.UI && window.UI.switchTab) {
                     window.UI.switchTab('settings');
-                    showMessage('まずは体重と目標を設定しましょう！', 'info');
+                    showMessage('まずはプロフィールを設定しましょう！', 'info');
                 }
             };
         } else {
