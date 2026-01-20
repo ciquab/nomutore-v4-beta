@@ -886,11 +886,11 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-[11px]">
                                 <span class="font-bold block mb-1">🛡️ Liver Rank</span>
-                                直近28日間の休肝日数で判定。
+                                「休肝」か「完済」の継続日数で判定。
                             </div>
                             <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-[11px]">
                                 <span class="font-bold block mb-1">🔥 Streak</span>
-                                「休肝」か「運動」をした連続日数。
+                                「休肝」か「完済」の継続日数。
                             </div>
                         </div>
                     </div>
@@ -948,16 +948,38 @@
                         <div class="space-y-2">
                             <h5 class="font-black text-indigo-600 dark:text-indigo-400 text-sm">🔥 ストリーク・ボーナス</h5>
                             <p class="text-[11px] text-indigo-800/80 dark:text-indigo-300/80 leading-relaxed">
-                                「休肝日」または「運動日」を継続すると、運動時の消費カロリーにボーナスがつきます。継続こそ力なり！
+                                <!-- ★修正: 「休肝」か「完済」に統一 -->
+                                「休肝」か「完済」を継続すると、運動時の消費カロリーにボーナスがつきます。継続こそ力なり！
                                 <br><span class="font-bold mt-1 block">・3日: 1.1x / 7日: 1.2x / 14日: 1.3x</span>
                             </p>
                         </div>
-                        
-                        <div class="space-y-2">
-                            <h5 class="font-black text-indigo-600 dark:text-indigo-400 text-sm">🐣 ルーキーモード</h5>
-                            <p class="text-[11px] text-indigo-800/80 dark:text-indigo-300/80 leading-relaxed">
-                                利用開始から14日間は、ランク判定が「休肝成功率」になります。まずは 25% 以上の成功率（たまご卒業）を目指しましょう！
+
+                        <!-- ★修正: Liver Rankの中にRookieとNormalを統合 -->
+                        <div class="space-y-2 pt-4 border-t border-indigo-200 dark:border-indigo-800/50">
+                            <h5 class="font-black text-indigo-600 dark:text-indigo-400 text-sm">🛡️ Liver Rank System</h5>
+                            <p class="text-[11px] text-indigo-800/80 dark:text-indigo-300/80 mb-2">
+                                開始からの日数で判定モードが切り替わります。
                             </p>
+                            
+                            <div class="space-y-2">
+                                <div class="bg-white/60 dark:bg-black/20 p-2 rounded-lg border border-indigo-100 dark:border-indigo-800/30">
+                                    <span class="text-[10px] font-bold text-orange-500 uppercase tracking-wider flex items-center gap-1">
+                                        🐣 Day 1-14: Rookie Mode
+                                    </span>
+                                    <p class="text-[10px] text-indigo-800/80 dark:text-indigo-300/80 mt-1 leading-tight">
+                                        最初は「成功率」で判定。まずは25%以上（たまご卒業）を目指しましょう！
+                                    </p>
+                                </div>
+                                <div class="bg-white/60 dark:bg-black/20 p-2 rounded-lg border border-indigo-100 dark:border-indigo-800/30">
+                                    <span class="text-[10px] font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-1">
+                                        🛡️ Day 15+: Normal Mode
+                                    </span>
+                                    <p class="text-[10px] text-indigo-800/80 dark:text-indigo-300/80 mt-1 leading-tight">
+                                        15日目からは「継続日数（ストリーク）」の実力勝負になります。
+                                        <span class="font-bold block mt-0.5 opacity-90">・S: 20日~ / A: 12日~ / B: 8日~</span>
+                                    </p>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="space-y-2 pt-4 border-t border-indigo-200 dark:border-indigo-800/50">
