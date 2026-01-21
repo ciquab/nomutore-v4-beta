@@ -101,7 +101,10 @@ export const Calc = {
         return (kcal / safeUnit).toFixed(1);
     },
 
-    // ★修正: ストリーク判定ロジックをv3仕様（完済＝成功）に修正
+    /**
+     * 【修正版】UI用ラッパー関数
+     * 従来の引数(配列)を受け取り、内部でMapに変換して高速版を呼ぶ
+     */
     getCurrentStreak: (logs, checks, profile, referenceDate = null) => {
         const safeLogs = Array.isArray(logs) ? logs : [];
         const safeChecks = Array.isArray(checks) ? checks : [];
@@ -110,33 +113,18 @@ export const Calc = {
             return 0;
         }
 
-        let minTs = Number.MAX_SAFE_INTEGER;
-        let found = false;
-
-        if (safeLogs.length > 0) {
-            safeLogs.forEach(l => { if (l.timestamp < minTs) minTs = l.timestamp; });
-            found = true;
-        }
-        if (safeChecks.length > 0) {
-            safeChecks.forEach(c => { if (c.timestamp < minTs) minTs = c.timestamp; });
-            found = true;
-        }
-
-        const firstDate = found ? dayjs(minTs).startOf('day') : dayjs();
-        const targetDate = referenceDate ? dayjs(referenceDate) : dayjs();
-        
-        const hasLogOnTarget = safeLogs.some(l => dayjs(l.timestamp).isSame(targetDate, 'day'));
-        const hasCheckOnTarget = safeChecks.some(c => dayjs(c.timestamp).isSame(targetDate, 'day'));
-
-        let checkDate = (hasLogOnTarget || hasCheckOnTarget) ? targetDate : targetDate.subtract(1, 'day');
-        
-        let streak = 0;
-
+        // 1. マップ作成（重い処理）
         const logMap = new Map();
         const checkMap = new Map();
         
-        // ログを日付ごとにマッピングし、収支(balance)を計算
+        let minTs = Number.MAX_SAFE_INTEGER;
+        let found = false;
+
+        // ログのマップ化
         safeLogs.forEach(l => {
+            if (l.timestamp < minTs) minTs = l.timestamp;
+            found = true;
+
             const d = dayjs(l.timestamp).format('YYYY-MM-DD');
             if (!logMap.has(d)) logMap.set(d, { hasBeer: false, hasExercise: false, balance: 0 });
             
@@ -144,26 +132,55 @@ export const Calc = {
             if (l.type === 'beer') entry.hasBeer = true;
             if (l.type === 'exercise') entry.hasExercise = true;
             
-            // 収支計算 (DBのkcalは ビール:負, 運動:正 で保存されている前提)
             if (l.kcal !== undefined) {
                 entry.balance += l.kcal;
             } else if (l.type === 'exercise') {
-                // kcalがない場合のフォールバック計算
                 const mets = EXERCISE[l.exerciseKey] ? EXERCISE[l.exerciseKey].mets : 3.0;
                 const burn = Calc.calculateExerciseBurn(mets, l.minutes, profile);
                 entry.balance += burn;
             } else if (l.type === 'beer') {
-                // ビールでkcalがない場合（通常ありえないが念のため）
                 entry.balance -= 140; 
             }
         });
         
+        // チェックのマップ化
         safeChecks.forEach(c => {
+            if (c.timestamp < minTs) minTs = c.timestamp;
+            found = true;
             const d = dayjs(c.timestamp).format('YYYY-MM-DD');
             checkMap.set(d, c.isDryDay);
         });
 
+        const firstDate = found ? dayjs(minTs).startOf('day') : dayjs();
+
+        // 2. 高速版ロジックへ委譲
+        return Calc.getStreakFromMap(logMap, checkMap, firstDate, referenceDate);
+    },
+
+    /**
+     * 【追加】高速版ストリーク計算
+     * 事前に作成されたMapを受け取るため、ループ内で呼んでも計算量が爆発しない
+     * @param {Map} logMap - 日付(YYYY-MM-DD) -> {hasBeer, hasExercise, balance}
+     * @param {Map} checkMap - 日付(YYYY-MM-DD) -> isDryDay(bool)
+     * @param {Dayjs} firstDate - 全ログの中で最も古い日付
+     * @param {Dayjs|number|string} referenceDate - 基準日
+     */
+    getStreakFromMap: (logMap, checkMap, firstDate, referenceDate = null) => {
+        const targetDate = referenceDate ? dayjs(referenceDate) : dayjs();
+        const targetStr = targetDate.format('YYYY-MM-DD');
+        
+        // 基準日に記録があるか確認
+        const logOnTarget = logMap.get(targetStr);
+        const checkOnTarget = checkMap.has(targetStr); // 値がfalseでもキーがあれば記録ありとみなす
+
+        // 基準日に記録があれば基準日から、なければ前日から判定スタート
+        // （記録がない＝今日の分はまだやってないので、昨日までの継続日数を見る）
+        let checkDate = (logOnTarget || checkOnTarget) ? targetDate : targetDate.subtract(1, 'day');
+        
+        let streak = 0;
+
         while (true) {
+            // 最古の日付より前に行ったら終了
             if (checkDate.isBefore(firstDate, 'day')) {
                 break;
             }
@@ -188,9 +205,9 @@ export const Calc = {
                 continue;
             }
 
-            // 3. ビールを飲んだが、運動で完済している (Balance >= 0) なら継続！ (v3仕様復活)
-            // ※端数計算の誤差を許容するため -5kcal 程度までセーフとするか、厳密に0とするか。ここでは厳密に >= 0
-            if (dayLogs.hasBeer && dayLogs.balance >= 0) {
+            // 3. ビールを飲んだが、運動で完済している (Balance >= 0) なら継続
+            // ※端数計算の誤差を許容するため -0.1kcal 程度までセーフとしても良い
+            if (dayLogs.hasBeer && dayLogs.balance >= -0.1) {
                 streak++;
                 checkDate = checkDate.subtract(1, 'day');
                 continue;
@@ -199,7 +216,7 @@ export const Calc = {
             // ここまで来たらストリーク終了
             break;
             
-            if (streak > 3650) break; 
+            if (streak > 3650) break; // 無限ループガード
         }
 
         return streak;

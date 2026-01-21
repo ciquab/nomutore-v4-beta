@@ -33,6 +33,10 @@ export const refreshUI = async () => {
         // ★修正1: 常に全データを取得する (UIパーツの計算用)
         // ここでページネーション用の handler は使いません
         const { logs, checks } = await Service.getAllDataForUI();
+
+        // ★修正: Stats用に「全期間のログ」も別途取得しておく
+        // (IndexedDBは高速なので、ここで取得してもパフォーマンスへの影響は軽微です)
+        const allLogs = await db.logs.toArray();
         
         // バランス計算 (全ログ対象)
         const profile = Store.getProfile();
@@ -53,15 +57,16 @@ export const refreshUI = async () => {
 
         renderChart(logs, checks);
         
-        // ★修正2: タブごとの個別更新処理
-        // リストの表示内容は logList.js 自身がデータを取得するので、ここでは更新関数を呼ぶだけでOK
+        // タブごとの個別更新処理
         const cellarMode = StateManager.cellarViewMode;
         if (cellarMode === 'logs') {
             if (typeof updateLogListView === 'function') {
                 updateLogListView(); 
             }
         } else if (cellarMode === 'stats') {
-            renderBeerStats(logs);
+            // ★修正: 第2引数に全期間ログ (allLogs) を渡す
+            // これで "No Data" にならず、即座にグラフが更新されます
+            renderBeerStats(logs, allLogs);
         } else if (cellarMode === 'archives') {
             renderArchives();
         }
@@ -106,6 +111,13 @@ export const UI = {
         }
 
         bind('btn-save-beer', 'click', () => {
+             // ★修正: バリデーション追加
+            // modal.js 側でチェックしても良いが、念のため
+            const dateEl = document.getElementById('beer-date');
+            if (!dateEl || !dateEl.value) {
+                showMessage('日付を選択してください', 'error');
+                return;
+            }
             const data = getBeerFormData();
             const event = new CustomEvent('save-beer', { detail: data });
             document.dispatchEvent(event);
@@ -149,13 +161,17 @@ export const UI = {
         }
 
         // 3. 保存処理 (元の引数の渡し方を維持)
-        if (editId) {
-            // 編集時 (引数5つ)
-            await Service.saveExerciseLog(key, minutes, date, applyBonus, editId);
-        } else {
-            // 新規時 (引数4つ)
-            await Service.saveExerciseLog(key, minutes, date, applyBonus);
-        }
+        // イベントを発火させるだけにします。実際の保存処理は main.js が受け取って行います。
+        const detail = {
+            exerciseKey: key,
+            minutes: minutes,
+            date: date,
+            applyBonus: applyBonus,
+            id: editId || null // editIdがあれば入れ、なければnull
+        };
+
+        // 'save-exercise' イベントを投げる
+        document.dispatchEvent(new CustomEvent('save-exercise', { detail }));
         
         // ★修正点2: 今回は「モーダル」なので、保存後に閉じる必要があります
         closeModal('exercise-modal');

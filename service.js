@@ -78,7 +78,8 @@ export const Service = {
     },
 
     /**
-     * 履歴変更に伴う影響（Streakボーナス、アーカイブ残高など）を再計算する
+     * 【修正版】履歴変更に伴う影響（Streakボーナス、アーカイブ残高など）を再計算する
+     * $O(N^2)$ 問題を解消した最適化バージョン
      * @param {number} changedTimestamp - 変更があったログの日時
      */
     recalcImpactedHistory: async (changedTimestamp) => {
@@ -86,6 +87,43 @@ export const Service = {
         const allLogs = await db.logs.toArray();
         const allChecks = await db.checks.toArray();
         const profile = Store.getProfile();
+
+        // --- Optimization: Pre-calculate Maps to avoid O(N^2) ---
+        const logMap = new Map();
+        const checkMap = new Map();
+        let minTs = Number.MAX_SAFE_INTEGER;
+        let found = false;
+
+        allLogs.forEach(l => {
+            if (l.timestamp < minTs) minTs = l.timestamp;
+            found = true;
+            const d = dayjs(l.timestamp).format('YYYY-MM-DD');
+            if (!logMap.has(d)) logMap.set(d, { hasBeer: false, hasExercise: false, balance: 0 });
+            
+            const entry = logMap.get(d);
+            if (l.type === 'beer') entry.hasBeer = true;
+            if (l.type === 'exercise') entry.hasExercise = true;
+            
+            if (l.kcal !== undefined) {
+                entry.balance += l.kcal;
+            } else if (l.type === 'exercise') {
+                const mets = EXERCISE[l.exerciseKey] ? EXERCISE[l.exerciseKey].mets : 3.0;
+                const burn = Calc.calculateExerciseBurn(mets, l.minutes, profile);
+                entry.balance += burn;
+            } else if (l.type === 'beer') {
+                entry.balance -= 140; 
+            }
+        });
+
+        allChecks.forEach(c => {
+            if (c.timestamp < minTs) minTs = c.timestamp;
+            found = true;
+            const d = dayjs(c.timestamp).format('YYYY-MM-DD');
+            checkMap.set(d, c.isDryDay);
+        });
+
+        const firstDate = found ? dayjs(minTs).startOf('day') : dayjs();
+        // ----------------------------------------
 
         // 2. 変更日以降のすべての日付について再計算
         const startDate = dayjs(changedTimestamp).startOf('day');
@@ -101,8 +139,8 @@ export const Service = {
             const dayStart = currentDate.startOf('day').valueOf();
             const dayEnd = currentDate.endOf('day').valueOf();
 
-            // その時点でのStreak
-            const streak = Calc.getCurrentStreak(allLogs, allChecks, profile, currentDate);
+            // その時点でのStreak (Optimized call)
+            const streak = Calc.getStreakFromMap(logMap, checkMap, firstDate, currentDate);
             
             // ボーナス倍率
             const creditInfo = Calc.calculateExerciseCredit(100, streak); // 100はダミー
@@ -341,15 +379,23 @@ export const Service = {
         } else {
             await db.logs.add(logData);
 
-            // 休肝日チェックがあれば解除
+            // ★修正: 休肝日チェック解除のロジックに安全弁を追加
             const ts = dayjs(data.timestamp);
             const start = ts.startOf('day').valueOf();
             const end = ts.endOf('day').valueOf();
             
+            // 「記録した日」のチェックレコードを取得
             const existingCheck = await db.checks.where('timestamp').between(start, end, true, true).first();
+            
             if (existingCheck && existingCheck.isDryDay) {
-                await db.checks.update(existingCheck.id, { isDryDay: false });
-                showMessage('🍺 飲酒記録のため、休肝日を解除しました', 'info');
+                // ここで念のため日付一致確認 (timestampがstart-endの範囲内か)
+                // betweenでクエリしているので確実だが、論理的バグ防止のため
+                if (existingCheck.timestamp >= start && existingCheck.timestamp <= end) {
+                    await db.checks.update(existingCheck.id, { isDryDay: false });
+                    showMessage('🍺 飲酒記録のため、休肝日を解除しました', 'info');
+                } else {
+                    console.warn('[Safety] Skipping dry day removal due to timestamp mismatch.');
+                }
             }
 
             // ★シェア文言の生成

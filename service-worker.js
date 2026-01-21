@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nomutorev4.1.2'; // Updated Version
+const CACHE_NAME = 'nomutorev4.1.3'; // Updated Version
 // アプリケーションを構成する全ファイル
 const APP_SHELL = [
     './',
@@ -34,7 +34,8 @@ const APP_SHELL = [
     './ui/archiveManager.js', // New
 
     // Assets
-    './icon-192.png' 
+    './icon-192_2.png',
+     ./icon-512_2.png'
 ];
 
 // インストール処理

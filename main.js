@@ -309,11 +309,16 @@ let touchStartX = 0;
 let touchEndX = 0;
 
 const handleSwipe = () => {
+    const diffX = touchStartX - touchEndX;
+    const diffY = touchStartY - touchEndY; // touchStartでYも取得しておく必要あり
     const swipeThreshold = 100; // スワイプと判定する距離(px)
     const diff = touchStartX - touchEndX;
     const tabs = ['home', 'record', 'cellar', 'settings'];
     const currentTab = document.querySelector('.nav-pill-active')?.id.replace('nav-tab-', '');
     const currentIndex = tabs.indexOf(currentTab);
+
+    // 縦スクロールの意図が強い場合は無視
+    if (Math.abs(diffY) > Math.abs(diffX)) return;
 
     if (Math.abs(diff) > swipeThreshold) {
         if (diff > 0 && currentIndex < tabs.length - 1) {

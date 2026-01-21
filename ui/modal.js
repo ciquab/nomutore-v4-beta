@@ -45,7 +45,11 @@ export const getBeerFormData = () => {
     const memo = document.getElementById('beer-memo').value;
     const untappdCheck = document.getElementById('untappd-check');
     const useUntappd = untappdCheck ? untappdCheck.checked : false;
-    const ts = dateVal ? dayjs(dateVal).startOf('day').add(12, 'hour').valueOf() : Date.now(); 
+    // ★修正: 日付がない場合は「今日」とするが、本来はバリデーションで弾くべき
+    // ここでは安全のため、明示的な日付文字列がある場合のみパースする
+    const ts = dateVal 
+        ? dayjs(dateVal).startOf('day').add(12, 'hour').valueOf() 
+        : dayjs().startOf('day').add(12, 'hour').valueOf(); // Default to today noon 
     
     const isCustom = !document.getElementById('beer-input-custom').classList.contains('hidden');
     
@@ -57,8 +61,8 @@ export const getBeerFormData = () => {
     
     const count = parseInt(document.getElementById('beer-count').value) || 1;
     
-    const customAbv = parseFloat(document.getElementById('custom-abv').value) || 5.0;
-    const customMl = parseInt(document.getElementById('custom-amount').value) || 350;
+    const customAbv = Math.abs(parseFloat(document.getElementById('custom-abv').value) || 5.0);
+    const customMl = Math.abs(parseInt(document.getElementById('custom-amount').value) || 350);
 
     return {
         timestamp: ts,
