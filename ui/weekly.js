@@ -71,8 +71,9 @@ export async function renderWeeklyAndHeatUp(logs, checks) {
                 </div>
             `;
 
+            // ★配色をヒートマップのロジック（赤＝飲酒、青＝運動・努力、緑＝休肝）に統一
             switch (status) {
-                case 'rest_exercise': // 休肝日 + 運動
+                case 'rest_exercise': // 休肝日 + 運動 (最強)
                     bgClass = "bg-emerald-100 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-700";
                     textClass = "text-emerald-600 dark:text-emerald-400";
                     iconHtml = dualIconWrapper(
@@ -80,12 +81,15 @@ export async function renderWeeklyAndHeatUp(logs, checks) {
                         `<i class="ph-fill ph-person-simple-run text-xs"></i>`
                     );
                     break;
-                case 'rest': // 休肝日のみ
+
+                case 'rest': // 休肝日のみ (Green)
                     bgClass = "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800";
                     textClass = "text-emerald-500 dark:text-emerald-500";
                     iconHtml = `<i class="ph-fill ph-coffee text-lg"></i>`;
                     break;
-                case 'drink_exercise_success': // 完済
+
+                case 'drink_exercise_success': // 完済 (Indigo/Blue)
+                    // ヒートマップの「🏅」に相当。成功色。
                     bgClass = "bg-indigo-100 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700";
                     textClass = "text-indigo-600 dark:text-indigo-400";
                     iconHtml = dualIconWrapper(
@@ -93,24 +97,31 @@ export async function renderWeeklyAndHeatUp(logs, checks) {
                         `<i class="ph-bold ph-check text-xs"></i>`
                     );
                     break;
-                case 'drink_exercise': // 未完済 (ビール + ラン)
-                    bgClass = "bg-orange-100 dark:bg-orange-900/30 border-orange-200 dark:border-orange-700";
-                    textClass = "text-orange-600 dark:text-orange-400";
+
+                case 'drink_exercise': // 未完済 (Cyan/Blue)
+                    // ★変更: ヒートマップの「💦 (Blue)」に合わせて、オレンジ(注意)から青系(努力)に変更
+                    // 「飲んだけど運動はした」というポジティブさを表現
+                    bgClass = "bg-sky-100 dark:bg-sky-900/30 border-sky-200 dark:border-sky-700";
+                    textClass = "text-sky-600 dark:text-sky-400";
                     iconHtml = dualIconWrapper(
                         `<i class="ph-fill ph-beer-stein text-xs"></i>`,
                         `<i class="ph-fill ph-person-simple-run text-xs"></i>`
                     );
                     break;
-                case 'drink': // 飲酒のみ
-                    bgClass = "bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800";
-                    textClass = "text-orange-500 dark:text-orange-500";
+
+                case 'drink': // 飲酒のみ (Red)
+                    // ★変更: ヒートマップの「🍺 (Red)」に合わせて、オレンジから赤(警告)に変更
+                    bgClass = "bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800";
+                    textClass = "text-red-500 dark:text-red-500";
                     iconHtml = `<i class="ph-fill ph-beer-stein text-lg"></i>`;
                     break;
-                case 'exercise': // 運動のみ
+
+                case 'exercise': // 運動のみ (Blue)
                     bgClass = "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800";
                     textClass = "text-blue-600 dark:text-blue-400";
                     iconHtml = `<i class="ph-fill ph-person-simple-run text-lg"></i>`;
                     break;
+                    
                 default:
                     iconHtml = `<span class="text-[10px] font-bold opacity-30 font-mono">${d.format('D')}</span>`;
                     break;
@@ -216,7 +227,6 @@ export function renderHeatmap(checks, logs, profile) {
             bgClass += ' ring-2 ring-indigo-500 dark:ring-indigo-400 z-10';
         }
 
-        // ★修正: 変数名を icon -> iconHtml に統一
         const content = iconHtml ? iconHtml : `<span class="text-[10px] opacity-40 font-mono">${d.format('D')}</span>`;
 
         html += `
