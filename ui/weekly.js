@@ -170,7 +170,7 @@ export function renderHeatmap(checks, logs, profile) {
         // --- v3 Logic Restoration (絵文字スタイル) ---
         let bgClass = 'bg-gray-100 dark:bg-gray-800';
         let textClass = 'text-gray-300';
-        let icon = '';
+        let iconHtml = "";
         
         switch(status) {
             case 'rest_exercise': // 休肝日+運動 (Green)
