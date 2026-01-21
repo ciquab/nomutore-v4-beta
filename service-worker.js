@@ -35,7 +35,7 @@ const APP_SHELL = [
 
     // Assets
     './icon-192_2.png',
-     ./icon-512_2.png'
+    './icon-512_2.png'
 ];
 
 // インストール処理
