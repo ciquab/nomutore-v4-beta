@@ -186,7 +186,7 @@ export function renderHeatmap(checks, logs, profile) {
                 iconHtml = `<i class="ph-fill ph-medal text-lg"></i>`;
                 break;
                 
-            case 'drink_exercise': // 飲酒+運動 (Blue) - ★ご質問の箇所
+            case 'drink_exercise': // 飲酒+運動 (Blue)
                 bgClass = 'bg-blue-400 border border-blue-500 shadow-sm';
                 textClass = 'text-white font-bold';
                 iconHtml = `<i class="ph-fill ph-person-simple-walk text-lg"></i>`;
@@ -216,8 +216,8 @@ export function renderHeatmap(checks, logs, profile) {
             bgClass += ' ring-2 ring-indigo-500 dark:ring-indigo-400 z-10';
         }
 
-        // 日付表示（アイコンがない場合）
-        const content = icon ? icon : `<span class="text-[10px] opacity-40 font-mono">${d.format('D')}</span>`;
+        // ★修正: 変数名を icon -> iconHtml に統一
+        const content = iconHtml ? iconHtml : `<span class="text-[10px] opacity-40 font-mono">${d.format('D')}</span>`;
 
         html += `
             <div class="heatmap-cell aspect-square rounded-lg flex flex-col items-center justify-center cursor-pointer transition hover:scale-110 active:scale-95 ${bgClass} ${textClass} relative"
