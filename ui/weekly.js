@@ -89,7 +89,7 @@ export async function renderWeeklyAndHeatUp(logs, checks) {
                     bgClass = "bg-indigo-100 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700";
                     textClass = "text-indigo-600 dark:text-indigo-400";
                     iconHtml = dualIconWrapper(
-                        `<i class="ph-fill ph-beer-bottle text-xs"></i>`,
+                        `<i class="ph-fill ph-beer-stein text-xs"></i>`,
                         `<i class="ph-bold ph-check text-xs"></i>`
                     );
                     break;
@@ -97,14 +97,14 @@ export async function renderWeeklyAndHeatUp(logs, checks) {
                     bgClass = "bg-orange-100 dark:bg-orange-900/30 border-orange-200 dark:border-orange-700";
                     textClass = "text-orange-600 dark:text-orange-400";
                     iconHtml = dualIconWrapper(
-                        `<i class="ph-fill ph-beer-bottle text-xs"></i>`,
+                        `<i class="ph-fill ph-beer-stein text-xs"></i>`,
                         `<i class="ph-fill ph-person-simple-run text-xs"></i>`
                     );
                     break;
                 case 'drink': // 飲酒のみ
                     bgClass = "bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800";
                     textClass = "text-orange-500 dark:text-orange-500";
-                    iconHtml = `<i class="ph-fill ph-beer-bottle text-lg"></i>`;
+                    iconHtml = `<i class="ph-fill ph-beer-stein text-lg"></i>`;
                     break;
                 case 'exercise': // 運動のみ
                     bgClass = "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800";
@@ -177,31 +177,31 @@ export function renderHeatmap(checks, logs, profile) {
             case 'rest':          // 休肝日 (Green)
                 bgClass = 'bg-emerald-400 border border-emerald-500 shadow-sm';
                 textClass = 'text-white font-bold';
-                icon = '☕';
+                iconHtml = `<i class="ph-fill ph-coffee text-lg"></i>`;
                 break;
                 
             case 'drink_exercise_success': // 完済 (Blue + Yellow Border)
                 bgClass = 'bg-blue-500 border-2 border-yellow-400 shadow-md ring-2 ring-yellow-200 dark:ring-yellow-900'; 
                 textClass = 'text-white font-bold';
-                icon = '🏅';
+                iconHtml = `<i class="ph-fill ph-medal text-lg"></i>`;
                 break;
                 
             case 'drink_exercise': // 飲酒+運動 (Blue) - ★ご質問の箇所
                 bgClass = 'bg-blue-400 border border-blue-500 shadow-sm';
                 textClass = 'text-white font-bold';
-                icon = '💦';
+                iconHtml = `<i class="ph-fill ph-person-simple-walk text-lg"></i>`;
                 break;
                 
             case 'drink': // 飲酒のみ (Red)
                 bgClass = 'bg-red-400 border border-red-500 shadow-sm';
                 textClass = 'text-white font-bold';
-                icon = '🍺';
+                iconHtml = `<i class="ph-fill ph-beer-stein text-lg"></i>`;
                 break;
                 
             case 'exercise': // 運動のみ (Cyan)
                 bgClass = 'bg-cyan-400 border border-cyan-500 shadow-sm';
                 textClass = 'text-white font-bold';
-                icon = '👟';
+                iconHtml = `<i class="ph-fill ph-person-simple-run text-lg"></i>`;
                 break;
                 
             default: // データなし

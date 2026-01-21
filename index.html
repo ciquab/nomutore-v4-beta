@@ -106,6 +106,14 @@
                     </div>
                 </div>
                 
+                <!-- ★修正: 1週間カレンダーを追加 (ヒートマップの上) -->
+                <div class="mb-2 flex items-center justify-between px-1">
+                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Weekly</span>
+                    <span id="weekly-range-label" class="text-[10px] font-mono text-gray-400"></span>
+                </div>
+                <div id="weekly-calendar" class="grid grid-cols-7 gap-2 mb-6"></div>
+                <!-- 追加ここまで -->
+
                 <div class="flex justify-between items-center mb-2 px-1">
                     <button id="heatmap-prev" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-400">◀</button>
                     <span id="heatmap-period-label" class="text-[10px] font-bold text-gray-400">Loading...</span>
