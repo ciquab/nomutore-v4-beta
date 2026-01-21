@@ -306,7 +306,9 @@ const generateSettingsOptions = () => {
    Swipe Navigation (v3 Spec Restored)
    ========================================================================== */
 let touchStartX = 0;
+let touchStartY = 0; // ★追加: Y座標の変数を定義
 let touchEndX = 0;
+let touchEndY = 0;   // ★追加: Y座標の変数を定義
 
 const handleSwipe = () => {
     const diffX = touchStartX - touchEndX;
